@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-import chatgpt_study_system.migration.inventory as inventory
-from chatgpt_study_system.migration.planner import plan_records
+import cognivault.migration.inventory as inventory
+from cognivault.migration.planner import plan_records
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Win32 extended path handling")

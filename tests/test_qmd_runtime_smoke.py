@@ -10,8 +10,8 @@ import subprocess
 
 import pytest
 
-from chatgpt_study_system.adapters.study_qmd import QmdRuntime, QmdStudyBackend
-from chatgpt_study_system.config import AppConfig
+from cognivault.adapters.study_qmd import QmdRuntime, QmdStudyBackend
+from cognivault.config import AppConfig
 
 
 def _file_manifest(root: Path) -> dict[str, dict[str, int | str]]:

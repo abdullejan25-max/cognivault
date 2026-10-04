@@ -1,6 +1,6 @@
 """Synthetic legacy migration plans; never use personal records here."""
 
-from chatgpt_study_system.migration.planner import SourceRecord, plan_records
+from cognivault.migration.planner import SourceRecord, plan_records
 
 
 def _record(**overrides) -> SourceRecord:

@@ -55,6 +55,11 @@ The ledger records receipt identity/digest and does not replace current Gateway
 readback. Original sources are immutable; subsequent normalization is a separate
 derived layer.
 
+New acquisition-ledger `imported` / `reused` evidence uses authority `cognivault`.
+Already stored `study_system` authority remains valid as deprecated historical
+provenance and is read without rewriting its payload. The rename changes no
+schema, source identity, original-byte hash, or existing receipt digest.
+
 Counts of acquired files, legacy records, indexed sources, archive members and
 activity entries have distinct meanings. `canonical_messages_created` describes
 this operation (always zero), not a query for a future canonical table's total.

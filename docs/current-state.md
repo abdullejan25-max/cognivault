@@ -2,6 +2,14 @@
 
 最近核对：2026-10-04。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.7.0 — History Completion & Recovery](releases/v0.7.0.md)**；下列 acquisition 与 recovery closure 统计在该版本首次发布后完成。
 
+## CogniVault identity transition
+
+当前产品、Python distribution/import package 与标准 MCP registration 分别为 **CogniVault** / `cognivault`。仓库为 [abdullejan25-max/cognivault](https://github.com/abdullejan25-max/cognivault)。版本仍为 `0.7.0`，此次内部改名未创建新 tag 或 Release。
+
+升级应使用全新环境，或先卸载旧 distribution `chatgpt-study-system-v2` 再安装 `cognivault`；二者共用旧 stdio shim 文件和 `study-migrate` launcher。先安装新包再卸载旧包会删掉这两个共享文件，旧 regular package 也可能遮蔽新 editable shim。详细步骤见 [README](../README.md#upgrade-from-the-former-distribution)。Codex helper 只自动替换精确识别的旧生成配置；Hermes、WorkBuddy 和自定义 Codex 配置需手动改 registration 与 module path，保留原 backend/capabilities。
+
+下列计数、恢复与 Host PASS 均是更名前已记录的证据，本页未重新读取生产数据。改名后的真实 Host 与存量生产数据兼容性尚未验收；自动化或 synthetic PASS 不会补足这两项门禁。历史 checkpoint / Release Notes 保留原项目名、命令和 `study_system` aliases，作为当时证据。
+
 ## Current release status
 
 | 指标 | 最终已取得数据 closure |
@@ -17,7 +25,7 @@ Source-only 记录保留原始来源证据；没有足够依据生成的 canonic
 
 ## Host status
 
-| Host | 当前证据 |
+| Host | 更名前已记录的证据 |
 | --- | --- |
 | Codex | Codex Desktop P13 History 原生 MCP 读取与无结果检查：**PASS**。 |
 | Hermes | P13 History 原生 MCP 读取与无结果检查：**PASS**。 |

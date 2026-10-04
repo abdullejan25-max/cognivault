@@ -67,7 +67,7 @@ def create_disposable_qmd_runtime(sources: QmdSnapshotSources) -> Iterator[QmdRu
     if not source_config.is_file() or not source_index.is_file():
         raise ValueError("QMD snapshot sources must be files")
 
-    with tempfile.TemporaryDirectory(prefix="chatgpt-study-system-qmd-") as directory:
+    with tempfile.TemporaryDirectory(prefix="cognivault-qmd-") as directory:
         root = Path(directory)
         config_dir = root / "config"
         index_dir = root / "index"

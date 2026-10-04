@@ -10,9 +10,9 @@ import re
 
 import pytest
 
-from chatgpt_study_system.contracts import HistoryItem, HistorySource
-import chatgpt_study_system.obsidian_projection as projection_module
-from chatgpt_study_system.obsidian_projection import (
+from cognivault.contracts import HistoryItem, HistorySource
+import cognivault.obsidian_projection as projection_module
+from cognivault.obsidian_projection import (
     ProjectionError,
     ProjectionSnapshot,
     render_projection,
@@ -318,7 +318,7 @@ def test_file_count_bound_accounts_for_all_four_fixed_outputs(monkeypatch) -> No
 
 def test_writer_accepts_renderer_file_count_limit():
     import json
-    from chatgpt_study_system import obsidian_writer
+    from cognivault import obsidian_writer
     names = [f'items/{number:05d}.md' for number in range(projection_module._MAX_RECORDS + 13)]
     manifest = json.dumps({'schema_version': 1, 'files': names}).encode()
     assert obsidian_writer._manifest_files(manifest) == tuple(names)

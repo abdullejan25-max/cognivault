@@ -8,8 +8,8 @@ import subprocess
 
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.contracts import HistoryImportItem
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.contracts import HistoryImportItem
 
 
 def test_codex_host_calls_health_and_history_with_inline_server_override(tmp_path: Path) -> None:
@@ -41,7 +41,7 @@ def test_codex_host_calls_health_and_history_with_inline_server_override(tmp_pat
     )
     repository = Path(__file__).resolve().parents[1]
     server_args = ["run", "--project", str(repository), "python", "-m",
-                   "chatgpt_study_system.transports.mcp_stdio", "--config", str(config)]
+                   "cognivault.transports.mcp_stdio", "--config", str(config)]
     command = [
         codex, "-C", str(tmp_path), "-s", "read-only", "--ask-for-approval", "never",
         "-c", f'mcp_servers.phase9_study.command={json.dumps("uv")}',

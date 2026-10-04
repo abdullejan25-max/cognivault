@@ -11,13 +11,13 @@ from pathlib import Path
 import pytest
 import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.adapters.history_sources import SourceEvidenceStore, SourceFileInput
-from chatgpt_study_system.adapters.documents import SQLiteDocumentStore, DocumentInput
+from cognivault.transports.mcp_stdio import create_mcp_server
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.adapters.history_sources import SourceEvidenceStore, SourceFileInput
+from cognivault.adapters.documents import SQLiteDocumentStore, DocumentInput
 
 
 def setup(tmp_path, *, documents=True):
@@ -193,7 +193,7 @@ def test_default_readonly_host_does_not_discover_recovery(tmp_path):
 
 
 def test_runtime_explicit_recovery_config_and_bad_exclusions(tmp_path):
-    from chatgpt_study_system.runtime import load_gateway_from_config
+    from cognivault.runtime import load_gateway_from_config
     p=tmp_path/'gateway.toml'
     original='[gateway]\nversion="0.6.0"\n[study]\nroot='+json.dumps(str(tmp_path))+'\nqmd_collection="studyvault"\nqmd_version="2.8.3"\nqmd_executable="missing-synthetic"\n[history]\nbackend="not_configured"\n'
     config='[recovery]\nroot='+json.dumps(str(tmp_path/'recovery'))+'\nsidecar_root='+json.dumps(str(tmp_path/'sidecar'))+'\nexclude_sidecar_paths=["runtime"]\n'
@@ -207,7 +207,7 @@ def test_runtime_explicit_recovery_config_and_bad_exclusions(tmp_path):
 
 
 def test_changed_file_and_capacity_fail_preserve_production(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);original=service.copy_file
     def race(source,root,target):
         answer=original(source,root,target)
@@ -224,7 +224,7 @@ def test_changed_file_and_capacity_fail_preserve_production(tmp_path,monkeypatch
 
 
 def test_sqlite_proof_streams_large_blob_evidence(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery.io import sqlite_proof
+    from cognivault.recovery.io import sqlite_proof
     path=tmp_path/'large.sqlite3'
     with closing(sqlite3.connect(path)) as c:
         c.execute('CREATE TABLE evidence(payload BLOB)');c.execute('INSERT INTO evidence VALUES(?)',(b'x'*(3*1024*1024),));c.commit()
@@ -243,7 +243,7 @@ def test_sqlite_proof_streams_large_blob_evidence(tmp_path,monkeypatch):
 
 
 def test_sqlite_proof_handles_generated_and_without_rowid_blobs(tmp_path):
-    from chatgpt_study_system.recovery.io import sqlite_proof
+    from cognivault.recovery.io import sqlite_proof
     path=tmp_path/'variants.sqlite3'
     with closing(sqlite3.connect(path)) as c:
         c.execute('CREATE TABLE variants(k TEXT PRIMARY KEY, b BLOB) WITHOUT ROWID')
@@ -257,7 +257,7 @@ def test_sqlite_proof_handles_generated_and_without_rowid_blobs(tmp_path):
 
 @pytest.mark.parametrize('tamper',['counts','components','removed_file'])
 def test_self_consistent_manifest_cannot_fake_completeness(tmp_path,tamper):
-    from chatgpt_study_system.recovery.io import encoded
+    from cognivault.recovery.io import encoded
     g=setup(tmp_path);g.create_recovery_snapshot('fake-one')
     folder=g.config.recovery_root/'snapshots/fake-one';p=folder/'manifest.json';m=json.loads(p.read_bytes())
     if tamper=='counts':m['history_proof']['canonical']['messages']=0
@@ -270,7 +270,7 @@ def test_self_consistent_manifest_cannot_fake_completeness(tmp_path,tamper):
 
 
 def test_same_size_change_with_restored_mtime_is_rejected(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);original=service.copy_file
     def race(source,root,target):
         stamp=source.stat();answer=original(source,root,target)
@@ -301,7 +301,7 @@ def test_checksum_hardlink_is_rejected(tmp_path):
 
 
 def test_oversized_manifest_never_publishes(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import io
+    from cognivault.recovery import io
     g=setup(tmp_path);monkeypatch.setattr(io,'MAX_MANIFEST',10)
     with pytest.raises(GatewayError):g.create_recovery_snapshot('large-manifest')
     assert not (g.config.recovery_root/'snapshots/large-manifest').exists()
@@ -318,7 +318,7 @@ def test_restore_config_relocates_all_data_and_preserves_original(tmp_path):
     g.config=replace(g.config,gateway_config_file=original,qmd_snapshot_config=qmd_config,qmd_snapshot_index=qmd_index)
     g.create_recovery_snapshot('config-one')
     # Runtime files are invented here; test configuration preparation without launching them.
-    from chatgpt_study_system.recovery.service import prepare_restore_config
+    from cognivault.recovery.service import prepare_restore_config
     target=g.config.recovery_root/'restores/config-one';target.mkdir(parents=True)
     (target/'payload').mkdir();(target/'payload/gateway-original.toml').write_bytes(original.read_bytes())
     cfg=prepare_restore_config(g,target)
@@ -333,8 +333,8 @@ def test_restore_config_relocates_all_data_and_preserves_original(tmp_path):
 
 
 def test_restore_study_uses_relocated_gateway_and_response_contract(tmp_path,monkeypatch):
-    from chatgpt_study_system import runtime
-    from chatgpt_study_system.recovery import service
+    from cognivault import runtime
+    from cognivault.recovery import service
     g=setup(tmp_path);original=tmp_path/'original.toml'
     original.write_text('[study.qmd_runtime]\nnode_executable="synthetic-node"\ncli_entrypoint="synthetic-cli.js"\n')
     qmd_config=tmp_path/'qmd.yml';qmd_config.write_text('collections: {}')
@@ -354,7 +354,7 @@ def test_restore_study_uses_relocated_gateway_and_response_contract(tmp_path,mon
 
 
 def test_catalog_write_failure_retains_stage_without_publishing(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);original=service.write_json
     def broken(path,value):
         if path.parent.name=='catalog':raise OSError('Invented write failure')
@@ -366,7 +366,7 @@ def test_catalog_write_failure_retains_stage_without_publishing(tmp_path,monkeyp
 
 
 def test_legacy_qmd_launcher_cannot_claim_isolated_restore(tmp_path):
-    from chatgpt_study_system.recovery.service import prepare_restore_config
+    from cognivault.recovery.service import prepare_restore_config
     g=setup(tmp_path);target=tmp_path/'isolated';(target/'payload').mkdir(parents=True)
     original=target/'payload/gateway-original.toml';original.write_text('[study]\nqmd_executable="synthetic-qmd"\n')
     g.config=replace(g.config,gateway_config_file=original)
@@ -374,7 +374,7 @@ def test_legacy_qmd_launcher_cannot_claim_isolated_restore(tmp_path):
 
 
 def test_restore_capacity_is_checked_before_copy(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);g.create_recovery_snapshot('restore-capacity')
     monkeypatch.setattr(service.shutil,'disk_usage',lambda _:type('Capacity',(),{'free':0})())
     with pytest.raises(GatewayError):g.verify_recovery_snapshot('restore-capacity',restore=True)
@@ -383,7 +383,7 @@ def test_restore_capacity_is_checked_before_copy(tmp_path,monkeypatch):
 
 @pytest.mark.skipif(os.name!='nt',reason='Windows extended path regression')
 def test_normalization_receipt_in_deep_private_inbox(tmp_path):
-    from chatgpt_study_system.recovery.io import physical
+    from cognivault.recovery.io import physical
     g=setup(tmp_path);deep=tmp_path/('invented-deep-inbox-'+'x'*90)
     physical(deep).mkdir(parents=True)
     g.config=replace(g.config,history_migration_inbox=deep)
@@ -403,7 +403,7 @@ def test_plan_accounts_for_interrupted_attempts_without_claiming_verified(tmp_pa
 
 
 def test_restore_requires_reserve_above_copy_size_before_creating_target(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);snapshot=g.create_recovery_snapshot('reserved-space')
     monkeypatch.setattr(service.shutil,'disk_usage',lambda _:type('Capacity',(),{'free':snapshot['total_bytes']+128*1024*1024})())
     with pytest.raises(GatewayError):g.verify_recovery_snapshot('reserved-space',restore=True)
@@ -421,7 +421,7 @@ def test_plan_reports_restore_budget_and_published_allocation_without_private_re
 
 
 def test_existing_restore_does_not_budget_the_payload_copy_twice(tmp_path,monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g=setup(tmp_path);g.create_recovery_snapshot('reuse-budget');g.verify_recovery_snapshot('reuse-budget',restore=True)
     monkeypatch.setattr(service.shutil,'disk_usage',lambda _:type('Capacity',(),{'free':4*1024**3+128*1024**2})())
     result=g.verify_recovery_snapshot('reuse-budget',restore=True)

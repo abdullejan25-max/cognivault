@@ -10,11 +10,11 @@ from jsonschema import ValidationError, validate
 from mcp.shared.memory import create_connected_server_and_client_session
 import pytest
 
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import BackendStudyHit, GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.runtime import load_gateway_from_config
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.config import AppConfig
+from cognivault.contracts import BackendStudyHit, GatewayError
+from cognivault.gateway import Gateway
+from cognivault.runtime import load_gateway_from_config
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 class SyntheticStudyBackend:
@@ -42,10 +42,12 @@ def test_protocol_reports_installed_package_version(tmp_path: Path) -> None:
     gateway, _ = _gateway(tmp_path)
 
     async def check():
-        with patch("chatgpt_study_system.transports.mcp_stdio.distribution_version", return_value="9.8.7"):
+        with patch("cognivault.transports.mcp_stdio.distribution_version", return_value="9.8.7") as installed_version:
             async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
                 initialized = await client.initialize()
+                assert initialized.serverInfo.name == "cognivault"
                 assert initialized.serverInfo.version == "9.8.7"
+            installed_version.assert_called_once_with("cognivault")
 
     anyio.run(check)
 

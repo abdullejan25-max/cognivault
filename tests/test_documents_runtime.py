@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
-from chatgpt_study_system.runtime import load_gateway_from_config
+from cognivault.adapters.documents import SQLiteDocumentStore
+from cognivault.runtime import load_gateway_from_config
 
 
 def _config(path: Path, root: Path, assets: str) -> None:

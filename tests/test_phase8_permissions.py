@@ -9,13 +9,13 @@ import subprocess
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
-import chatgpt_study_system.adapters.documents as documents_adapter
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.runtime import load_gateway_from_config
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.documents import SQLiteDocumentStore
+import cognivault.adapters.documents as documents_adapter
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
+from cognivault.runtime import load_gateway_from_config
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def _gateway(tmp_path: Path, capabilities=frozenset({"read"})) -> Gateway:

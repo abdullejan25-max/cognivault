@@ -38,7 +38,7 @@ The core runtime needs Python 3.11 or later and [`uv`](https://docs.astral.sh/uv
 
 ### Install and configure the Gateway
 
-From the repository root, create the private local configuration and install the project:
+From the repository root, create the private local configuration and install the project. For an existing installation of the former distribution, follow the [upgrade sequence](#upgrade-from-the-former-distribution) before running `uv sync`:
 
 ```powershell
 Copy-Item config.example.toml config.local.toml
@@ -50,19 +50,32 @@ Edit `config.local.toml` outside Git to set the local data locations and capabil
 An MCP Host starts the Gateway over stdio using the local configuration. The command form is:
 
 ```text
-uv run --no-sync --project <repository-path> python -m chatgpt_study_system.transports.mcp_stdio --config <absolute-config-path>
+uv run --no-sync --project <repository-path> python -m cognivault.transports.mcp_stdio --config <absolute-config-path>
 ```
 
 Run `uv sync` before the first launch and after changing the checkout or dependencies; `--no-sync` does not install or update dependencies. Host-specific command, argument, environment, and path fields depend on the client.
 
+### Upgrade from the former distribution
+
+The current Python distribution, import package, and standard MCP registration are `cognivault`. Use a fresh Python environment, or uninstall `chatgpt-study-system-v2` **before** installing `cognivault` in the existing environment. For an existing repository environment on Windows:
+
+```powershell
+uv pip uninstall --python .venv/Scripts/python.exe chatgpt-study-system-v2
+uv sync --project . --no-editable
+```
+
+The two distributions share the deprecated `chatgpt_study_system.transports.mcp_stdio` shim path and the `study-migrate` launcher. Installing the new distribution first and then uninstalling the old one removes both shared files; restore them in the repository environment with `uv sync --project . --no-editable --reinstall-package cognivault` if that sequence already happened. An old regular package can also shadow the new shim in an editable installation. Do not keep both distributions installed.
+
+The old stdio module is a deprecated startup shim that delegates to the single CogniVault Gateway and writes a notice to stderr; other old Python APIs are not supported. Update current Host registrations to `cognivault` and launch `cognivault.transports.mcp_stdio`. The Codex helper migrates only exact recognized helper-generated old configs; custom Codex, Hermes, and WorkBuddy registrations need manual changes. Preserve private backend paths and capabilities. See [Codex setup](docs/codex-host-setup.md), [WorkBuddy setup](docs/workbuddy-host-setup.md), and [Hermes setup](docs/hermes-host-setup.md).
+
 ## Agent Hosts and validation
 
-Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation and explicitly configured data layer. Their recorded validation has different scopes:
+Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation and explicitly configured data layer. The following records are from validation before the internal rename. They do not establish a live Host or existing production-data PASS for the renamed build:
 
 | Host | Project validation record | Setup or evidence |
 | --- | --- | --- |
 | Codex Desktop | Native MCP History read / no-result checks: **PASS** | [Host setup](docs/codex-host-setup.md) · [Current State](docs/current-state.md) |
-| WorkBuddy | P12 integration: **PASS**; P13 History GUI verification: **DEFERRED** | [P12 checkpoint](docs/p12-step2-workbuddy-checkpoint.md) · [Current State](docs/current-state.md) |
+| WorkBuddy | P12 integration: **PASS**; P13 History GUI verification: **DEFERRED** | [Host setup](docs/workbuddy-host-setup.md) · [P12 checkpoint](docs/p12-step2-workbuddy-checkpoint.md) · [Current State](docs/current-state.md) |
 | Hermes | Native MCP History read / no-result checks: **PASS** | [Host setup](docs/hermes-host-setup.md) · [Current State](docs/current-state.md) |
 | Other local stdio MCP clients | Protocol-compatible; not individually validated by this project | Follow the client’s stdio MCP configuration instructions. |
 
@@ -70,7 +83,7 @@ Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation 
 
 ## Current stable release
 
-The current stable release is **[v0.7.0 — History Completion & Recovery](docs/releases/v0.7.0.md)**. The final acquired-data closure records:
+The current stable release is **[v0.7.0 — History Completion & Recovery](docs/releases/v0.7.0.md)**. The rename preserves version `0.7.0` and creates no new release. The recorded acquired-data closure from before the rename is:
 
 | Measure | Result |
 | --- | ---: |
@@ -111,4 +124,5 @@ CogniVault is licensed under [Apache-2.0](LICENSE). The optional `pdf-ocr` extra
 - [Architecture](docs/architecture.md) — Stable components, data boundaries, and extension points.
 - [History source ingestion](docs/history-source-ingestion.md) and [canonical normalization](docs/history-normalization.md).
 - [Recovery](docs/p13-recovery.md).
-- Historical checkpoints: [P11](docs/p11-real-migration-completion.md), [P12](docs/p12-step4-cross-agent-checkpoint.md), and [P13](docs/p13-history-completion-checkpoint.md).
+- Historical checkpoints: [P11](docs/p11-real-migration-completion.md), [P12](docs/p12-step4-cross-agent-checkpoint.md), and [P13](docs/p13-history-completion-checkpoint.md). Their original project names, commands, Host aliases, and figures are time-scoped evidence; current setup instructions are above.
+- Current repository: [abdullejan25-max/cognivault](https://github.com/abdullejan25-max/cognivault).

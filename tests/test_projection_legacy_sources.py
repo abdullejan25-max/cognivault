@@ -2,9 +2,9 @@ import hashlib
 
 import pytest
 
-from chatgpt_study_system.adapters.legacy_sources import LegacySourceInput, SQLiteLegacySourceStore
-from chatgpt_study_system.obsidian_projection import render_projection
-from chatgpt_study_system.projection_collector import collect_projection
+from cognivault.adapters.legacy_sources import LegacySourceInput, SQLiteLegacySourceStore
+from cognivault.obsidian_projection import render_projection
+from cognivault.projection_collector import collect_projection
 from test_projection_collector import _projection_gateway
 
 

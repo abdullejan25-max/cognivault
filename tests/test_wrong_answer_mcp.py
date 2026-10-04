@@ -7,10 +7,10 @@ import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
 
 from test_wrong_answers import analysis, gateway_with_sources
-from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.documents import SQLiteDocumentStore
+from cognivault.config import AppConfig
+from cognivault.gateway import Gateway
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def test_mcp_source_analysis_and_retrieval_share_one_contract(tmp_path):

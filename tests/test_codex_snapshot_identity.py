@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.migration.codex_snapshot import (
+from cognivault.migration.codex_snapshot import (
     CodexSnapshotError, PrivateCodexJSONLSnapshotStore, _canonical_json,
 )
-from chatgpt_study_system.migration.conversation_registry import ConversationSourceRecord
+from cognivault.migration.conversation_registry import ConversationSourceRecord
 
 
 def _fixture(tmp_path, monkeypatch):
@@ -34,7 +34,7 @@ def _fixture(tmp_path, monkeypatch):
 
 
 def _verify(*args, **kwargs):
-    from chatgpt_study_system.migration.codex_identity import verify_registered_codex_snapshot
+    from cognivault.migration.codex_identity import verify_registered_codex_snapshot
     return verify_registered_codex_snapshot(*args, **kwargs)
 
 

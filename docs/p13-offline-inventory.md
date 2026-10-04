@@ -29,12 +29,11 @@ V2 获取/导入/验收仍走正式 MCP/Gateway。准备一个 Git 外 JSON desc
 替换以上占位符，并保护所有 V2 Study/History/Assets/runtime 根。未定位的来源不能
 随便猜路径；使用 waiting_for_export/not_found/review_required/gateway_unavailable。
 
-从当前开发源码执行时，先刷新非 editable 安装。只运行 `--no-sync` 会复用旧包，
-旧版本可能不含本模块；本地 wheel 已独立安装并做两次合成 inventory smoke。
+从当前开发源码执行时，先刷新非 editable 安装。首次从旧 distribution 升级，应按 [README](../README.md#upgrade-from-the-former-distribution) 使用新环境或先卸载 `chatgpt-study-system-v2` 再安装 `cognivault`，避免共享 shim / CLI 被旧包卸载删除。只运行 `--no-sync` 会复用旧包，旧版本可能不含本模块。P13 当时的本地 wheel 已独立安装并做两次合成 inventory smoke；该历史结果不代表改名后的真实 Host 验收。
 
 ```powershell
-uv sync --extra dev --no-editable --reinstall-package chatgpt-study-system-v2
-uv run --no-sync python -m chatgpt_study_system.migration.history_acquire --manifest '<PRIVATE_MANIFEST>' --ledger '<PRIVATE_LEDGER>'
+uv sync --extra dev --no-editable --reinstall-package cognivault
+uv run --no-sync python -m cognivault.migration.history_acquire --manifest '<PRIVATE_MANIFEST>' --ledger '<PRIVATE_LEDGER>'
 ```
 
 manifest 与 ledger 都不能位于 Git checkout；ledger 不能与输入或保护目标重叠。
@@ -50,3 +49,5 @@ same-category/same-byte copies 可在 ledger 去重，获取位置与不同文�
 重跑不会将 imported/reused 降回 parsed，也不会把 duplicate discovery 当成 import。
 v1 ledger 的完整 schema 验证后可以事务升级到 v2；未知/不兼容 schema 被拒绝。
 snapshot 应保持不可变，恢复验证必须使用独立副本，不能直接打开 snapshot 做 schema upgrade。
+
+新 `imported` / `reused` outcome evidence 使用 `authority="cognivault"`。历史已存 `authority="study_system"` 作为弃用 provenance 继续可读且不改写；schema、hash、source identity 保持原约定。ledger 的读取结果不证明当前 Gateway 中的数据状态。

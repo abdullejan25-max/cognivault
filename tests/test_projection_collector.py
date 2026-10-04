@@ -4,24 +4,24 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.adapters.documents import DocumentInput, SQLiteDocumentStore
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.adapters.wrong_answers import SQLiteWrongAnswerStore
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import HistoryImportItem
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.obsidian_projection import render_projection
-from chatgpt_study_system.projection_collector import (
+from cognivault.adapters.documents import DocumentInput, SQLiteDocumentStore
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.adapters.wrong_answers import SQLiteWrongAnswerStore
+from cognivault.config import AppConfig
+from cognivault.contracts import HistoryImportItem
+from cognivault.gateway import Gateway
+from cognivault.obsidian_projection import render_projection
+from cognivault.projection_collector import (
     ProjectionCollectionError,
     collect_projection,
     collect_wrong_answer_projection,
 )
-from chatgpt_study_system.obsidian_writer import write_projection
+from cognivault.obsidian_writer import write_projection
 
 
 def test_wrong_answer_only_collection_excludes_unconfigured_history(tmp_path):
-    from chatgpt_study_system.adapters.history import NotConfiguredHistoryBackend
-    from chatgpt_study_system.contracts import GatewayError
+    from cognivault.adapters.history import NotConfiguredHistoryBackend
+    from cognivault.contracts import GatewayError
 
     gateway = _projection_gateway(tmp_path, source_count=1, analysis_count=2)
     gateway.history_backend = NotConfiguredHistoryBackend()
@@ -39,7 +39,7 @@ def test_wrong_answer_only_collection_excludes_unconfigured_history(tmp_path):
 
 
 def test_wrong_answer_only_collection_enforces_projection_permission(tmp_path):
-    from chatgpt_study_system.contracts import GatewayError
+    from cognivault.contracts import GatewayError
 
     gateway = _projection_gateway(tmp_path, source_count=1, analysis_count=1)
     gateway.capabilities = frozenset({'read'})

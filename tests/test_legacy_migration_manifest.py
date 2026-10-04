@@ -5,15 +5,15 @@ import os
 
 import pytest
 
-import chatgpt_study_system.migration.manifest as manifest_module
-from chatgpt_study_system.migration.manifest import (
+import cognivault.migration.manifest as manifest_module
+from cognivault.migration.manifest import (
     ManifestConflict,
     MigrationItem,
     MigrationJournal,
     stable_migration_key,
     summarize,
 )
-from chatgpt_study_system.migration.planner import SourceRecord, plan_records
+from cognivault.migration.planner import SourceRecord, plan_records
 
 
 def _item(**overrides) -> MigrationItem:
@@ -290,7 +290,7 @@ def test_unresolved_item_keeps_orthogonal_content_dedup_decision() -> None:
 
 
 def test_storage_estimate_counts_only_bytes_that_would_be_imported() -> None:
-    from chatgpt_study_system.migration.manifest import estimate_storage
+    from cognivault.migration.manifest import estimate_storage
 
     items = (
         _item(source_size_bytes=100, action="reuse"),

@@ -8,11 +8,11 @@ import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def setup(tmp_path, capabilities=frozenset({"read", "ingest"})):
@@ -104,7 +104,7 @@ def test_native_mcp_source_tools_ingest_fetch_rerun_and_validation(tmp_path):
 
 
 def test_existing_large_gemini_root_manifest_is_linked_by_bounded_ranges(tmp_path):
-    from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
+    from cognivault.adapters.documents import SQLiteDocumentStore
     g,inbox=setup(tmp_path)
     assets=tmp_path/"assets"
     assets.mkdir()

@@ -7,7 +7,7 @@ import stat
 
 import pytest
 
-from chatgpt_study_system.migration.conversation_registry import (
+from cognivault.migration.conversation_registry import (
     ConversationSourceRecord,
     ConversationSourceRegistry,
     default_conversation_registry_path,

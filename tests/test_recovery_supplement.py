@@ -3,11 +3,11 @@ from dataclasses import replace
 import json
 import pytest
 from test_recovery import setup
-from chatgpt_study_system.runtime import load_gateway_from_config
+from cognivault.runtime import load_gateway_from_config
 
 
 def test_explicit_supplement_preserves_history_and_never_reads_study(tmp_path, monkeypatch):
-    from chatgpt_study_system.recovery import service
+    from cognivault.recovery import service
     g = setup(tmp_path)
     g.config = replace(g.config, recovery_include_study=False)
     original = tmp_path / 'gateway.toml'

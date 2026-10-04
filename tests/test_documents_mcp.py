@@ -11,13 +11,13 @@ from pypdf import PdfWriter
 from jsonschema import validate
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from chatgpt_study_system.adapters.documents import DocumentInput, SQLiteDocumentStore
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.gateway import Gateway
-import chatgpt_study_system.gateway as gateway_module
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
-import chatgpt_study_system.adapters.documents as documents_module
+from cognivault.adapters.documents import DocumentInput, SQLiteDocumentStore
+from cognivault.config import AppConfig
+from cognivault.gateway import Gateway
+import cognivault.gateway as gateway_module
+from cognivault.contracts import GatewayError
+from cognivault.transports.mcp_stdio import create_mcp_server
+import cognivault.adapters.documents as documents_module
 
 
 def test_document_mcp_ingest_search_fetch_and_safe_errors(tmp_path: Path) -> None:
@@ -165,7 +165,7 @@ def test_ocr_candidate_query_rejects_invalid_gateway_bounds(tmp_path: Path) -> N
 
 
 def test_file_ingest_uses_configured_relative_root_and_rejects_escape(tmp_path: Path) -> None:
-    from chatgpt_study_system.contracts import GatewayError
+    from cognivault.contracts import GatewayError
 
     source_root = tmp_path / "sources"
     asset_root = tmp_path / "assets"
@@ -371,7 +371,7 @@ def test_page_result_is_bounded_after_path_redaction(tmp_path: Path) -> None:
     root.mkdir()
     store = SQLiteDocumentStore(root, tmp_path / "private.db")
     source = ("/a and " * 10_000).encode()
-    from chatgpt_study_system.adapters.documents import DocumentInput
+    from cognivault.adapters.documents import DocumentInput
     doc = store.ingest_documents([DocumentInput("Invented", "text/plain", source)])[0]
     gateway = Gateway(AppConfig("0.1.0", tmp_path), None, document_store=store,
                       qmd_discoverable=lambda: False)
@@ -385,7 +385,7 @@ def test_forward_slash_unc_paths_are_redacted_in_document_public_results(tmp_pat
     root = tmp_path / "assets"
     root.mkdir()
     store = SQLiteDocumentStore(root, tmp_path / "private.db")
-    from chatgpt_study_system.adapters.documents import DocumentInput
+    from cognivault.adapters.documents import DocumentInput
     private = "//server/share/private/report.txt"
     text = ("# " + private + "\nSynthetic note " + private +
             " and https://example.org/a.txt and notes/file.md")

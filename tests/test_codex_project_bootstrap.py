@@ -4,12 +4,15 @@ import re
 import subprocess
 import sys
 import tomllib
+
+import pytest
 from pathlib import Path
 
 
 REPOSITORY = Path(__file__).resolve().parents[1]
 SETUP_SCRIPT = REPOSITORY / ".codex" / "setup_mcp.py"
 CONFIG_TEMPLATE = REPOSITORY / ".codex" / "config.example.toml"
+LEGACY_TEMPLATE = REPOSITORY / "tests" / "fixtures" / "codex_generated_pre_cognivault.toml"
 
 
 def _clone_bootstrap_files(target: Path) -> Path:
@@ -31,6 +34,64 @@ def _run_setup(repository: Path, cwd: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _legacy_generated_config(repository: Path) -> str:
+    return (LEGACY_TEMPLATE.read_text(encoding="utf-8")
+            .replace("__PROJECT_ROOT__", repository.resolve().as_posix())
+            .replace("__SOURCE_ROOT__", (repository.resolve() / "src").as_posix())
+            .replace("__LOCAL_CONFIG_PATH__", (repository.resolve() / "config.local.toml").as_posix()))
+
+
+@pytest.mark.parametrize("no_sync", [True, False])
+@pytest.mark.parametrize("move_checkout", [True, False])
+def test_setup_migrates_only_recognized_old_generated_gateway_registration(
+    tmp_path: Path, no_sync: bool, move_checkout: bool,
+) -> None:
+    repository = _clone_bootstrap_files(tmp_path / "old checkout")
+    (repository / "config.local.toml").write_text('[gateway]\nversion="0.1.0"\n', encoding="utf-8")
+    previous = _legacy_generated_config(repository)
+    if not no_sync:
+        previous = previous.replace('    "--no-sync",\n', "", 1)
+    (repository / ".codex" / "config.toml").write_text(previous, encoding="utf-8")
+    if move_checkout:
+        repository = repository.rename(tmp_path / "new checkout")
+
+    result = _run_setup(repository, tmp_path)
+
+    assert result.returncode == 0, result.stderr
+    migrated = tomllib.loads((repository / ".codex" / "config.toml").read_text(encoding="utf-8"))
+    assert set(migrated["mcp_servers"]) == {"cognivault"}
+    assert migrated["mcp_servers"]["cognivault"]["args"][6] == "cognivault.transports.mcp_stdio"
+    assert migrated["mcp_servers"]["cognivault"]["cwd"] == repository.resolve().as_posix()
+
+
+@pytest.mark.parametrize("change", ["remove_marker", "custom_timeout", "extra_server", "dual_gateway"])
+def test_setup_preserves_unrecognized_old_and_dual_gateway_configs(
+    tmp_path: Path, change: str,
+) -> None:
+    repository = _clone_bootstrap_files(tmp_path / "custom checkout")
+    (repository / "config.local.toml").write_text('[gateway]\nversion="0.1.0"\n', encoding="utf-8")
+    previous = _legacy_generated_config(repository)
+    if change == "remove_marker":
+        previous = previous.split("\n", 1)[1]
+    elif change == "custom_timeout":
+        previous = previous.replace("tool_timeout_sec = 60", "tool_timeout_sec = 120")
+    elif change == "extra_server":
+        previous += '\n[mcp_servers.custom]\ncommand="custom"\n'
+    else:
+        # Even a compatible canonical registration must not make a dual config acceptable.
+        first = _run_setup(repository, tmp_path)
+        assert first.returncode == 0, first.stderr
+        canonical = (repository / ".codex" / "config.toml").read_text(encoding="utf-8")
+        previous += "\n[mcp_servers." + canonical.split("[mcp_servers.", 1)[1]
+    config_path = repository / ".codex" / "config.toml"
+    config_path.write_text(previous, encoding="utf-8")
+
+    result = _run_setup(repository, tmp_path)
+
+    assert result.returncode != 0
+    assert config_path.read_text(encoding="utf-8") == previous
+
+
 def test_setup_generates_explicit_paths_for_a_clone_opened_from_another_directory(
     tmp_path: Path,
 ) -> None:
@@ -45,7 +106,8 @@ def test_setup_generates_explicit_paths_for_a_clone_opened_from_another_director
     generated_path = repository / ".codex" / "config.toml"
     generated_text = generated_path.read_text(encoding="utf-8")
     config = tomllib.loads(generated_text)
-    server = config["mcp_servers"]["study_system"]
+    assert set(config["mcp_servers"]) == {"cognivault"}
+    server = config["mcp_servers"]["cognivault"]
     assert server["command"] == "uv"
     assert server["cwd"] == repository.resolve().as_posix()
     assert server["args"] == [
@@ -55,7 +117,7 @@ def test_setup_generates_explicit_paths_for_a_clone_opened_from_another_director
         repository.resolve().as_posix(),
         "python",
         "-m",
-        "chatgpt_study_system.transports.mcp_stdio",
+        "cognivault.transports.mcp_stdio",
         "--config",
         (repository.resolve() / "config.local.toml").as_posix(),
     ]
@@ -98,10 +160,10 @@ def test_setup_preserves_a_working_machine_local_desktop_configuration(
     )
     config_path = repository / ".codex" / "config.toml"
     local_config = (
-        '[mcp_servers.study_system]\n'
+        '[mcp_servers.cognivault]\n'
         'command = "uv"\n'
         'args = ["run", "--project", ".", "python", "-m", '
-        '"chatgpt_study_system.transports.mcp_stdio", "--config", '
+        '"cognivault.transports.mcp_stdio", "--config", '
         '"config.local.toml"]\n'
         f'cwd = "{repository.resolve().as_posix()}"\n'
         'enabled = true\n'
@@ -135,7 +197,8 @@ def test_setup_refreshes_its_own_config_after_the_checkout_is_moved(tmp_path: Pa
     config = tomllib.loads(
         (moved_repository / ".codex" / "config.toml").read_text(encoding="utf-8")
     )
-    server = config["mcp_servers"]["study_system"]
+    assert set(config["mcp_servers"]) == {"cognivault"}
+    server = config["mcp_servers"]["cognivault"]
     assert server["cwd"] == moved_repository.resolve().as_posix()
     assert server["args"][3] == moved_repository.resolve().as_posix()
     assert server["args"][-1] == (moved_repository.resolve() / "config.local.toml").as_posix()
@@ -150,7 +213,7 @@ def test_setup_refuses_to_overwrite_an_unrecognized_existing_configuration(
         '[gateway]\nversion = "0.1.0"\n', encoding="utf-8"
     )
     config_path = repository / ".codex" / "config.toml"
-    local_config = '[mcp_servers.study_system]\ncommand = "uv"\ncwd = "."\nrequired = true\n'
+    local_config = '[mcp_servers.cognivault]\ncommand = "uv"\ncwd = "."\nrequired = true\n'
     config_path.write_text(local_config, encoding="utf-8")
 
     result = _run_setup(repository, tmp_path)

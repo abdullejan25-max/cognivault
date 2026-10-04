@@ -10,8 +10,8 @@ import zlib
 import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from chatgpt_study_system.runtime import load_gateway_from_config
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.runtime import load_gateway_from_config
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 MARKER = "P13_PRODUCTION_INGRESS_SMOKE_SYNTHETIC_DUAL_PROFILE"

@@ -9,7 +9,7 @@ P7–P9 已实现错题 source、Agent analysis、版本 provenance、MCP tools 
 
 ## 决策
 
-- 唯一 canonical workflow 正文存于随 Python distribution 发布的 `src/chatgpt_study_system/workflows/wrong_answer.md`。
+- 唯一 canonical workflow 正文存于随 Python distribution 发布的 `src/cognivault/workflows/wrong_answer.md`（改名前路径为 `src/chatgpt_study_system/workflows/wrong_answer.md`）。
 - MCP 以固定 URI `study-workflow://wrong-answer` 暴露该正文为 Resource；`wrong_answer_workflow` Prompt 动态复用相同正文，不存副本。
 - MCP 错题相关 tools 的简短 description 负责自然语言请求路由，并指向 canonical URI。MCP Agent 即便不支持 Skill 或 Prompt，只要支持 tool/resource 发现与读取，也能发现流程并使用工具。
 - Resource 用途不依赖私有数据库数据。持久化仍受 Gateway capability 控制；Agent 可以分析但只在用户明确要求保存时写入。

@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system import obsidian_build
-from chatgpt_study_system.obsidian_writer import ProjectionWriteError
+from cognivault import obsidian_build
+from cognivault.obsidian_writer import ProjectionWriteError
 from test_projection_collector import _projection_gateway
 
 

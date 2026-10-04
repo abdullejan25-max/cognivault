@@ -1,5 +1,9 @@
 # Production ingress
 
+当前安装、标准 MCP registration 与 stdio module 使用 `cognivault` / `cognivault.transports.mcp_stdio`。先按 [README](../README.md#upgrade-from-the-former-distribution) 使用新环境，或先卸载 `chatgpt-study-system-v2` 再安装 `cognivault`；旧新 distribution 共享旧 stdio shim 与 `study-migrate` launcher，反向卸载会删除共享文件。Codex helper 只迁移精确识别的旧生成配置；自定义 multi-profile 配置及 WorkBuddy/Hermes 配置需手动变更 registration/module，保留私有 backend 与 capabilities。历史 readonly / P12 isolated aliases 不因改名而自动变化。
+
+下方生产 smoke 与 Host 结果是更名前 P13 的历史验收，保留原范围；本页更新没有读取、迁移或写入生产数据。改名后的真实 Host 与存量数据兼容需另经已授权 Gateway 验收，历史 synthetic 授权不代表可以再次执行 production smoke。
+
 数据恢复与退役检查通过后，正式生产入口复用现有 Gateway 的 Asset、Document 和
 Wrong Answer 工具。保留 P13 readonly profile；日常入口使用独立的持久 writable
 profile，指向同一组已经核实的生产后端。WorkBuddy canonical History 当前为
@@ -11,7 +15,7 @@ profile，指向同一组已经核实的生产后端。WorkBuddy canonical Histo
 
 | Host alias | Gateway profile | Capabilities |
 | --- | --- | --- |
-| `study_system` | `C:/PATH/TO/PRIVATE/production-ingress.toml` | `read`, `ingest`, `write` |
+| 当前标准 registration `cognivault` | `C:/PATH/TO/PRIVATE/production-ingress.toml` | `read`, `ingest`, `write` |
 | 既有 P13 readonly alias，例如 `study_system_p13_readonly` | `C:/PATH/TO/PRIVATE/p13-readonly.toml` | `read` |
 
 两个 profile 的 Study/QMD、History、Assets/Document 后端路径应对应同一生产 target。
@@ -29,7 +33,7 @@ P12 isolated aliases 继续指向其原 isolated target，不能改指生产。
 Host 的持久 stdio launcher 使用绝对 executable、`cwd`、`--config` 与源码路径。
 Codex 可复用 [.codex/config.example.toml](../.codex/config.example.toml) 的 `uv --no-sync
 --project` 和 `PYTHONPATH` 契约，为两个 alias 分别指定上述 profile。
-[setup_mcp.py](../.codex/setup_mcp.py) 当前只生成固定的 `study_system → config.local.toml`，
+[setup_mcp.py](../.codex/setup_mcp.py) 当前只生成固定的 `cognivault → config.local.toml`，
 不是多 profile 合并器；保留并审查既有自定义 Host 配置。默认公开配置仍只读。
 
 在 fresh native Host 中确认持久配置实际加载，并调用 `health_report`。配置存在、
@@ -37,9 +41,9 @@ SDK discovery 或 CLI exit code 0 均不代表 Desktop Agent 已连接。WorkBud
 managed entry、名称优先级或 trust/reload 状态需按实际 Host 验证；本页不声称
 WorkBuddy Desktop production 写入已 PASS。
 
-## Marked production smoke
+## Historical marked production smoke
 
-本次 owner 已明确授权一次生产 synthetic Wrong Answer smoke，包括 append/update。
+P13 当时 owner 已明确授权一次生产 synthetic Wrong Answer smoke，包括 append/update。
 所有合成题目、原始图片与分析使用唯一的 `P13_PRODUCTION_INGRESS_SMOKE_<RUN>` 和
 明确的 `SYNTHETIC ONLY` 标签，避免 slash 分隔标签。`P12_STEP4_` 标记仍属于其
 isolated server。
@@ -82,7 +86,7 @@ fresh Gateway readback 和字面空结果。PNG 是带 synthetic metadata 的手
 真实生产 smoke 的结果、Host trace 与回执另行核实并保存于 Git 外。自动化回归不能
 替代真实 Host PASS，也不重做既有 P12 验收。
 
-## P13 native production result
+## Historical P13 native production result
 
 Codex 原生生产 MCP 已完成 marked synthetic Asset/source/v1/v2、source 与两版
 分析的精确重放、stale CONFLICT、原始 PNG 字节回读、reported/unverified provenance、

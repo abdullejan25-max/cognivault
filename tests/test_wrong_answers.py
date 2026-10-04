@@ -8,11 +8,11 @@ import sqlite3
 
 import pytest
 
-from chatgpt_study_system.adapters.documents import DocumentInput, SQLiteDocumentStore
-import chatgpt_study_system.adapters.wrong_answers as wrong_answer_adapter
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
+from cognivault.adapters.documents import DocumentInput, SQLiteDocumentStore
+import cognivault.adapters.wrong_answers as wrong_answer_adapter
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
 
 
 def gateway_with_sources(tmp_path: Path) -> tuple[Gateway, str, str, str]:

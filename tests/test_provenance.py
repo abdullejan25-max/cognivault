@@ -5,8 +5,8 @@ from datetime import datetime
 
 import pytest
 
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.provenance import (
+from cognivault.contracts import GatewayError
+from cognivault.provenance import (
     ReportedIdentity, ensure_provenance_schema, insert_provenance,
 )
 

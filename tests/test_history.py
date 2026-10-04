@@ -6,12 +6,12 @@ import sqlite3
 
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-import chatgpt_study_system.adapters.history as history_adapter
-from chatgpt_study_system.contracts import (BackendHealth, GatewayError, HistoryImportItem,
+from cognivault.adapters.history import SQLiteHistoryBackend
+import cognivault.adapters.history as history_adapter
+from cognivault.contracts import (BackendHealth, GatewayError, HistoryImportItem,
                                            HistoryItem)
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.config import AppConfig
+from cognivault.gateway import Gateway
+from cognivault.config import AppConfig
 
 
 def _store(tmp_path: Path) -> SQLiteHistoryBackend:

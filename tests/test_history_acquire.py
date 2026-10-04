@@ -2,11 +2,11 @@
 
 import json
 
-from chatgpt_study_system.migration.history_ledger import HistoryMigrationLedger
+from cognivault.migration.history_ledger import HistoryMigrationLedger
 
 
 def test_acquisition_pending_descriptor_is_non_error_without_input_scan(tmp_path):
-    from chatgpt_study_system.migration.history_acquire import acquire
+    from cognivault.migration.history_acquire import acquire
     path = tmp_path / "private/manifest.json"
     path.parent.mkdir()
     path.write_text(json.dumps({"schema_version": 1, "protected_paths": [], "sources": [
@@ -19,7 +19,7 @@ def test_acquisition_pending_descriptor_is_non_error_without_input_scan(tmp_path
 
 
 def test_private_descriptor_runs_inventory_twice_without_importing(tmp_path, capsys):
-    from chatgpt_study_system.migration.history_acquire import main
+    from cognivault.migration.history_acquire import main
     root = tmp_path / "input"
     root.mkdir()
     (root / "source.jsonl").write_text('{"role":"user","content":"synthetic"}\n', encoding="utf-8")
@@ -47,7 +47,7 @@ def test_private_descriptor_runs_inventory_twice_without_importing(tmp_path, cap
 
 
 def test_command_reports_selected_input_error_without_printing_location(tmp_path, capsys):
-    from chatgpt_study_system.migration.history_acquire import main
+    from cognivault.migration.history_acquire import main
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps({"schema_version": 1, "protected_paths": [], "sources": [
         {"scope": "codex_sessions", "source_type": "codex", "root": str(tmp_path / "missing"),
@@ -62,8 +62,8 @@ def test_command_reports_selected_input_error_without_printing_location(tmp_path
 
 
 def test_rerun_recovers_discovered_source_missing_its_disposition(tmp_path):
-    from chatgpt_study_system.migration.history_acquire import acquire
-    from chatgpt_study_system.migration.history_inventory import inspect_source
+    from cognivault.migration.history_acquire import acquire
+    from cognivault.migration.history_inventory import inspect_source
     root = tmp_path / "input"
     root.mkdir()
     file = root / "source.jsonl"

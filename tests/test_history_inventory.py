@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.migration import history_inventory as inventory
+from cognivault.migration import history_inventory as inventory
 
 
 def inspect(root, name="input.jsonl", raw=b'{"role":"user","timestamp":"2025-01-01T00:00:00Z","content":"synthetic"}\n', **kwargs):

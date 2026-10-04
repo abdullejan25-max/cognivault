@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.runtime import load_gateway_from_config
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.runtime import load_gateway_from_config
 
 
 def _write_config(path: Path, study_root: Path, history: str) -> None:

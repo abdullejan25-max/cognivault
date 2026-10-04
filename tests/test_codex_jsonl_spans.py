@@ -1,6 +1,6 @@
 from io import BytesIO
 
-from chatgpt_study_system.migration.codex_jsonl_spans import iter_jsonl_record_spans
+from cognivault.migration.codex_jsonl_spans import iter_jsonl_record_spans
 
 
 def test_jsonl_spans_count_blank_and_malformed_lines_and_preserve_exact_offsets() -> None:
