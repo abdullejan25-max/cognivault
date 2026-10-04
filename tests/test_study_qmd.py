@@ -29,6 +29,9 @@ class FakeRunner:
         return subprocess.CompletedProcess(argv, self.returncode, self.stdout, "private stderr")
 
 
+_SYNTHETIC_QMD_EXECUTABLE = str(Path(__file__).resolve())
+
+
 def _study(tmp_path: Path) -> tuple[AppConfig, Path]:
     root = tmp_path / "study"
     source = root / "数学" / "synthetic.md"
@@ -43,7 +46,7 @@ def _backend(config: AppConfig, runner: FakeRunner, **kwargs) -> QmdStudyBackend
         qmd_executable="approved-qmd",
         approved_qmd_version="2.8.3",
         runner=runner,
-        resolver=lambda name: "C:/synthetic/bin/qmd.exe" if name == "approved-qmd" else None,
+        resolver=lambda name: _SYNTHETIC_QMD_EXECUTABLE if name == "approved-qmd" else None,
         timeout_seconds=9.0,
         **kwargs,
     )
@@ -152,7 +155,7 @@ def test_search_uses_one_fixed_argument_array_and_controlled_execution(tmp_path:
     assert len(runner.calls) == 1
     argv, options = runner.calls[0]
     assert argv == [
-        "C:/synthetic/bin/qmd.exe", "search", "--format", "json", "--collection", "studyvault",
+        _SYNTHETIC_QMD_EXECUTABLE, "search", "--format", "json", "--collection", "studyvault",
         "-n", "3", "--", query,
     ]
     assert options["shell"] is False
@@ -206,7 +209,7 @@ def test_option_looking_query_is_only_a_positional_search_argument(tmp_path: Pat
     assert len(runner.calls) == 1
     argv, options = runner.calls[0]
     assert argv == [
-        "C:/synthetic/bin/qmd.exe", "search", "--format", "json", "--collection", "studyvault",
+        _SYNTHETIC_QMD_EXECUTABLE, "search", "--format", "json", "--collection", "studyvault",
         "-n", "5", "--", query,
     ]
     assert options["shell"] is False
@@ -246,7 +249,7 @@ def test_approved_version_mismatch_rejects_without_resolving_or_running(tmp_path
 
     def resolver(name: str):
         resolver_calls.append(name)
-        return "C:/synthetic/bin/qmd.exe"
+        return _SYNTHETIC_QMD_EXECUTABLE
 
     backend = QmdStudyBackend(
         config, qmd_executable="approved-qmd", approved_qmd_version="2.8.2",

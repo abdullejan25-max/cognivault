@@ -12,6 +12,11 @@ from cognivault.migration.codex_snapshot import (
 )
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("XDG_STATE_HOME", str(tmp_path))
+
+
 def _source(tmp_path: Path, files: dict[str, bytes] | None = None) -> Path:
     root = tmp_path / "codex-sessions"
     root.mkdir(parents=True, exist_ok=True)

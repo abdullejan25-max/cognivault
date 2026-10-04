@@ -418,7 +418,9 @@ class Gateway:
                 raise GatewayError("INVALID_ARGUMENT", "Invalid study relation")
             raw_relative = relation[6:]
             candidate = Path(raw_relative)
-            if candidate.is_absolute() or candidate.drive or ".." in candidate.parts \
+            windows_candidate = PureWindowsPath(raw_relative)
+            if (candidate.is_absolute() or candidate.drive or windows_candidate.is_absolute()
+                    or windows_candidate.drive or ".." in candidate.parts or ".." in windows_candidate.parts) \
                     or any(part == "" for part in raw_relative.replace("\\", "/").split("/")):
                 raise GatewayError("INVALID_ARGUMENT", "Invalid study relation")
         return relations
