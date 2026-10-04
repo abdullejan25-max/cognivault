@@ -61,6 +61,11 @@ Use formal MCP tools only for persisted V2 access:
   and paginated evidence. Decode the canonical JSON after collecting all ranges.
 - `verify_canonical_history`: verifies identities, provenance, evidence and counts;
   `reparse=true` compares original-source candidates to every actual derived row.
+  The result also contains bounded, privacy-safe `diagnostics` for mismatches in
+  source evidence (`count`, `by_field`, up to 20 `samples`, and `truncated`). Each
+  sample names the source ID, record class and field, then reports digests and
+  encoded byte counts for expected and actual values. It never returns raw source
+  content, timestamps, private paths or malformed identifiers.
 
 All tables and provenance have immutable update/delete guards. A rerun adds no
 canonical records. Later acquisitions need a new source-set snapshot; completed

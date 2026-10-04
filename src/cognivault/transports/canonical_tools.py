@@ -19,7 +19,7 @@ def canonical_tools(gateway,read_only,write_only):
     definitions=[
         ("history_normalization_snapshot","Pin the immutable source set before deterministic normalization.",{}),
         ("canonical_history_summary","Count canonical conversations/messages/views and explained source-only outcomes.",{}),
-        ("verify_canonical_history","Verify all canonical identities/provenance/evidence/counts. Optional exact-source reparse proves the deterministic transformation without returning private content.",{"reparse":{"type":"boolean"}}),
+        ("verify_canonical_history","Verify all canonical identities/provenance/evidence/counts. Optional exact-source reparse proves the deterministic transformation without returning private content. Source evidence mismatches include bounded field-level digest diagnostics; raw values are never returned.",{"reparse":{"type":"boolean"}}),
         ("search_canonical_conversations","Search shared canonical history by explicit source category or literal message text; no inference.",{"source_system":string,"query":string,"offset":offset,"limit":limit}),
         ("fetch_canonical_conversation","Read paginated source-specific sequence/tree views and nodes. Do not flatten branches. Message position is source-defined.",{"conversation_id":string,"offset":offset,"limit":limit,"view_offset":offset,"view_limit":limit,"node_offset":offset,"node_limit":limit}),
         ("fetch_canonical_message","Read a bounded canonical JSON byte range plus paginated evidence/provenance; unknown occurrence time remains null.",{"message_id":string,"offset":offset,"length":{"type":"integer","minimum":1,"maximum":65536},"evidence_offset":offset,"evidence_limit":limit}),
