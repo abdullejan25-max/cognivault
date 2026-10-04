@@ -65,6 +65,7 @@ def test_disposable_runtime_copies_only_derived_qmd_state(tmp_path: Path) -> Non
     )
     with create_disposable_qmd_runtime(sources) as runtime:
         assert runtime.runtime_root.is_dir()
+        assert runtime.runtime_root.name.startswith("cognivault-qmd-")
         assert runtime.config_dir.joinpath("index.yml").read_bytes() == source_config_before
         snapshot = sqlite3.connect(runtime.index_path)
         try:
