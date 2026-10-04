@@ -1,0 +1,109 @@
+name: CogniVault CI
+
+on:
+  pull_request:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cognivault-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core tests (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: 0.12.17
+          enable-cache: false
+      - name: Install Python
+        run: uv python install 3.11
+      - name: Check lockfile
+        run: uv lock --check
+      - name: Install core and development dependencies
+        run: uv sync --locked --extra dev
+      - name: Run the synthetic test suite
+        run: uv run --locked --extra dev pytest -q
+      - name: Run the synthetic stdio MCP smoke
+        run: uv run --locked --extra dev pytest -q tests/test_mcp_stdio_process.py tests/test_mcp_identity_transition.py
+
+  build:
+    name: Build and install package (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: 0.12.17
+          enable-cache: false
+      - name: Install Python
+        run: uv python install 3.11
+      - name: Check lockfile
+        run: uv lock --check
+      - name: Build wheel and source distribution
+        run: uv build --wheel --sdist
+      - name: Audit package contents
+        run: python scripts/verify_package_contents.py
+      - name: Install wheel into a clean environment
+        shell: bash
+        run: |
+          uv venv --python 3.11 "$RUNNER_TEMP/cognivault-installed"
+          uv pip install --python "$RUNNER_TEMP/cognivault-installed/bin/python" dist/cognivault-*.whl
+          "$RUNNER_TEMP/cognivault-installed/bin/python" -I -c "import cognivault; from importlib.metadata import version; assert version('cognivault'); print(cognivault.__file__)"
+
+  windows-compatibility:
+    name: Package and MCP compatibility (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: 0.12.17
+          enable-cache: false
+      - name: Install Python
+        run: uv python install 3.11
+      - name: Check lockfile
+        run: uv lock --check
+      - name: Install core and development dependencies
+        run: uv sync --locked --extra dev
+      - name: Run platform, integrity, and stdio MCP tests
+        run: >-
+          uv run --locked --extra dev pytest -q
+          tests/test_canonical_gateway.py
+          tests/test_mcp_stdio_process.py
+          tests/test_mcp_identity_transition.py
+          tests/test_codex_project_bootstrap.py
+          tests/test_documents_runtime.py
+      - name: Build wheel and source distribution
+        run: uv build --wheel --sdist
+      - name: Audit package contents
+        run: python scripts/verify_package_contents.py
+      - name: Install wheel into a clean environment and import
+        shell: pwsh
+        run: |
+          $isolated = Join-Path $env:RUNNER_TEMP "cognivault-installed"
+          uv venv $isolated --python 3.11
+          $wheel = (Get-Item "dist/cognivault-*.whl").FullName
+          uv pip install --python (Join-Path $isolated "Scripts/python.exe") $wheel
+          & (Join-Path $isolated "Scripts/python.exe") -I -c "import cognivault; from importlib.metadata import version; assert version('cognivault'); print(cognivault.__file__)"
