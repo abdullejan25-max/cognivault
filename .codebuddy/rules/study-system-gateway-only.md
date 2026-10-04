@@ -1,8 +1,8 @@
-# Gateway-only Data Access（V2 Study System）
+# Gateway-only Data Access（CogniVault）
 
 ## 适用范围
 
-涉及 V2 的 **Study / History / Sources / Wrong Answers / Assets** 的任何数据访问——读取、计数、检索、存在性判断、写入——一律通过 `study_system` MCP / Gateway 工具完成。
+涉及 V2 的 **Study / History / Sources / Wrong Answers / Assets** 的任何数据访问——读取、计数、检索、存在性判断、写入——一律通过 `cognivault` MCP / Gateway 工具完成。历史 `study_system` 名称与已有 provenance 保留原样；P12 isolated aliases 仍按原配置访问隔离 target，不改指生产。
 
 ## 硬禁止
 
@@ -20,7 +20,7 @@ Gateway 未暴露某个计数 → 明确写 **「该计数当前没有 Gateway �
 
 ## 语义约定（不许自己推断）
 
-- `canonical messages = 0` 且 source records > 0 是 **预期的 source-only 状态**（P11 已完成；v0.2.0/v0.3.0 明确保留该边界），**不是**「迁移尚未发生」。
+- 在 P11 / v0.2.0 / v0.3.0 的历史范围中，`canonical messages = 0` 且 source records > 0 是 **预期的 source-only 状态**，**不是**「迁移尚未发生」。该历史数字不代表当前全平台 History 总量；当前状态见 `docs/current-state.md`。
 - `documents / pages / chunks` 计数**不能**用来判断 Study 是否已 ingest；Study 由 authoritative StudyVault / QMD 层经 `search_study` 提供。
 - 检索返回 0 结果 ≠ 系统故障。如实报 0，不猜原因，不补数据，不 hallucinate。
 

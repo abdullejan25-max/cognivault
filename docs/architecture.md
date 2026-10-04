@@ -25,7 +25,7 @@ User
 
 核心 contract 和 service 与 MCP SDK 分离。新 transport 可以复用同一 Gateway，但必须保持相同的接口、授权检查和数据边界。
 
-错题工作流只有一个规范正文，位于 `src/chatgpt_study_system/workflows/wrong_answer.md`，随 package 发布并通过 `study-workflow://wrong-answer` 暴露。各 Host 引用这份正文，不自行维护分叉版本。
+错题工作流只有一个规范正文，位于 `src/cognivault/workflows/wrong_answer.md`，随 package 发布并通过 `study-workflow://wrong-answer` 暴露。各 Host 引用这份正文，不自行维护分叉版本。当前 stdio module 是 `cognivault.transports.mcp_stdio`，标准 Host registration 是 `cognivault`。
 
 ## Data domains and authority
 
@@ -41,6 +41,8 @@ User
 持久记录保留来源引用、origin 和 append-only write provenance。Source occurrence time 与本机导入时间分别记录。版本化分析保留 supersession links。可选 caller / Agent identity 标为 `reported / unverified`，该字段本身不构成身份认证。
 
 History normalization 是确定性处理，不使用 LLM。它保留原始证据，不猜测缺失信息，并允许不支持规范化的来源继续保持 source-only。具体约定见 [source ingestion](history-source-ingestion.md) 与 [History normalization](history-normalization.md)。
+
+History acquisition ledger 的新 `imported` / `reused` outcome evidence 使用 `authority = "cognivault"`。已存的 `study_system` authority 是弃用的历史 provenance，仍可读取与校验，保持原 payload；名称变更不迁移或改写 schema、hash、source identity 或任何已存 evidence。ledger 不是当前 Gateway 状态的证明。
 
 ## Capability and local-data boundary
 

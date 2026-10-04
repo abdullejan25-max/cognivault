@@ -57,6 +57,15 @@ class HistoryLedgerError(ValueError):
     """Fixed error classes only; no private exception chaining."""
 
 
+def _valid_gateway_evidence(evidence, *, historical: bool = False) -> bool:
+    # study_system is deprecated provenance from pre-rename events, never a new write.
+    authorities = {"cognivault", "study_system"} if historical else {"cognivault"}
+    return type(evidence) is dict and set(evidence) == {"authority", "record_id", "receipt_digest"} \
+        and type(evidence.get("authority")) is str and evidence["authority"] in authorities \
+        and type(evidence.get("record_id")) is str and bool(_ID.fullmatch(evidence["record_id"])) \
+        and type(evidence.get("receipt_digest")) is str and bool(_HASH.fullmatch(evidence["receipt_digest"]))
+
+
 class HistoryMigrationLedger:
     """Durable acquisitions plus append-only outcome events; not proof of V2 state."""
 
@@ -138,10 +147,7 @@ class HistoryMigrationLedger:
                 or (error_code is not None and (type(error_code) is not str or error_code not in ERROR_CODES)):
             raise HistoryLedgerError("invalid_outcome")
         if state in {"imported", "reused"}:
-            if type(evidence) is not dict or set(evidence) != {"authority", "record_id", "receipt_digest"} \
-                    or evidence.get("authority") != "study_system" \
-                    or type(evidence.get("record_id")) is not str or not _ID.fullmatch(evidence["record_id"]) \
-                    or type(evidence.get("receipt_digest")) is not str or not _HASH.fullmatch(evidence["receipt_digest"]):
+            if not _valid_gateway_evidence(evidence):
                 raise HistoryLedgerError("gateway_evidence_required")
         elif evidence is not None:
             raise HistoryLedgerError("invalid_outcome")
@@ -206,8 +212,13 @@ class HistoryMigrationLedger:
             _validate_schema(c)
             try:
                 payloads = [asdict(SourceInventoryRecord(**json.loads(r[0]))) for r in c.execute("SELECT payload FROM sources")]
-                for (state,) in c.execute("SELECT DISTINCT state FROM events"):
+                for state, evidence in c.execute("SELECT state,evidence FROM events"):
                     if state not in _STATES:
+                        raise ValueError
+                    if state in {"imported", "reused"}:
+                        if evidence is None or not _valid_gateway_evidence(json.loads(evidence), historical=True):
+                            raise ValueError
+                    elif evidence is not None:
                         raise ValueError
                 for state, source_type in c.execute("SELECT state,source_type FROM catalog"):
                     if state not in _CATALOG_STATES or source_type not in SOURCE_TYPES:

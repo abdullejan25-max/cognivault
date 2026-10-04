@@ -1,6 +1,7 @@
 """Synthetic acquisition ledger integration tests; no production stores."""
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -40,7 +41,7 @@ def test_imported_requires_gateway_evidence_and_preserves_event_history(tmp_path
     with pytest.raises(HistoryLedgerError, match="gateway_evidence_required"):
         ledger.record_outcome(record.fingerprint, "imported")
     ledger.record_outcome(record.fingerprint, "parsed")
-    ledger.record_outcome(record.fingerprint, "imported", evidence={"authority":"study_system", "record_id":"source-synthetic", "receipt_digest":"a"*64})
+    ledger.record_outcome(record.fingerprint, "imported", evidence={"authority":"cognivault", "record_id":"source-synthetic", "receipt_digest":"a"*64})
     summary = ledger.public_summary()
     assert summary["event_counts"] == {"discovered": 1, "imported": 1, "parsed": 1}
     assert summary["current_state_counts"] == {"imported": 1}
@@ -98,15 +99,69 @@ def test_gateway_document_uri_is_a_valid_persistent_destination(tmp_path):
     record = source(tmp_path)
     ledger.discover(record)
     ledger.record_outcome(record.fingerprint, "imported", evidence={
-        "authority": "study_system", "record_id": "document://sha256/" + "a" * 64,
+        "authority": "cognivault", "record_id": "document://sha256/" + "a" * 64,
         "receipt_digest": "b" * 64,
     })
     assert ledger.public_summary()["current_state_counts"] == {"imported": 1}
     with pytest.raises(HistoryLedgerError, match="gateway_evidence_required"):
         ledger.record_outcome(record.fingerprint, "reused", evidence={
-            "authority": "study_system", "record_id": "document://sha256/../../private",
+            "authority": "cognivault", "record_id": "document://sha256/../../private",
             "receipt_digest": "b" * 64,
         })
+
+
+@pytest.mark.parametrize("state", ["imported", "reused"])
+def test_new_outcomes_require_canonical_authority_without_appending_legacy_event(tmp_path, state):
+    path = tmp_path / "private/ledger.sqlite3"
+    ledger = HistoryMigrationLedger(path)
+    record = source(tmp_path)
+    ledger.discover(record)
+    evidence = {"authority": "study_system", "record_id": "source-synthetic", "receipt_digest": "a" * 64}
+    with pytest.raises(HistoryLedgerError, match="gateway_evidence_required"):
+        ledger.record_outcome(record.fingerprint, state, evidence=evidence)
+    assert ledger.public_summary()["event_counts"] == {"discovered": 1}
+    ledger.record_outcome(record.fingerprint, state, evidence={**evidence, "authority": "cognivault"})
+    reopened = HistoryMigrationLedger(path)
+    assert reopened.public_summary()["current_state_counts"] == {state: 1}
+    with sqlite3.connect(path) as connection:
+        stored = json.loads(connection.execute("SELECT evidence FROM events WHERE state=?", (state,)).fetchone()[0])
+    assert stored == {"authority": "cognivault", "record_id": "source-synthetic", "receipt_digest": "a" * 64}
+
+
+@pytest.mark.parametrize("state", ["imported", "reused"])
+def test_existing_legacy_authority_is_readable_without_rewriting_payload_or_identity(tmp_path, state):
+    # Only this disposable synthetic fixture uses SQL; never a production ledger.
+    path = tmp_path / "private/ledger.sqlite3"
+    ledger = HistoryMigrationLedger(path)
+    record = source(tmp_path)
+    ledger.discover(record)
+    evidence = '{ "authority": "study_system", "record_id": "source-synthetic", "receipt_digest": "' + "a" * 64 + '" }'
+    with sqlite3.connect(path) as connection:
+        connection.execute("INSERT INTO events(fingerprint,state,recorded_at,evidence) VALUES (?,?,?,?)",
+                           (record.fingerprint, state, "2026-09-30T00:00:00Z", evidence))
+        connection.commit()
+        before = list(connection.iterdump())
+    reopened = HistoryMigrationLedger(path)
+    assert reopened.public_summary()["current_state_counts"] == {state: 1}
+    with sqlite3.connect(path) as connection:
+        assert list(connection.iterdump()) == before
+        assert connection.execute("SELECT evidence FROM events WHERE state=?", (state,)).fetchone()[0] == evidence
+
+
+@pytest.mark.parametrize("evidence", [
+    {"authority": "unknown", "record_id": "source-synthetic", "receipt_digest": "a" * 64},
+    {"authority": "study_system", "record_id": "source-synthetic", "receipt_digest": "invalid"},
+])
+def test_stored_outcome_evidence_must_still_be_valid(tmp_path, evidence):
+    path = tmp_path / "private/ledger.sqlite3"
+    ledger = HistoryMigrationLedger(path)
+    record = source(tmp_path)
+    ledger.discover(record)
+    with sqlite3.connect(path) as connection:
+        connection.execute("INSERT INTO events(fingerprint,state,recorded_at,evidence) VALUES (?,?,?,?)",
+                           (record.fingerprint, "imported", "2026-09-30T00:00:00Z", json.dumps(evidence)))
+    with pytest.raises(HistoryLedgerError, match="invalid_ledger"):
+        HistoryMigrationLedger(path).public_summary()
 
 
 def test_discover_rerun_does_not_inflate_exact_duplicate_copy_count(tmp_path):

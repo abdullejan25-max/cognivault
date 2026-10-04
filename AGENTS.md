@@ -1,6 +1,6 @@
 # Project Agent Guidance
 
-When handling a wrong-answer request in this repository, use the `study_system` MCP server and its canonical `study-workflow://wrong-answer` workflow. Do not duplicate the workflow rules here.
+When handling a wrong-answer request in this repository, use the `cognivault` MCP server and its canonical `study-workflow://wrong-answer` workflow. Do not duplicate the workflow rules here.
 
 The workflow URI is known and can be read directly with the Host's `read_mcp_resource` operation. Resource listing is optional: a Codex `resources/list` failure such as `Unexpected response type` does not establish that direct resource reads or Gateway tools are unavailable. Try the known workflow URI before declaring the Gateway blocked.
 
@@ -10,4 +10,6 @@ If the MCP server is unavailable, first verify that this exact repository is ope
 
 Use the formal Gateway/MCP tools for persisted changes. Explain clearly when a requested action cannot proceed because the local private Gateway configuration or capabilities are not enabled.
 
-**Read access goes through the Gateway too.** For any V2 Study/History/Sources/Wrong Answers/Assets data access—including counts and existence checks—use `study_system` MCP/Gateway tools only. Never open the private SQLite or store files directly, not even read-only. See `.codebuddy/rules/study-system-gateway-only.md`.
+**Read access goes through the Gateway too.** For any V2 Study/History/Sources/Wrong Answers/Assets data access—including counts and existence checks—use `cognivault` MCP/Gateway tools only. Never open the private SQLite or store files directly, not even read-only. See `.codebuddy/rules/study-system-gateway-only.md`.
+
+`study_system` in historical checkpoints and stored provenance is a pre-rename identity, not a current registration instruction. Preserve historical evidence and the named isolated servers. Host/package upgrade guidance is in `README.md` and `docs/*-host-setup.md`; an unavailable current Gateway must be reported rather than replaced with a direct client.
