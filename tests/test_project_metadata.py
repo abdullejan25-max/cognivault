@@ -2,9 +2,49 @@ from __future__ import annotations
 
 import tomllib
 from pathlib import Path
+import shutil
+import subprocess
+import tarfile
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_sdist_excludes_local_agent_work_and_private_runtime(tmp_path: Path) -> None:
+    uv = shutil.which("uv")
+    if uv is None:
+        pytest.skip("uv is required for the distribution build check")
+    checkout = tmp_path / "synthetic-checkout"
+    checkout.mkdir()
+    for name in ("pyproject.toml", "LICENSE", ".gitignore"):
+        shutil.copy2(ROOT / name, checkout / name)
+    package = checkout / "src" / "cognivault"
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text('"""Synthetic build fixture."""\n', encoding="utf-8")
+    subprocess.run(["git", "init", "--quiet", str(checkout)], check=True)
+    local_work = checkout / ".superpowers" / "sdd"
+    local_work.mkdir(parents=True)
+    (local_work.parent / ".gitignore").write_text("*\n", encoding="utf-8")
+    (local_work / ".gitignore").write_text("*\n", encoding="utf-8")
+    (local_work / "report.md").write_text("Synthetic local-only audit marker.\n", encoding="utf-8")
+    (checkout / "config.local.toml").write_text("# Invented private config marker\n", encoding="utf-8")
+    runtime = checkout / "var"
+    runtime.mkdir()
+    (runtime / "synthetic.db").write_bytes(b"invented runtime marker")
+    output = tmp_path / "dist"
+
+    subprocess.run(
+        [uv, "build", "--sdist", "--out-dir", str(output)],
+        cwd=checkout, check=True, capture_output=True, timeout=60,
+    )
+
+    with tarfile.open(output / "cognivault-0.7.0.tar.gz") as archive:
+        names = archive.getnames()
+    assert "cognivault-0.7.0/src/cognivault/__init__.py" in names
+    assert not any("/.superpowers/" in name for name in names)
+    assert not any("/var/" in name or name.endswith("/config.local.toml") for name in names)
 
 
 def test_cognivault_distribution_preserves_release_and_domain_cli() -> None:

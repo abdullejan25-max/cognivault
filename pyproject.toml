@@ -18,6 +18,10 @@ pdf-ocr = ["PyMuPDF>=1.24,<2"]
 requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build]
+# Local agent plans and evidence are not distribution content.
+exclude = ["/.superpowers"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/cognivault", "src/chatgpt_study_system"]
 
