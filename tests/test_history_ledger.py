@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.migration.history_inventory import inspect_source
-from chatgpt_study_system.migration.history_ledger import HistoryMigrationLedger, HistoryLedgerError
+from cognivault.migration.history_inventory import inspect_source
+from cognivault.migration.history_ledger import HistoryMigrationLedger, HistoryLedgerError
 
 
 def source(tmp_path, name="first.jsonl"):

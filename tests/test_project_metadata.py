@@ -7,6 +7,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_cognivault_distribution_preserves_release_and_domain_cli() -> None:
+    project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+    assert project["name"] == "cognivault"
+    assert project["version"] == "0.7.0"
+    assert project["description"] == "A local-first learning and memory layer for AI agents."
+    assert project["scripts"]["study-migrate"] == "cognivault.migration.cli:main"
+
+
 def test_project_declares_apache_license_and_packages_license_text() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
 

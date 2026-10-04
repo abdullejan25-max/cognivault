@@ -10,9 +10,9 @@ import zlib
 
 import pytest
 
-from chatgpt_study_system.adapters.documents import DocumentInput, SQLiteDocumentStore
-from chatgpt_study_system.contracts import GatewayError
-import chatgpt_study_system.adapters.documents as documents
+from cognivault.adapters.documents import DocumentInput, SQLiteDocumentStore
+from cognivault.contracts import GatewayError
+import cognivault.adapters.documents as documents
 from pypdf import apply_configuration
 from pypdf.errors import LimitReachedError
 from pypdf.generic import DecodedStreamObject, EncodedStreamObject, NameObject

@@ -14,8 +14,8 @@ from pypdf.generic import DecodedStreamObject, DictionaryObject, NameObject
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.contracts import HistoryImportItem
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.contracts import HistoryImportItem
 
 
 def test_independent_stdio_client_uses_configured_gateway_and_resources(tmp_path: Path) -> None:
@@ -75,13 +75,13 @@ def test_independent_stdio_client_uses_configured_gateway_and_resources(tmp_path
     env["PYTHONPATH"] = str(repository / "src") + os.pathsep + env.get("PYTHONPATH", "")
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-B", "-m", "chatgpt_study_system.transports.mcp_stdio", "--config", str(config)],
+        args=["-B", "-m", "cognivault.transports.mcp_stdio", "--config", str(config)],
         env=env,
         cwd=repository,
     )
     read_only_params = StdioServerParameters(
         command=sys.executable,
-        args=["-B", "-m", "chatgpt_study_system.transports.mcp_stdio", "--config", str(read_only_config)],
+        args=["-B", "-m", "cognivault.transports.mcp_stdio", "--config", str(read_only_config)],
         env=env,
         cwd=repository,
     )

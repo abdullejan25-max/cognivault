@@ -4,10 +4,10 @@ import subprocess
 
 import pytest
 
-from chatgpt_study_system.adapters.history import NotConfiguredHistoryBackend
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import BackendHealth, GatewayError
-from chatgpt_study_system.gateway import Gateway
+from cognivault.adapters.history import NotConfiguredHistoryBackend
+from cognivault.config import AppConfig
+from cognivault.contracts import BackendHealth, GatewayError
+from cognivault.gateway import Gateway
 
 
 def _snapshot(root: Path) -> tuple[tuple[str, bool, int, str], ...]:

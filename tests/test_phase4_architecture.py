@@ -9,12 +9,12 @@ import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
 import pytest
 
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.contracts import GatewayError
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 ROOT = Path(__file__).resolve().parents[1]
-RUNTIME = ROOT / "src" / "chatgpt_study_system"
+RUNTIME = ROOT / "src" / "cognivault"
 
 # Model/inference namespace words catch provider families and generic SDK names.
 # Deliberately omit broad networking packages such as httpx and requests.
@@ -103,7 +103,7 @@ def _core_transport_violations(source: str) -> list[str]:
             names = [alias.name for alias in node.names]
         elif isinstance(node, ast.ImportFrom):
             names = [node.module or ""]
-            if (node.level > 0 or node.module == "chatgpt_study_system") and any(
+            if (node.level > 0 or node.module == "cognivault") and any(
                 alias.name in {"transports", "mcp"} for alias in node.names
             ):
                 violations.append("transport import from package root")
@@ -112,8 +112,8 @@ def _core_transport_violations(source: str) -> list[str]:
         if any(
             name == "mcp" or name.startswith("mcp.")
             or name == "transports" or name.startswith("transports.")
-            or name == "chatgpt_study_system.transports"
-            or name.startswith("chatgpt_study_system.transports.")
+            or name == "cognivault.transports"
+            or name.startswith("cognivault.transports.")
             for name in names
         ):
             violations.extend(names)
@@ -149,7 +149,7 @@ def test_runtime_scanner_allows_general_http_clients() -> None:
 
 
 def test_runtime_scanner_allows_domain_model_modules_without_client_sdk() -> None:
-    assert _module_violations("from .model import Lesson\nimport chatgpt_study_system.model") == []
+    assert _module_violations("from .model import Lesson\nimport cognivault.model") == []
 
 
 def test_runtime_dependency_policy_rejects_inference_sdk_names() -> None:
@@ -171,7 +171,7 @@ def test_runtime_dependency_policy_excludes_optional_dev_packages() -> None:
     [
         "from . import transports",
         "from .. import transports",
-        "from chatgpt_study_system import transports",
+        "from cognivault import transports",
     ],
 )
 def test_core_import_scan_detects_package_root_transport_imports(source: str) -> None:

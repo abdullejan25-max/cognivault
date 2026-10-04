@@ -9,7 +9,7 @@ import zipfile
 
 import pytest
 
-from chatgpt_study_system.migration.gemini_takeout import prepare_gemini_export, GeminiSourceError
+from cognivault.migration.gemini_takeout import prepare_gemini_export, GeminiSourceError
 
 
 HTML = b'<html><body><div class="outer-cell mdl-cell"><div>SYNTHETIC QUESTION</div></div></body></html>'
@@ -93,7 +93,7 @@ def test_member_byte_duplicates_are_preserved_without_semantic_merge(tmp_path, m
 
 
 def test_html_uploads_are_opaque_even_with_activity_markers_or_invalid_utf8(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration import gemini_takeout
+    from cognivault.migration import gemini_takeout
     monkeypatch.setattr(gemini_takeout, "MAX_PRIMARY_BYTES", 512)
     p = archive(tmp_path, monkeypatch, [(PRIMARY, HTML),
         ("Takeout/My Activity/Gemini Apps/uploaded.html", HTML * 100),
@@ -113,7 +113,7 @@ def test_localized_primary_requires_audited_descriptor_and_validates_signature(t
 
 
 def test_true_oversized_primary_is_rejected(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration import gemini_takeout
+    from cognivault.migration import gemini_takeout
     monkeypatch.setattr(gemini_takeout, "MAX_PRIMARY_BYTES", 512)
     p = archive(tmp_path, monkeypatch, [(PRIMARY, HTML * 100)])
     with pytest.raises(GeminiSourceError, match="primary_limit"):
@@ -136,7 +136,7 @@ def test_source_inside_output_is_rejected_before_writes(tmp_path, monkeypatch):
 
 
 def test_failed_atomic_replace_keeps_previous_private_plan(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration import gemini_takeout
+    from cognivault.migration import gemini_takeout
     monkeypatch.setenv("LOCALAPPDATA", str(tmp_path))
     target = tmp_path / "plan.json"
     target.write_bytes(b'{"previous":true}')
@@ -216,11 +216,11 @@ def test_existing_text_document_constraints_are_checked_before_publishing_plan(t
 def test_synthetic_native_mcp_import_rerun_and_lossless_readback(tmp_path, monkeypatch):
     import anyio
     from mcp.shared.memory import create_connected_server_and_client_session
-    from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
-    from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-    from chatgpt_study_system.config import AppConfig
-    from chatgpt_study_system.gateway import Gateway
-    from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+    from cognivault.adapters.documents import SQLiteDocumentStore
+    from cognivault.adapters.history import SQLiteHistoryBackend
+    from cognivault.config import AppConfig
+    from cognivault.gateway import Gateway
+    from cognivault.transports.mcp_stdio import create_mcp_server
 
     raw = b'<div class="outer-cell">' + b'a' * 220000 + b'</div>'
     p = archive(tmp_path, monkeypatch, [(PRIMARY, raw)])

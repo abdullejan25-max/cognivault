@@ -35,7 +35,7 @@ def test_independent_stdio_clients_share_workflow_and_versioned_gateway_state(tm
     env["PYTHONPATH"] = str(repository / "src") + os.pathsep + env.get("PYTHONPATH", "")
     params = StdioServerParameters(
         command=sys.executable,
-        args=["-B", "-m", "chatgpt_study_system.transports.mcp_stdio", "--config", str(config)],
+        args=["-B", "-m", "cognivault.transports.mcp_stdio", "--config", str(config)],
         env=env,
         cwd=repository,
     )

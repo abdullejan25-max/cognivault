@@ -9,10 +9,10 @@ import subprocess
 
 import pytest
 
-from chatgpt_study_system.adapters.study_qmd import QmdRuntime, QmdStudyBackend
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
+from cognivault.adapters.study_qmd import QmdRuntime, QmdStudyBackend
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
 
 
 class FakeRunner:

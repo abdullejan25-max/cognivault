@@ -8,10 +8,10 @@ from pypdf import PdfWriter
 from mcp.shared.exceptions import McpError
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from chatgpt_study_system.adapters.documents import DocumentInput, SQLiteDocumentStore
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.documents import DocumentInput, SQLiteDocumentStore
+from cognivault.config import AppConfig
+from cognivault.gateway import Gateway
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def test_document_page_and_asset_resource_retrieval_is_bounded(tmp_path: Path) -> None:

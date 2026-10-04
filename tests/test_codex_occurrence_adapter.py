@@ -4,13 +4,13 @@ from io import BytesIO
 
 import pytest
 
-import chatgpt_study_system.migration.codex_occurrence_adapter as adapter_module
-from chatgpt_study_system.migration.codex_occurrence_adapter import (
+import cognivault.migration.codex_occurrence_adapter as adapter_module
+from cognivault.migration.codex_occurrence_adapter import (
     CodexOccurrenceParseError,
     parse_codex_occurrence_span,
     parse_codex_occurrence_line,
 )
-from chatgpt_study_system.migration.codex_jsonl_spans import iter_jsonl_record_spans
+from cognivault.migration.codex_jsonl_spans import iter_jsonl_record_spans
 
 
 _SNAPSHOT = "b" * 64

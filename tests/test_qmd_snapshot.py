@@ -5,7 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from chatgpt_study_system.adapters.qmd_snapshot import (
+from cognivault.adapters.qmd_snapshot import (
     QmdSnapshotSources,
     create_disposable_qmd_runtime,
     create_sqlite_snapshot,

@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-import chatgpt_study_system.obsidian_writer as writer_module
-from chatgpt_study_system.obsidian_writer import ProjectionWriteError, write_projection
+import cognivault.obsidian_writer as writer_module
+from cognivault.obsidian_writer import ProjectionWriteError, write_projection
 
 
 def _read_tree(root: Path) -> dict[str, bytes]:

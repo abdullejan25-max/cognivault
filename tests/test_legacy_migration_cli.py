@@ -5,7 +5,7 @@ import hashlib
 from pathlib import Path
 import sqlite3
 
-from chatgpt_study_system.migration.cli import main
+from cognivault.migration.cli import main
 
 
 def test_dry_run_writes_private_manifest_and_prints_only_safe_summary(

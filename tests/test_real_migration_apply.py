@@ -8,9 +8,9 @@ import sqlite3
 
 import pytest
 
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.migration.real_apply import (
+from cognivault.contracts import GatewayError
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.migration.real_apply import (
     FileSource, apply_sources, snapshot_and_verify_restore,
 )
 
@@ -82,7 +82,7 @@ def test_target_or_backup_overlapping_source_rejected(tmp_path):
 
 
 def test_journal_failure_after_commit_can_retry(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration.manifest import MigrationJournal
+    from cognivault.migration.manifest import MigrationJournal
     target = make_target(tmp_path)
     item = source(tmp_path)
     kwargs = dict(database=target, sources=[item], journal_path=tmp_path / "journal" / "apply.db",
@@ -180,7 +180,7 @@ def test_snapshot_retains_committed_wal_and_leaves_source_sidecars_unchanged(tmp
 
 
 def test_projected_target_limit_rejects_before_snapshot_or_write(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration import real_apply
+    from cognivault.migration import real_apply
     target = make_target(tmp_path)
     item = source(tmp_path)
     before = target.read_bytes()
@@ -194,7 +194,7 @@ def test_projected_target_limit_rejects_before_snapshot_or_write(tmp_path, monke
 
 
 def test_existing_source_rerun_does_not_reserve_payload_twice(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration import real_apply
+    from cognivault.migration import real_apply
     target = make_target(tmp_path)
     kwargs = dict(database=target, sources=[source(tmp_path)],
                   journal_path=tmp_path / "journal" / "apply.db",
@@ -223,7 +223,7 @@ def test_source_kind_remains_distinct_in_committed_journal(tmp_path, source_type
 
 
 def test_corrupted_existing_blob_prevents_new_batch_members_committing(tmp_path):
-    from chatgpt_study_system.contracts import GatewayError
+    from cognivault.contracts import GatewayError
     target = make_target(tmp_path)
     original = source(tmp_path)
     journal = tmp_path / "journal" / "apply.db"

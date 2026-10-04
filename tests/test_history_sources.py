@@ -4,10 +4,10 @@ import sqlite3
 
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.adapters.history_sources import SourceEvidenceStore, SourceFileInput
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.provenance import ReportedIdentity
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.adapters.history_sources import SourceEvidenceStore, SourceFileInput
+from cognivault.contracts import GatewayError
+from cognivault.provenance import ReportedIdentity
 
 
 def source(raw=b'{"synthetic":"unknown roles/time"}\n', **kw):
@@ -77,7 +77,7 @@ def test_reopen_read_provenance_integrity_and_bounded_source_search(tmp_path):
 
 
 def test_existing_legacy_reference_reuses_original_bytes_without_new_payload(tmp_path):
-    from chatgpt_study_system.adapters.legacy_sources import SQLiteLegacySourceStore, LegacySourceInput
+    from cognivault.adapters.legacy_sources import SQLiteLegacySourceStore, LegacySourceInput
     s=store(tmp_path)
     legacy=SQLiteLegacySourceStore(tmp_path/"isolated.sqlite3")
     legacy.initialize()
@@ -107,7 +107,7 @@ def test_external_manifest_is_referenced_with_no_fake_payload(tmp_path):
 
 
 def test_interrupted_provenance_write_rolls_back_record_and_payload(tmp_path, monkeypatch):
-    import chatgpt_study_system.adapters.history_sources as module
+    import cognivault.adapters.history_sources as module
     s=store(tmp_path)
     def fail(*args, **kwargs):
         raise GatewayError("CONFLICT", "Synthetic interrupted provenance write")
@@ -129,7 +129,7 @@ def test_verification_hashes_all_original_bytes_and_rejects_bad_input_types(tmp_
 
 
 def test_no_result_search_over_large_catalog_remains_bounded(tmp_path):
-    from chatgpt_study_system.adapters.history_sources import source_identity
+    from cognivault.adapters.history_sources import source_identity
     s=store(tmp_path)
     s.import_bytes(source())
     # Invented rows deliberately have no provenance: the no-result query must

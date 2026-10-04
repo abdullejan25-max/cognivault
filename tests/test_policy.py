@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.policy import safe_relative_source_path
+from cognivault.contracts import GatewayError
+from cognivault.policy import safe_relative_source_path
 
 
 def test_returns_slash_relative_path_for_file_inside_study_root(tmp_path: Path) -> None:

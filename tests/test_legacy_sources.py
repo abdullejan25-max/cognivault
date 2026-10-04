@@ -11,13 +11,13 @@ import anyio
 import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
-from chatgpt_study_system.adapters import legacy_sources
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.provenance import ReportedIdentity
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters import legacy_sources
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
+from cognivault.provenance import ReportedIdentity
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def item(key="opaque-1", content=b"Synthetic source\r\n", **kwargs):

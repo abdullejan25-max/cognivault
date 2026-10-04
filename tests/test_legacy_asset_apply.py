@@ -9,9 +9,9 @@ import sqlite3
 
 import pytest
 
-from chatgpt_study_system.adapters.documents import SQLiteDocumentStore
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.migration.real_apply import FileSource
+from cognivault.adapters.documents import SQLiteDocumentStore
+from cognivault.contracts import GatewayError
+from cognivault.migration.real_apply import FileSource
 
 
 PNG = base64.b64decode(
@@ -43,7 +43,7 @@ def _source(tmp_path, index, content):
 
 
 def _apply(store, tmp_path, sources):
-    from chatgpt_study_system.migration import legacy_assets
+    from cognivault.migration import legacy_assets
     return legacy_assets.apply_assets(
         database=store.database_path, asset_root=store.asset_root, sources=sources,
         journal_path=tmp_path / "journal" / "journal.sqlite3",
@@ -256,7 +256,7 @@ def test_hardlinked_old_blob_rejected_before_new_import(tmp_path):
 
 
 def test_domain_commit_before_journal_failure_keeps_original_imported_time_on_retry(tmp_path, monkeypatch):
-    from chatgpt_study_system.migration.manifest import MigrationJournal
+    from cognivault.migration.manifest import MigrationJournal
     store = _store(tmp_path)
     source = _source(tmp_path, 0, PNG + b"new")
     checkpoint = MigrationJournal.add_batch
@@ -301,7 +301,7 @@ def test_legacy_domain_rejects_hardlinked_database_or_sidecar_before_write(tmp_p
 
 
 def test_asset_apply_rejects_multi_image_atomic_unit_before_writes(tmp_path):
-    from chatgpt_study_system.migration.legacy_assets import apply_assets
+    from cognivault.migration.legacy_assets import apply_assets
     store = _store(tmp_path)
     before = store.database_path.read_bytes()
     with pytest.raises(ValueError):
@@ -335,7 +335,7 @@ def test_domain_registration_rejects_hardlinked_prospective_blob(tmp_path):
 
 
 def test_corrupt_asset_metadata_is_rejected_before_any_blob_file_open(tmp_path, monkeypatch):
-    from chatgpt_study_system.adapters.documents import AssetRecord
+    from cognivault.adapters.documents import AssetRecord
     store = _store(tmp_path)
     (tmp_path / "protected.png").write_bytes(PNG)
     opened = []

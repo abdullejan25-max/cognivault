@@ -6,12 +6,12 @@ import json
 import pytest
 import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.adapters.history_sources import SourceFileInput, SourceEvidenceStore
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import GatewayError
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.adapters.history_sources import SourceFileInput, SourceEvidenceStore
+from cognivault.config import AppConfig
+from cognivault.contracts import GatewayError
+from cognivault.gateway import Gateway
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def setup(tmp_path):
@@ -108,7 +108,7 @@ def test_gateway_permissions_and_mcp_contract_and_no_result(tmp_path):
 
 
 def test_canonical_store_failure_rolls_back_every_derived_row(tmp_path):
-    from chatgpt_study_system.normalization.adapters import normalize_source
+    from cognivault.normalization.adapters import normalize_source
     g,s=setup(tmp_path); sid=source(s)
     metadata=s.metadata(sid)
     raw=s.fetch(sid)["content"]

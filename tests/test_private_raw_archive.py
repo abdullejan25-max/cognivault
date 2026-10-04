@@ -8,8 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.migration import raw_archive
-from chatgpt_study_system.migration.raw_archive import (
+from cognivault.migration import raw_archive
+from cognivault.migration.raw_archive import (
     PrivateRawArchiveStore,
     RawArchiveError,
     RawArchiveLimits,

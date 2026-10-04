@@ -6,12 +6,12 @@ from pathlib import Path
 
 import pytest
 
-import chatgpt_study_system.migration.codex_jsonl_inspector as inspector_module
-from chatgpt_study_system.migration.codex_jsonl_inspector import (
+import cognivault.migration.codex_jsonl_inspector as inspector_module
+from cognivault.migration.codex_jsonl_inspector import (
     CodexJSONLInspectionError,
     inspect_codex_snapshot,
 )
-from chatgpt_study_system.migration.codex_snapshot import PrivateCodexJSONLSnapshotStore
+from cognivault.migration.codex_snapshot import PrivateCodexJSONLSnapshotStore
 
 
 def _line(record: object) -> bytes:

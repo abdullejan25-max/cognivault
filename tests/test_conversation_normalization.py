@@ -1,7 +1,7 @@
 """All bytes here are invented. Test deterministic evidence, not personal exports."""
 import json
 import pytest
-from chatgpt_study_system.normalization.adapters import normalize_source
+from cognivault.normalization.adapters import normalize_source
 
 
 def run(system, records, fmt="jsonl", fingerprint="a" * 64):

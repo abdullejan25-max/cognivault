@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from chatgpt_study_system.migration.codex_snapshot import (
+from cognivault.migration.codex_snapshot import (
     CodexSnapshotError,
     CodexSnapshotLimits,
     PrivateCodexJSONLSnapshotStore,

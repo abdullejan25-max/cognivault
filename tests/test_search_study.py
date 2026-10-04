@@ -2,9 +2,9 @@ from pathlib import Path
 
 import pytest
 
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import BackendStudyHit, GatewayError
-from chatgpt_study_system.gateway import Gateway
+from cognivault.config import AppConfig
+from cognivault.contracts import BackendStudyHit, GatewayError
+from cognivault.gateway import Gateway
 
 
 class FakeStudyBackend:

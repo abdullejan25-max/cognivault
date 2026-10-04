@@ -8,11 +8,11 @@ from mcp.shared.memory import create_connected_server_and_client_session
 from jsonschema import validate
 import pytest
 
-from chatgpt_study_system.adapters.history import SQLiteHistoryBackend
-from chatgpt_study_system.config import AppConfig
-from chatgpt_study_system.contracts import HistoryImportItem
-from chatgpt_study_system.gateway import Gateway
-from chatgpt_study_system.transports.mcp_stdio import create_mcp_server
+from cognivault.adapters.history import SQLiteHistoryBackend
+from cognivault.config import AppConfig
+from cognivault.contracts import HistoryImportItem
+from cognivault.gateway import Gateway
+from cognivault.transports.mcp_stdio import create_mcp_server
 
 
 def test_history_tools_roundtrip_and_reject_hidden_paths(tmp_path: Path) -> None:

@@ -3,7 +3,7 @@ import re
 
 import pytest
 
-from chatgpt_study_system.migration.history_occurrence import (
+from cognivault.migration.history_occurrence import (
     HistoryOccurrenceBlock,
     ImportedHistoryOccurrence,
 )
