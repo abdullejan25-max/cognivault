@@ -8,6 +8,7 @@
 
 <h1 align="center">CogniVault</h1>
 <p align="center">A local-first learning and memory layer for AI agents.</p>
+<p align="center"><a href="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a></p>
 
 CogniVault connects AI agents to a user-configured local learning and memory layer. Agent Hosts interpret requests and choose tools; the Gateway validates typed operations, enforces configured capabilities, and records provenance. The core runtime and Gateway do not depend on Codex Desktop.
 
