@@ -30,7 +30,7 @@ Source-only 记录保留原始来源证据；没有足够依据生成的 canonic
 | Codex | 更名前 Codex Desktop P13 History 原生 MCP 读取与无结果检查：**PASS**；2026-10-05 CogniVault fresh CLI Host 的 health、Study/QMD 无结果搜索与 History integrity read：**PASS**。 |
 | Hermes | P13 History 原生 MCP 读取与无结果检查：**PASS**。 |
 | WorkBuddy | P12 integration 仍为 **PASS**；P13 History 专项 GUI verification 为 **DEFERRED**。 |
-| ChatGPT hosted | Secure MCP Tunnel 工程指南已发布；真实 tunnel / ChatGPT app 连接与调用**尚未验证**；官方 ChatGPT export 为 **`acquisition_pending`**。 |
+| ChatGPT hosted | Secure MCP Tunnel 指南已发布；官方 Windows client 已离线校验、synthetic profile generation 已通过；未启动 daemon 或连接账号，真实 tunnel / ChatGPT app 调用**尚未验证**；官方 ChatGPT export 为 **`acquisition_pending`**。 |
 
 WorkBuddy 的 P12 结果不代表 P13 History GUI 验收。另有一项生产 writable ingress 的正式 Gateway synthetic acceptance 已通过；该结果不代表真实用户数据验收。Host 证据见 [P12 checkpoints](p12-step4-cross-agent-checkpoint.md) 和 [production ingress 报告](production-ingress.md)。
 
@@ -73,7 +73,8 @@ Verifier 现在按每条 evidence 所属的 view 版本检查 `version`，并保
 ## Current limitations
 
 - CI workflow 已并入 `main`，README 的 CI badge 跟踪 `main` 分支状态。
-- 当前 CogniVault MCP transport 是本机 stdio。ChatGPT 私有网络接入可按 [Secure MCP Tunnel 指南](chatgpt-integration.md)使用 OpenAI 官方 relay，但 tunnel 与 ChatGPT app 的账号侧配置和实机调用尚未完成验收。
+- 当前 CogniVault MCP transport 是本机 stdio。ChatGPT 私有网络接入可按 [Secure MCP Tunnel 指南](chatgpt-integration.md)使用 OpenAI 官方 relay，但真实 tunnel 与 ChatGPT app 的账号侧配置和实机调用尚未验收。2026-10-05 已校验官方 Windows client v0.0.15 的 SHA-256、查看 quickstart，并用 synthetic tunnel ID / 未设置的 synthetic key reference 生成本地 profile；未启动 daemon、doctor 或联网调用。
+- ChatGPT Web full MCP apps / Developer Mode 按当前 Help Center 支持 Business、Enterprise、Edu；仍需 owner 提供真实 `tunnel_id` 和 `CONTROL_PLANE_API_KEY`（Tunnels Read + Use）、将 tunnel 关联目标 workspace，并确保该 workspace 已授权 Developer Mode。不得把 `OPENAI_ADMIN_KEY` 交给常驻 daemon。
 - ChatGPT 官方 export 尚未到达，获取仍待处理。
 - WorkBuddy 的 P13 History 专项 GUI verification 仍为 deferred；既有 P12 integration 结果有效。
 - Caller / Agent identity 为 `reported / unverified`，不等于身份认证。
