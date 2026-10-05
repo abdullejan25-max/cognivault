@@ -1,6 +1,6 @@
 # Current State
 
-最近核对：2026-10-04。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.7.0 — History Completion & Recovery](releases/v0.7.0.md)**；下列 acquisition 与 recovery closure 统计在该版本首次发布后完成。
+最近核对：2026-10-05。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.7.0 — History Completion & Recovery](releases/v0.7.0.md)**；下列 acquisition 与 recovery closure 统计在该版本首次发布后完成。
 
 ## CogniVault identity transition
 
@@ -8,7 +8,7 @@
 
 升级应使用全新环境，或先卸载旧 distribution `chatgpt-study-system-v2` 再安装 `cognivault`；二者共用旧 stdio shim 文件和 `study-migrate` launcher。先安装新包再卸载旧包会删掉这两个共享文件，旧 regular package 也可能遮蔽新 editable shim。详细步骤见 [README](../README.md#upgrade-from-the-former-distribution)。Codex helper 只自动替换精确识别的旧生成配置；Hermes、WorkBuddy 和自定义 Codex 配置需手动改 registration 与 module path，保留原 backend/capabilities。
 
-下列计数、恢复与 Host PASS 均是更名前已记录的证据，本页未重新读取生产数据。改名后的真实 Host 与存量生产数据兼容性尚未验收；自动化或 synthetic PASS 不会补足这两项门禁。历史 checkpoint / Release Notes 保留原项目名、命令和 `study_system` aliases，作为当时证据。
+历史计数、恢复与 Host PASS 保留其原始检查点范围；本页另列 2026-10-05 的改名后只读 Gateway 验收。历史 checkpoint / Release Notes 保留原项目名、命令和 `study_system` aliases，作为当时证据。
 
 ## Current release status
 
@@ -25,14 +25,22 @@ Source-only 记录保留原始来源证据；没有足够依据生成的 canonic
 
 ## Host status
 
-| Host | 更名前已记录的证据 |
+| Host | 已记录的证据 |
 | --- | --- |
-| Codex | Codex Desktop P13 History 原生 MCP 读取与无结果检查：**PASS**。 |
+| Codex | 更名前 Codex Desktop P13 History 原生 MCP 读取与无结果检查：**PASS**；2026-10-05 CogniVault fresh CLI Host 的 health、Study/QMD 无结果搜索与 History integrity read：**PASS**。 |
 | Hermes | P13 History 原生 MCP 读取与无结果检查：**PASS**。 |
 | WorkBuddy | P12 integration 仍为 **PASS**；P13 History 专项 GUI verification 为 **DEFERRED**。 |
-| ChatGPT hosted | Hosted MCP / Secure MCP Tunnel **尚未实现**；官方 ChatGPT export 为 **`acquisition_pending`**。 |
+| ChatGPT hosted | Secure MCP Tunnel 工程指南已发布；真实 tunnel / ChatGPT app 连接与调用**尚未验证**；官方 ChatGPT export 为 **`acquisition_pending`**。 |
 
 WorkBuddy 的 P12 结果不代表 P13 History GUI 验收。另有一项生产 writable ingress 的正式 Gateway synthetic acceptance 已通过；该结果不代表真实用户数据验收。Host 证据见 [P12 checkpoints](p12-step4-cross-agent-checkpoint.md) 和 [production ingress 报告](production-ingress.md)。
+
+## Live Gateway integrity verification
+
+2026-10-05，fresh Codex CLI Host 通过本 checkout 的 `cognivault` MCP 只读配置完成 health、Study/QMD bounded search、source snapshot、canonical summary 与 integrity verification。Live summary 为 1,805 个 sources、541 个 conversations、8,599 条 messages、548 个 views 和 1,806 个跨版本 outcomes；修复后的 verifier 对 8,599 条 messages 与 1,805 个当前版本 outcomes 返回 **verified**。Study/QMD 的 bounded 无结果查询返回空集合，没有将无结果解释为数据缺失。
+
+此前 1,265 条 `source_evidence_mismatch` 全部是 `version` 字段差异。Gateway 原生创建并 isolated restore 的只读副本与 live store 的 source-set digest、canonical summary 和 canonical digest 完全匹配；带原 verifier 的 Gateway 在该副本再次返回同样的 1,265 条版本差异，均落在一个 ChatGPT source 的 54 个历史 views 中。历史 message evidence 的版本与其所属 view 版本一致，verifier 错误地把所有历史版本都与当前全局版本比较。这是 **A：verifier bug**，不是 source bytes、canonical 内容或 provenance 损坏。
+
+Verifier 现在按每条 evidence 所属的 view 版本检查 `version`，并保留其他 source evidence 字段校验。合成 regression 在修复前复现 `source_evidence_mismatch`、修复后通过；真实 production store 仍为只读，未重新 ingest、normalize 或修改任何记录。当前代码通过 live Gateway 返回 **verified**，因此不需要数据修复。
 
 ## History acquisition
 
@@ -64,7 +72,8 @@ WorkBuddy 的 P12 结果不代表 P13 History GUI 验收。另有一项生产 wr
 
 ## Current limitations
 
-- 当前 CogniVault MCP transport 是本机 stdio。ChatGPT 私有网络接入可按 [Secure MCP Tunnel 指南](chatgpt-integration.md)使用 OpenAI 官方 relay，但 tunnel 与 ChatGPT app 的账号侧配置和实机调用尚未在本仓库实现或验收。
+- CI workflow 已并入 `main`，README 的 CI badge 跟踪 `main` 分支状态。
+- 当前 CogniVault MCP transport 是本机 stdio。ChatGPT 私有网络接入可按 [Secure MCP Tunnel 指南](chatgpt-integration.md)使用 OpenAI 官方 relay，但 tunnel 与 ChatGPT app 的账号侧配置和实机调用尚未完成验收。
 - ChatGPT 官方 export 尚未到达，获取仍待处理。
 - WorkBuddy 的 P13 History 专项 GUI verification 仍为 deferred；既有 P12 integration 结果有效。
 - Caller / Agent identity 为 `reported / unverified`，不等于身份认证。
