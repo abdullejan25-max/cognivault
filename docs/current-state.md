@@ -72,7 +72,7 @@ Verifier 现在按每条 evidence 所属的 view 版本检查 `version`，并保
 
 ## Current limitations
 
-- CI workflow 已并入 `main`，README 的 CI badge 跟踪 `main` 分支状态。
+- CI workflow 已启用，Ubuntu core/full tests、Ubuntu package build/install 与 Windows package/integrity/MCP compatibility 三个 jobs 均已通过；README 的 CI badge 跟踪 `main` 分支状态。
 - 当前正式 transport 是本机 stdio MCP。ChatGPT Web / Secure MCP Tunnel 为 **OPTIONAL / DEFERRED BY OWNER CHOICE**，不属于 v0.8.0 release Gate，也不要求为本次发布完成 OpenAI 账号授权。[技术指南](chatgpt-integration.md)保留供未来选用；没有 live tunnel / ChatGPT app E2E。
 - 2026-10-05 的 tunnel 工程准备仅包括官方 Windows client v0.0.15 的 SHA-256 校验、quickstart 调查和 synthetic profile generation；未启动 daemon、doctor 或连接账号。
 - ChatGPT 官方 export 尚未到达，获取仍待处理。
