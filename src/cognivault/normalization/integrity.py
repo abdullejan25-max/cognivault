@@ -90,7 +90,7 @@ def verify(gateway, *, reparse=False):
                     for m in v["messages"]:
                         expected["p13_messages"].add((m["message_id"],)); expected_provenance.add(("canonical_message",m["message_id"],1))
                         expected["p13_message_evidence"].add((vid,m["message_id"],m["position"]))
-        for row in c.execute("SELECT e.payload,v.source_id FROM p13_message_evidence e JOIN p13_views v ON v.view_id=e.view_id ORDER BY e.rowid"):
+        for row in c.execute("SELECT e.payload,v.source_id,v.version FROM p13_message_evidence e JOIN p13_views v ON v.view_id=e.view_id ORDER BY e.rowid"):
             sid=row[1]
             try: e=json.loads(row[0])
             except (TypeError,ValueError):
@@ -103,7 +103,7 @@ def verify(gateway, *, reparse=False):
             if source is None:
                 source_mismatch(sid,"source_record","present","missing")
                 continue
-            expected_fields={"source_id":sid,"source_fingerprint":sid.split(":",1)[1],"source_imported_at":source[0],"version":VERSION}
+            expected_fields={"source_id":sid,"source_fingerprint":sid.split(":",1)[1],"source_imported_at":source[0],"version":row[2]}
             for field,want in expected_fields.items():
                 if e.get(field)!=want: source_mismatch(sid,field,want,e.get(field))
         if outcomes!=canonical.snapshot_at(c)["source_count"]: errors.add("unexplained_source_set")
