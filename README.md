@@ -103,7 +103,7 @@ See [Current State](docs/current-state.md) for Host, acquisition, and recovery d
 
 ## Current Limitations
 
-- ChatGPT hosted MCP and Secure MCP Tunnel are not implemented; the available transport is local stdio MCP.
+- CogniVault exposes local stdio MCP only. For a ChatGPT connection to a private local Gateway, see the [Secure MCP Tunnel setup](docs/chatgpt-integration.md); the OpenAI relay is configured separately and does not add a CogniVault HTTP listener.
 - The official ChatGPT export remains `acquisition_pending`.
 - WorkBuddy P13 History GUI verification remains **DEFERRED**; this does not change its P12 integration result.
 - Caller and Agent identity is `reported / unverified`, not authenticated identity.

@@ -64,7 +64,7 @@ WorkBuddy 的 P12 结果不代表 P13 History GUI 验收。另有一项生产 wr
 
 ## Current limitations
 
-- 当前 MCP transport 是本机 stdio；Hosted ChatGPT MCP 和 Secure MCP Tunnel 尚未实现。
+- 当前 CogniVault MCP transport 是本机 stdio。ChatGPT 私有网络接入可按 [Secure MCP Tunnel 指南](chatgpt-integration.md)使用 OpenAI 官方 relay，但 tunnel 与 ChatGPT app 的账号侧配置和实机调用尚未在本仓库实现或验收。
 - ChatGPT 官方 export 尚未到达，获取仍待处理。
 - WorkBuddy 的 P13 History 专项 GUI verification 仍为 deferred；既有 P12 integration 结果有效。
 - Caller / Agent identity 为 `reported / unverified`，不等于身份认证。

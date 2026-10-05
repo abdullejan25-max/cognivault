@@ -3,6 +3,7 @@
 .env.*
 !.env.example
 config.local.toml
+config.chatgpt-readonly.local.toml
 .codex/config.toml
 .workbuddy/
 .hermes/
