@@ -326,10 +326,10 @@ def test_runtime_snapshot_config_defers_source_access_until_search(tmp_path: Pat
         '[gateway]\nversion = "0.1.0"\n[study]\n'
         f'root = "{root.as_posix()}"\nqmd_collection = "studyvault"\nqmd_version = "2.8.3"\n'
         '[study.qmd_runtime]\n'
-        'node_executable = "C:/synthetic/node.exe"\n'
-        'cli_entrypoint = "C:/synthetic/qmd.js"\n'
-        'config = "C:/synthetic/index.yml"\n'
-        'index = "C:/synthetic/index.sqlite"\n'
+        f'node_executable = "{(tmp_path / "node.exe").as_posix()}"\n'
+        f'cli_entrypoint = "{(tmp_path / "qmd.js").as_posix()}"\n'
+        f'config = "{(tmp_path / "index.yml").as_posix()}"\n'
+        f'index = "{(tmp_path / "index.sqlite").as_posix()}"\n'
         '[history]\nbackend = "not_configured"\n',
         encoding="utf-8",
     )
