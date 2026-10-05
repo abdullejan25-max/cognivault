@@ -2,10 +2,26 @@
 from contextlib import closing
 import hashlib
 import json
+import re
 from .contracts import VERSION, encoded, identity
 from ..adapters.canonical_history import TABLES
 from ..provenance import get_provenance
 from ..contracts import GatewayError
+
+_MAX_SOURCE_DIAGNOSTIC_SAMPLES = 20
+_SAFE_SOURCE_ID = re.compile(r"source-file:[0-9a-f]{64}\Z")
+
+
+def _diagnostic_value(value):
+    try: raw=encoded(value).encode("utf-8")
+    except (TypeError,ValueError): raw=json.dumps(value,ensure_ascii=False,sort_keys=True,separators=(",",":"),default=str).encode("utf-8")
+    return {"sha256":hashlib.sha256(raw).hexdigest(),"bytes":len(raw)}
+
+
+def _safe_source_id(value):
+    if type(value) is str and _SAFE_SOURCE_ID.fullmatch(value): return value
+    raw=value if type(value) is bytes else str(value).encode("utf-8",errors="replace")
+    return "sha256:"+hashlib.sha256(raw).hexdigest()
 
 
 def verify(gateway, *, reparse=False):
@@ -13,6 +29,19 @@ def verify(gateway, *, reparse=False):
     if type(reparse) is not bool: raise GatewayError("INVALID_ARGUMENT","Invalid canonical verification arguments")
     canonical=gateway._canonical_history_store(); store=gateway._source_evidence_store()
     digest=hashlib.sha256(); errors=set(); messages=0; outcomes=0
+    diagnostics={"count":0,"by_field":{},"samples":[],"truncated":False}
+
+    def source_mismatch(source_id, field, expected, actual):
+        errors.add("source_evidence_mismatch")
+        diagnostics["count"]+=1
+        diagnostics["by_field"][field]=diagnostics["by_field"].get(field,0)+1
+        if len(diagnostics["samples"])<_MAX_SOURCE_DIAGNOSTIC_SAMPLES:
+            expected_summary=_diagnostic_value(expected); actual_summary=_diagnostic_value(actual)
+            diagnostics["samples"].append({"domain":"source_evidence","source_id":_safe_source_id(source_id),
+                "record_class":"message_evidence","field":field,"expected_sha256":expected_summary["sha256"],
+                "expected_bytes":expected_summary["bytes"],"actual_sha256":actual_summary["sha256"],
+                "actual_bytes":actual_summary["bytes"]})
+        else: diagnostics["truncated"]=True
     expected={t:set() for t in TABLES}; expected_provenance=set()
     with closing(store.history._connect()) as c:
         c.execute("BEGIN")
@@ -61,11 +90,22 @@ def verify(gateway, *, reparse=False):
                     for m in v["messages"]:
                         expected["p13_messages"].add((m["message_id"],)); expected_provenance.add(("canonical_message",m["message_id"],1))
                         expected["p13_message_evidence"].add((vid,m["message_id"],m["position"]))
-        for row in c.execute("SELECT e.payload,v.source_id FROM p13_message_evidence e JOIN p13_views v ON v.view_id=e.view_id"):
-            e=json.loads(row[0]); sid=row[1]
+        for row in c.execute("SELECT e.payload,v.source_id,v.version FROM p13_message_evidence e JOIN p13_views v ON v.view_id=e.view_id ORDER BY e.rowid"):
+            sid=row[1]
+            try: e=json.loads(row[0])
+            except (TypeError,ValueError):
+                source_mismatch(sid,"payload","valid_json_object","invalid_json")
+                continue
+            if type(e) is not dict:
+                source_mismatch(sid,"payload","object",type(e).__name__)
+                continue
             source=c.execute("SELECT imported_at FROM history_source_files WHERE source_id=?",(sid,)).fetchone()
-            if source is None or e["source_id"]!=sid or e["source_fingerprint"]!=sid.split(":",1)[1] or e["source_imported_at"]!=source[0] or e["version"]!=VERSION:
-                errors.add("source_evidence_mismatch")
+            if source is None:
+                source_mismatch(sid,"source_record","present","missing")
+                continue
+            expected_fields={"source_id":sid,"source_fingerprint":sid.split(":",1)[1],"source_imported_at":source[0],"version":row[2]}
+            for field,want in expected_fields.items():
+                if e.get(field)!=want: source_mismatch(sid,field,want,e.get(field))
         if outcomes!=canonical.snapshot_at(c)["source_count"]: errors.add("unexplained_source_set")
         if reparse:
             columns={"p13_conversations":"conversation_id","p13_messages":"message_id","p13_views":"view_id",
@@ -76,7 +116,8 @@ def verify(gateway, *, reparse=False):
             if actual_provenance!=expected_provenance: errors.add("canonical_provenance_record_set_mismatch")
         if not provenance_relations_match(c): errors.add("canonical_provenance_relation_mismatch")
     return {"verified":not errors,"error_classes":sorted(errors),"messages_verified":messages,"source_outcomes_verified":outcomes,
-            "canonical_sha256":digest.hexdigest(),"reparse_verified":reparse and not errors}
+            "canonical_sha256":digest.hexdigest(),"reparse_verified":reparse and not errors,
+            "diagnostics":diagnostics}
 
 
 def materialization_matches(c, source, parsed, outcome):

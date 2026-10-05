@@ -149,6 +149,92 @@ def test_integrity_proves_every_message_and_reparse_result_then_detects_corrupti
     assert g.verify_canonical_history()["verified"] is False
 
 
+@pytest.mark.parametrize("field",["source_id","source_fingerprint","source_imported_at","version"])
+def test_source_evidence_mismatch_returns_bounded_safe_field_diagnostics(tmp_path,field):
+    import sqlite3
+    g,s=setup(tmp_path); sid=source(s)
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"],limit=64)
+    marker="private-import-timestamp-should-not-leak"
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("DROP TRIGGER p13_message_evidence_no_update")
+        row=c.execute("SELECT rowid,payload FROM p13_message_evidence").fetchone()
+        evidence=json.loads(row[1]); evidence[field]=marker
+        c.execute("UPDATE p13_message_evidence SET payload=? WHERE rowid=?",(json.dumps(evidence),row[0]))
+
+    result=g.verify_canonical_history()
+    assert result["verified"] is False
+    assert result["error_classes"] == ["source_evidence_mismatch"]
+    diagnostic=result["diagnostics"]["samples"][0]
+    assert diagnostic["source_id"] == sid
+    assert diagnostic["record_class"] == "message_evidence"
+    assert diagnostic["field"] == field
+    assert len(diagnostic["expected_sha256"]) == len(diagnostic["actual_sha256"]) == 64
+    assert result["diagnostics"]["by_field"] == {field: 1}
+    assert marker not in json.dumps(result)
+
+
+def test_source_evidence_version_is_checked_against_owning_view_version(tmp_path):
+    import sqlite3
+    g,s=setup(tmp_path); source(s)
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
+    prior_version="p12-normalize-1"
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("DROP TRIGGER p13_views_no_update")
+        c.execute("DROP TRIGGER p13_message_evidence_no_update")
+        row=c.execute("SELECT view_id,payload FROM p13_views").fetchone()
+        view=json.loads(row[1]); view["version"]=prior_version
+        c.execute("UPDATE p13_views SET version=?,payload=? WHERE view_id=?",
+                  (prior_version,json.dumps(view),row[0]))
+        evidence=c.execute("SELECT rowid,payload FROM p13_message_evidence WHERE view_id=?",(row[0],)).fetchone()
+        payload=json.loads(evidence[1]); payload["version"]=prior_version
+        c.execute("UPDATE p13_message_evidence SET payload=? WHERE rowid=?",
+                  (json.dumps(payload),evidence[0]))
+        c.execute("DROP TRIGGER p13_normalization_outcomes_no_update")
+        outcome=c.execute("SELECT payload FROM p13_normalization_outcomes").fetchone()[0]
+        outcome_payload=json.loads(outcome); outcome_payload["message_appearances"]=0
+        c.execute("UPDATE p13_normalization_outcomes SET payload=?",(json.dumps(outcome_payload),))
+
+    result=g.verify_canonical_history()
+    assert result["verified"] is True, result["error_classes"]
+    assert result["diagnostics"]["count"] == 0
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("UPDATE p13_message_evidence SET payload=json_set(payload,'$.version','wrong-version')")
+    mismatch=g.verify_canonical_history()
+    assert mismatch["error_classes"] == ["source_evidence_mismatch"]
+    assert mismatch["diagnostics"]["by_field"] == {"version":1}
+
+
+def test_source_evidence_diagnostics_are_bounded_and_count_all_mismatches(tmp_path):
+    import sqlite3
+    g,s=setup(tmp_path)
+    for index in range(21): source(s,suffix=f" evidence-{index}")
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"],limit=64)
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("DROP TRIGGER p13_message_evidence_no_update")
+        c.execute("UPDATE p13_message_evidence SET payload=json_set(payload,'$.source_imported_at','private-marker')")
+
+    diagnostics=g.verify_canonical_history()["diagnostics"]
+    assert diagnostics["count"] == 21
+    assert diagnostics["by_field"] == {"source_imported_at": 21}
+    assert len(diagnostics["samples"]) == 20
+    assert diagnostics["truncated"] is True
+
+
+def test_malformed_evidence_payload_is_reported_without_echoing_it(tmp_path):
+    import sqlite3
+    g,s=setup(tmp_path); source(s)
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
+    marker="private-malformed-evidence-value"
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("DROP TRIGGER p13_message_evidence_no_update")
+        c.execute("UPDATE p13_message_evidence SET payload=?",("{broken:"+marker,))
+
+    result=g.verify_canonical_history()
+    assert result["error_classes"] == ["source_evidence_mismatch"]
+    assert result["diagnostics"]["by_field"] == {"payload": 1}
+    assert marker not in json.dumps(result)
+
+
 def test_conversation_view_pagination_reports_all_views(tmp_path):
     g,s=setup(tmp_path); source(s); source(s,suffix="Other evidence")
     g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
