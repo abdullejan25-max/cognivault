@@ -1,6 +1,6 @@
 [project]
 name = "cognivault"
-version = "0.7.0"
+version = "0.8.0"
 description = "A local-first learning and memory layer for AI agents."
 license = "Apache-2.0"
 license-files = ["LICENSE"]

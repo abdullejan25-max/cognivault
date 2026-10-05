@@ -40,9 +40,9 @@ def test_sdist_excludes_local_agent_work_and_private_runtime(tmp_path: Path) -> 
         cwd=checkout, check=True, capture_output=True, timeout=60,
     )
 
-    with tarfile.open(output / "cognivault-0.7.0.tar.gz") as archive:
+    with tarfile.open(output / "cognivault-0.8.0.tar.gz") as archive:
         names = archive.getnames()
-    assert "cognivault-0.7.0/src/cognivault/__init__.py" in names
+    assert "cognivault-0.8.0/src/cognivault/__init__.py" in names
     assert not any("/.superpowers/" in name for name in names)
     assert not any("/var/" in name or name.endswith("/config.local.toml") for name in names)
 
@@ -50,7 +50,7 @@ def test_sdist_excludes_local_agent_work_and_private_runtime(tmp_path: Path) -> 
 def test_cognivault_distribution_preserves_release_and_domain_cli() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["name"] == "cognivault"
-    assert project["version"] == "0.7.0"
+    assert project["version"] == "0.8.0"
     assert project["description"] == "A local-first learning and memory layer for AI agents."
     assert project["scripts"]["study-migrate"] == "cognivault.migration.cli:main"
 

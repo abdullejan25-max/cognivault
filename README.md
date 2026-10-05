@@ -71,11 +71,11 @@ The old stdio module is a deprecated startup shim that delegates to the single C
 
 ## Agent Hosts and validation
 
-Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation and explicitly configured data layer. The following records are from validation before the internal rename. They do not establish a live Host or existing production-data PASS for the renamed build:
+Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation and explicitly configured data layer. Host evidence is time-scoped: pre-rename Desktop, WorkBuddy, and Hermes checks are historical; the post-rename Codex CLI read-only checks are recorded in Current State.
 
 | Host | Project validation record | Setup or evidence |
 | --- | --- | --- |
-| Codex Desktop | Native MCP History read / no-result checks: **PASS** | [Host setup](docs/codex-host-setup.md) · [Current State](docs/current-state.md) |
+| Codex | Historical Desktop native MCP read: **PASS**; post-rename fresh CLI read-only integrity checks: **PASS** | [Host setup](docs/codex-host-setup.md) · [Current State](docs/current-state.md) |
 | WorkBuddy | P12 integration: **PASS**; P13 History GUI verification: **DEFERRED** | [Host setup](docs/workbuddy-host-setup.md) · [P12 checkpoint](docs/p12-step2-workbuddy-checkpoint.md) · [Current State](docs/current-state.md) |
 | Hermes | Native MCP History read / no-result checks: **PASS** | [Host setup](docs/hermes-host-setup.md) · [Current State](docs/current-state.md) |
 | Other local stdio MCP clients | Protocol-compatible; not individually validated by this project | Follow the client’s stdio MCP configuration instructions. |
@@ -84,7 +84,7 @@ Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation 
 
 ## Current stable release
 
-The current stable release is **[v0.7.0 — History Completion & Recovery](docs/releases/v0.7.0.md)**. The rename preserves version `0.7.0` and creates no new release. The recorded acquired-data closure from before the rename is:
+The current stable release is **[v0.8.0 — CogniVault Identity & Reliability](docs/releases/v0.8.0.md)**. It publishes the identity transition, CI, and integrity verifier correction. The following acquired-data closure belongs to the historical v0.7.0 completion checkpoint; it is not new acquisition performed by v0.8.0:
 
 | Measure | Result |
 | --- | ---: |
@@ -101,10 +101,11 @@ See [Current State](docs/current-state.md) for Host, acquisition, and recovery d
 
 - **Study search:** Install Node.js and QMD separately, then configure their executable, collection, and index locations in the private config. They are not bundled with CogniVault.
 - **OCR:** Only for scanned pages or PDFs without a usable text layer. Install Tesseract and the required language data, then enable the optional Python extra with `uv sync --project . --extra pdf-ocr --no-editable`. OCR output is derived text and does not replace the source page.
+- **ChatGPT Web / Secure MCP Tunnel:** **OPTIONAL / DEFERRED BY OWNER CHOICE**. The [technical guide](docs/chatgpt-integration.md) remains available; live tunnel E2E is unverified and is not a v0.8.0 release gate.
 
 ## Current Limitations
 
-- CogniVault exposes local stdio MCP only. For a ChatGPT connection to a private local Gateway, see the [Secure MCP Tunnel setup](docs/chatgpt-integration.md); the OpenAI relay is configured separately and does not add a CogniVault HTTP listener.
+- CogniVault's current transport is local stdio MCP. ChatGPT Web / Secure MCP Tunnel integration is optional and deferred by owner choice.
 - The official ChatGPT export remains `acquisition_pending`.
 - WorkBuddy P13 History GUI verification remains **DEFERRED**; this does not change its P12 integration result.
 - Caller and Agent identity is `reported / unverified`, not authenticated identity.
