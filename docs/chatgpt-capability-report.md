@@ -1,5 +1,7 @@
 # ChatGPT 实际接入 Capability Report
 
+> 历史调查报告：下文保留 2026-09-25 的判断与建议。当前 ChatGPT Web / Secure MCP Tunnel 状态为 **OPTIONAL / DEFERRED BY OWNER CHOICE**，没有 live E2E，不属于 v0.8.0 release Gate，也不要求为发布完成 OpenAI 账号授权。当前状态以 [Current State](current-state.md) 为准；可选技术步骤见 [Secure MCP Tunnel 指南](chatgpt-integration.md)。
+
 日期：2026-09-25
 状态：需要用户账号与 Platform 决定
 

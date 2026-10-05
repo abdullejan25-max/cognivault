@@ -42,7 +42,7 @@ def test_stdio_entry_points_serve_one_canonical_identity(tmp_path: Path, module:
                     async with ClientSession(read_stream, write_stream) as client:
                         initialized = await client.initialize()
                         assert initialized.serverInfo.name == "cognivault"
-                        assert initialized.serverInfo.version == "0.7.0"
+                        assert initialized.serverInfo.version == "0.8.0"
                         health = await client.call_tool("health_report", {})
                         assert health.structuredContent["ok"] is True
                         workflow = await client.read_resource("study-workflow://wrong-answer")

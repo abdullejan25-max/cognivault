@@ -15,7 +15,7 @@ def archive_names(path: Path) -> list[str]:
 
 
 def main() -> None:
-    archives = sorted(Path("dist").glob("cognivault-0.7.0*"))
+    archives = sorted(Path("dist").glob("cognivault-0.8.0*"))
     if {path.suffix for path in archives} != {".whl", ".gz"} or len(archives) != 2:
         raise SystemExit("expected one CogniVault wheel and one source archive")
     forbidden_parts = {".hermes", ".workbuddy", ".superpowers", "StudyVault", "History", "var"}

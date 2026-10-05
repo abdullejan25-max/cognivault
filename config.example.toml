@@ -2,7 +2,7 @@
 # Use a placeholder here; do not put personal paths or data in this file.
 
 [gateway]
-version = "0.7.0"
+version = "0.8.0"
 
 [study]
 root = "C:/PATH/TO/STUDY_ROOT"
