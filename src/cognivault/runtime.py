@@ -21,22 +21,23 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
     try:
         version = raw["gateway"]["version"]
         study = raw["study"]
-        root = study["root"]
-        collection = study["qmd_collection"]
-        qmd_version = study["qmd_version"]
         history_config = raw["history"]
         history = history_config["backend"]
     except (KeyError, TypeError):
         raise ValueError("Invalid local configuration") from None
-    if (
-        any(type(value) is not str or not value for value in (version, root, collection, qmd_version))
-        or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None
-        or not Path(root).is_absolute()
-        or history not in {"not_configured", "sqlite"}
-        or collection != "studyvault"
-        or qmd_version != "2.8.3"
-    ):
+    if (type(version) is not str or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None
+            or type(study) is not dict or history not in {"not_configured", "sqlite"}):
         raise ValueError("Invalid local configuration")
+    if study == {"backend": "not_configured"}:
+        root, collection, qmd_version = None, "studyvault", "2.8.3"
+    else:
+        root = study.get("root")
+        collection = study.get("qmd_collection")
+        qmd_version = study.get("qmd_version")
+        if (study.get("backend") not in (None, "qmd")
+                or any(type(value) is not str or not value for value in (root, collection, qmd_version))
+                or not Path(root).is_absolute() or collection != "studyvault" or qmd_version != "2.8.3"):
+            raise ValueError("Invalid local configuration")
 
     if history == "sqlite":
         database = history_config.get("database")
@@ -91,7 +92,7 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
             or not set(configured_capabilities) <= {"read", "write", "ingest", "projection", "admin"}:
         raise ValueError("Invalid local configuration")
 
-    config = AppConfig(version, Path(root), collection, qmd_version, history_database,
+    config = AppConfig(version, Path(root) if root else None, collection, qmd_version, history_database,
                        Path(asset_root) if asset_root else None,
                        Path(asset_database) if asset_database else None,
                        Path(ingest_root) if ingest_root else None,
@@ -115,7 +116,10 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
                        recovery_sidecar_exclusions=tuple(exclusions),gateway_config_file=Path(config_file).resolve(),
                        recovery_include_study=include_study)
     runtime_raw = study.get("qmd_runtime")
-    if runtime_raw is None:
+    if root is None:
+        study_backend = None
+        qmd_discoverable = lambda: False
+    elif runtime_raw is None:
         executable = study.get("qmd_executable")
         if type(executable) is not str or not executable:
             raise ValueError("Invalid local configuration")

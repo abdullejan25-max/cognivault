@@ -1,6 +1,7 @@
 """Portable setup for Codex Desktop's project-scoped MCP configuration."""
 
 import re
+import shutil
 import subprocess
 import sys
 import tomllib
@@ -13,6 +14,53 @@ REPOSITORY = Path(__file__).resolve().parents[1]
 SETUP_SCRIPT = REPOSITORY / ".codex" / "setup_mcp.py"
 CONFIG_TEMPLATE = REPOSITORY / ".codex" / "config.example.toml"
 LEGACY_TEMPLATE = REPOSITORY / "tests" / "fixtures" / "codex_generated_pre_cognivault.toml"
+
+
+def test_setup_uses_absolute_uv_without_requiring_updated_host_path(tmp_path):
+    repository = _clone_bootstrap_files(tmp_path / "checkout")
+    (repository / "config.local.toml").write_text('[gateway]\nversion="0.8.0"\n', encoding="utf-8")
+    uv_path = Path(shutil.which("uv")).resolve()
+    result = subprocess.run(
+        [sys.executable, str(repository / ".codex/setup_mcp.py"), "--uv", str(uv_path)],
+        cwd=tmp_path, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    server = tomllib.loads((repository / ".codex/config.toml").read_text(encoding="utf-8"))["mcp_servers"]["cognivault"]
+    assert Path(server["command"]) == uv_path
+    assert server["env"]["UV_PROJECT_ENVIRONMENT"] == (repository / ".venv").as_posix()
+
+
+def test_installer_refuses_custom_relative_uv_command_without_overwriting_it(tmp_path):
+    repository = _clone_bootstrap_files(tmp_path / "custom checkout")
+    (repository / "config.local.toml").write_text('[gateway]\nversion="0.8.0"\n', encoding="utf-8")
+    assert _run_setup(repository, tmp_path).returncode == 0
+    config_path = repository / ".codex/config.toml"
+    custom = config_path.read_text(encoding="utf-8").replace("tool_timeout_sec = 60", "tool_timeout_sec = 120")
+    config_path.write_text(custom, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(repository / ".codex/setup_mcp.py"), "--uv", shutil.which("uv")],
+        cwd=tmp_path, capture_output=True, text=True, timeout=30,
+    )
+    assert result.returncode != 0
+    assert config_path.read_text(encoding="utf-8") == custom
+
+
+def test_setup_does_not_treat_a_custom_absolute_program_as_owned_uv_config(tmp_path):
+    repository = _clone_bootstrap_files(tmp_path / "checkout")
+    (repository / "config.local.toml").write_text('[gateway]\nversion="0.8.0"\n', encoding="utf-8")
+    initial = subprocess.run(
+        [sys.executable, str(repository / ".codex/setup_mcp.py"), "--uv", shutil.which("uv")],
+        cwd=tmp_path, capture_output=True, text=True, timeout=30,
+    )
+    assert initial.returncode == 0
+    config_path = repository / ".codex/config.toml"
+    custom = re.sub(r'(?m)^command = .*$',
+        'command = "' + (tmp_path / "custom-launcher.exe").as_posix() + '"',
+        config_path.read_text(encoding="utf-8"), count=1)
+    config_path.write_text(custom, encoding="utf-8")
+    result = _run_setup(repository, tmp_path)
+    assert result.returncode != 0
+    assert config_path.read_text(encoding="utf-8") == custom
 
 
 def _clone_bootstrap_files(target: Path) -> Path:
