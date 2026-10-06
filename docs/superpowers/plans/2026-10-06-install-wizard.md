@@ -10,6 +10,8 @@
 
 执行记录：2026-10-06 已在现有 detached isolated worktree 完成。最终完整合成测试为 875 passed / 12 skipped；最终相关回归 37 passed，包含 8 个 Windows 入口测试。真实 PowerShell 7 与 5.1 临时安装、安装后 synthetic MCP health/workflow、重复安装以及包审计通过。详见 `docs/install-wizard-checkpoint.md`。
 
+后续授权：用户于同日要求“github更新”，进入 GitHub 推送、PR、CI 与集成阶段；以下不 push 的约束记录的是此前实现阶段，不限制这次明确授权。正式 v0.8.0 标签和 Release 保持原状。
+
 ## Global Constraints
 
 - 默认 `read` 权限；不访问 production 数据，不打开或创建业务数据库。

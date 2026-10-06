@@ -72,7 +72,7 @@ Verifier 现在按每条 evidence 所属的 view 版本检查 `version`，并保
 
 ## Current limitations
 
-- 2026-10-06 的 Windows 安装向导已完成本地开发验收，详见 [安装向导 checkpoint](install-wizard-checkpoint.md)。本功能尚未 push 或发布新 Release，不能据此认为公开 v0.8.0 已包含该入口。
+- 2026-10-06 的 Windows 安装向导已完成开发验收，当前源码提供根目录 `install.cmd` 入口，详见 [安装说明](installation.md)与[安装向导 checkpoint](install-wizard-checkpoint.md)。正式 v0.8.0 标签不包含该入口，新用户应下载包含安装器的当前源码。
 - CI workflow 已启用，Ubuntu core/full tests、Ubuntu package build/install 与 Windows package/integrity/MCP compatibility 三个 jobs 均已通过；README 的 CI badge 跟踪 `main` 分支状态。
 - 当前正式 transport 是本机 stdio MCP。ChatGPT Web / Secure MCP Tunnel 为 **OPTIONAL / DEFERRED BY OWNER CHOICE**，不属于 v0.8.0 release Gate，也不要求为本次发布完成 OpenAI 账号授权。[技术指南](chatgpt-integration.md)保留供未来选用；没有 live tunnel / ChatGPT app E2E。
 - 2026-10-05 的 tunnel 工程准备仅包括官方 Windows client v0.0.15 的 SHA-256 校验、quickstart 调查和 synthetic profile generation；未启动 daemon、doctor 或连接账号。
