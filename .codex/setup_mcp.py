@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import shutil
@@ -27,7 +28,7 @@ MODULE_ARGS = [
 LEGACY_RELATIVE_ARGS = ["run", "--project", ".", *MODULE_ARGS]
 
 
-def _render_config(root: Path, *, template_root: Path | None = None) -> str:
+def _render_config(root: Path, *, template_root: Path | None = None, uv_command: str = "uv") -> str:
     template_path = (template_root or root) / ".codex" / "config.example.toml"
     template = template_path.read_text(encoding="utf-8")
     substitutions = (
@@ -43,6 +44,16 @@ def _render_config(root: Path, *, template_root: Path | None = None) -> str:
             quoted_placeholder, json.dumps(value, ensure_ascii=False)
         )
 
+    if template.count('command = "uv"') != 1:
+        raise ValueError("Unexpected uv command in Codex template.")
+    template = template.replace('command = "uv"', f"command = {json.dumps(uv_command, ensure_ascii=False)}", 1)
+    if uv_command != "uv":
+        source = json.dumps((root / "src").as_posix(), ensure_ascii=False)
+        original_env = f"env = {{ PYTHONPATH = {source} }}"
+        if template.count(original_env) != 1:
+            raise ValueError("Unexpected environment in Codex template.")
+        environment = json.dumps((root / ".venv").as_posix(), ensure_ascii=False)
+        template = template.replace(original_env, f"env = {{ PYTHONPATH = {source}, UV_PROJECT_ENVIRONMENT = {environment} }}", 1)
     generated = f"{GENERATED_MARKER}\n{template}"
     tomllib.loads(generated)
     return generated
@@ -61,7 +72,7 @@ def _parse_server(contents: str, name: str = "cognivault") -> dict[str, object] 
     return server if isinstance(server, dict) else None
 
 
-def _has_explicit_checkout_paths(server: dict[str, object], root: Path) -> bool:
+def _has_explicit_checkout_paths(server: dict[str, object], root: Path, *, uv_command: str = "uv") -> bool:
     cwd = server.get("cwd")
     if not isinstance(cwd, str):
         return False
@@ -86,8 +97,12 @@ def _has_explicit_checkout_paths(server: dict[str, object], root: Path) -> bool:
     ]
     current_relative_args = ["run", "--no-sync", "--project", ".", *MODULE_ARGS]
     expected_relative_args = LEGACY_RELATIVE_ARGS
+    if uv_command != "uv":
+        environment = server.get("env")
+        if not isinstance(environment, dict) or environment.get("UV_PROJECT_ENVIRONMENT") != (root / ".venv").as_posix():
+            return False
     return (
-        server.get("command") == "uv"
+        server.get("command") == uv_command
         and server.get("args") in (
             expected_absolute_args,
             legacy_absolute_args,
@@ -110,7 +125,16 @@ def _is_owned_generated_config(contents: str, template_root: Path) -> bool:
     if not old_root.is_absolute():
         return False
     try:
-        generated = _render_config(old_root.resolve(), template_root=template_root)
+        command = server.get("command")
+        if not isinstance(command, str) or (
+            command != "uv"
+            and (
+                not Path(command).is_absolute()
+                or Path(command).name.casefold() not in {"uv", "uv.exe"}
+            )
+        ):
+            return False
+        generated = _render_config(old_root.resolve(), template_root=template_root, uv_command=command)
         previous_generated = generated.replace('    "--no-sync",\n', "", 1)
         # These substitutions reconstruct only the two exact historical helper
         # outputs. The marker alone never grants permission to replace a config.
@@ -153,6 +177,9 @@ def _replace_owned_config(config_path: Path, previous: str, generated: str) -> N
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--uv", help="Absolute uv executable for a newly installed local runtime.")
+    options = parser.parse_args()
     root = Path(__file__).resolve().parent.parent
     template_path = root / ".codex" / "config.example.toml"
     config_path = root / ".codex" / "config.toml"
@@ -172,12 +199,19 @@ def main() -> int:
     except (OSError, tomllib.TOMLDecodeError):
         print("config.local.toml is not readable valid TOML; setup made no changes.", file=sys.stderr)
         return 1
-    if shutil.which("uv") is None:
+    uv_command = "uv"
+    if options.uv:
+        uv_path = Path(options.uv)
+        if not uv_path.is_absolute() or not uv_path.is_file():
+            print("--uv must name an existing absolute executable.", file=sys.stderr)
+            return 1
+        uv_command = uv_path.resolve().as_posix()
+    elif shutil.which("uv") is None:
         print("Install uv and ensure it is on PATH before Codex MCP setup.", file=sys.stderr)
         return 1
 
     try:
-        generated = _render_config(root)
+        generated = _render_config(root, uv_command=uv_command)
     except (OSError, ValueError, tomllib.TOMLDecodeError) as exc:
         print(f"Could not render the Codex MCP template: {exc}", file=sys.stderr)
         return 1
@@ -203,7 +237,7 @@ def main() -> int:
             return 0
 
         server = _parse_server(existing)
-        if server and _has_explicit_checkout_paths(server, root):
+        if server and _has_explicit_checkout_paths(server, root, uv_command=uv_command):
             print("Existing Codex MCP config is compatible with this checkout; file left unchanged.")
             return 0
 

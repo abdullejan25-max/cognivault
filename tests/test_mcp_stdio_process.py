@@ -18,6 +18,40 @@ from cognivault.adapters.history import SQLiteHistoryBackend
 from cognivault.contracts import HistoryImportItem
 
 
+def test_default_installer_profile_supports_health_and_workflow_without_data(tmp_path: Path) -> None:
+    config = tmp_path / "runtime.toml"
+    config.write_text(
+        '[gateway]\nversion="0.8.0"\n[study]\nbackend="not_configured"\n'
+        '[history]\nbackend="not_configured"\n[assets]\nbackend="not_configured"\n'
+        '[permissions]\ncapabilities=["read"]\n', encoding="utf-8",
+    )
+    repository = Path(__file__).resolve().parents[1]
+    env = os.environ.copy()
+    env["PYTHONPATH"] = str(repository / "src")
+    params = StdioServerParameters(
+        command=sys.executable,
+        args=["-X", "utf8", "-m", "cognivault.transports.mcp_stdio", "--config", str(config)],
+        env=env, cwd=repository,
+    )
+
+    async def check() -> None:
+        with anyio.fail_after(30):
+            async with stdio_client(params) as (read_stream, write_stream):
+                async with ClientSession(read_stream, write_stream) as client:
+                    await client.initialize()
+                    result = await client.call_tool("health_report", {})
+                    assert not result.isError
+                    health = json.loads(result.content[0].text)
+                    assert health["study"]["configured"] is False
+                    assert health["qmd"]["discoverable"] is False
+                    resource = await client.read_resource("study-workflow://wrong-answer")
+                    assert resource.contents
+                    tools = {tool.name for tool in (await client.list_tools()).tools}
+                    assert "save_wrong_answer_analysis" not in tools
+
+    anyio.run(check)
+
+
 def test_independent_stdio_client_uses_configured_gateway_and_resources(tmp_path: Path) -> None:
     study = tmp_path / "study"
     assets = tmp_path / "assets"

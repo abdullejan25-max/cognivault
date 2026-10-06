@@ -33,11 +33,21 @@ Agent Host (Codex Desktop, WorkBuddy, Hermes, or another stdio MCP client)
 
 ## Quick start
 
-### Prerequisites
+### Windows：双击安装（推荐）
+
+下载并解压仓库源码，双击根目录的 **`install.cmd`**。安装入口会自动准备 uv、Python 3.11 和锁定的项目依赖，生成默认只读的本地配置及 Codex 项目配置。无需预装 Python、uv 或 Git，也无需先手工编辑 TOML。
+
+安装完成后，在 Codex 中打开该项目目录、确认信任项目并新建会话，发送：`调用 cognivault 的 health_report，检查当前配置状态。` 安装器显示的完成状态代表基础安装完成；真实客户端连接需要这一步确认。
+
+首次安装默认尚未接入个人资料，Study、History、Assets 均为 `not_configured`。资料搜索、历史查询和错题保存可以按需配置；QMD、OCR 未自动安装。重复运行会保留已有数据位置与权限。其他本机 MCP 客户端及故障重试见[安装说明](docs/installation.md)。
+
+### 手动安装与其他平台
+
+#### Prerequisites
 
 The core runtime needs Python 3.11 or later and [`uv`](https://docs.astral.sh/uv/). It works independently of any particular Agent Host.
 
-### Install and configure the Gateway
+#### Install and configure the Gateway
 
 From the repository root, create the private local configuration and install the project. For an existing installation of the former distribution, follow the [upgrade sequence](#upgrade-from-the-former-distribution) before running `uv sync`:
 
@@ -56,7 +66,7 @@ uv run --no-sync --project <repository-path> python -m cognivault.transports.mcp
 
 Run `uv sync` before the first launch and after changing the checkout or dependencies; `--no-sync` does not install or update dependencies. Host-specific command, argument, environment, and path fields depend on the client.
 
-### Upgrade from the former distribution
+#### Upgrade from the former distribution
 
 The current Python distribution, import package, and standard MCP registration are `cognivault`. Use a fresh Python environment, or uninstall `chatgpt-study-system-v2` **before** installing `cognivault` in the existing environment. For an existing repository environment on Windows:
 
