@@ -252,11 +252,15 @@ def create_mcp_server(gateway: Gateway) -> Server:
                     "required": ["title", "media_type", "content_base64"], "additionalProperties": False}},
                     "provenance": reported_provenance},
                     "required": ["documents"], "additionalProperties": False}, annotations=write_only),
-            types.Tool(name="search_documents", description="Search deterministic document text chunks.",
+            types.Tool(name="search_documents", description="Search deterministic document text chunks. Optional canonical source IDs (duplicates deduplicated) and inclusive physical page bounds intersect before pagination; global 2048-candidate ceiling still applies.",
                 inputSchema={"type": "object", "properties": {
                     "query": {"type": "string", "minLength": 1, "maxLength": 500},
                     "limit": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
-                    "offset": {"type": "integer", "minimum": 0, "maximum": 1000, "default": 0}},
+                    "offset": {"type": "integer", "minimum": 0, "maximum": 1000, "default": 0},
+                    "source_ids": {"type": "array", "minItems": 1, "maxItems": 64,
+                        "items": {"type": "string", "pattern": r"^document://sha256/[0-9a-f]{64}$"}},
+                    "page_range": {"type": "array", "minItems": 2, "maxItems": 2,
+                        "items": {"type": "integer", "minimum": 1, "maximum": 999}}},
                     "required": ["query"], "additionalProperties": False}, annotations=read_only),
             types.Tool(name="fetch_document", description="Fetch one document's metadata and provenance.",
                 inputSchema={"type": "object", "properties": {"document_uri": {"type": "string", "pattern": r"^document://sha256/[0-9a-f]{64}$"}},
@@ -604,10 +608,12 @@ def create_mcp_server(gateway: Gateway) -> Server:
                                                                       arguments.get("title"),
                                                                       arguments.get("provenance"))}
             if name == "search_documents":
-                if set(arguments) - {"query", "limit", "offset"} or "query" not in arguments:
+                if set(arguments) - {"query", "limit", "offset", "source_ids", "page_range"} or "query" not in arguments:
                     raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")
                 return {"ok": True, **gateway.search_documents(arguments["query"], arguments.get("limit", 5),
-                                                                arguments.get("offset", 0))}
+                                                                arguments.get("offset", 0),
+                                                                source_ids=arguments.get("source_ids"),
+                                                                page_range=arguments.get("page_range"))}
             if name == "fetch_document":
                 if set(arguments) != {"document_uri"}:
                     raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")

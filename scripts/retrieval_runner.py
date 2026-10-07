@@ -219,7 +219,8 @@ def prepare(root, token, manifest, digest, qmd_node=None, qmd_cli=None):
 
 
 def unsupported_filters(case):
-    supported = {"source_system"} if case["domain"] == "history" else set()
+    supported = {"source_system"} if case["domain"] == "history" else (
+        {"source_ids", "page_range"} if case["domain"] == "documents" else set())
     return sorted(key for key, value in case.get("filters", {}).items() if value is not None and key not in supported)
 
 
@@ -232,6 +233,16 @@ def sample_query(gateway, case, state):
         if domain == "history":
             method = gateway.search_history_sources if case.get("path") == "source_only" else gateway.search_canonical_conversations
             raw = method(query=case["query"], source_system=case.get("filters", {}).get("source_system"), limit=10)
+        elif domain == "documents":
+            filters = case.get("filters", {})
+            sources = filters.get("source_ids")
+            # Alias binding comes exclusively from ingestion, never query results.
+            native_scope = {}
+            if sources is not None:
+                native_scope["source_ids"] = [state["aliases"][alias] for alias in sources]
+            if filters.get("page_range") is not None:
+                native_scope["page_range"] = filters["page_range"]
+            raw = gateway.search_documents(case["query"], 10, **native_scope)
         else:
             raw = getattr(gateway, "search_" + {"study": "study", "documents": "documents", "wrong_answer": "wrong_answers"}[domain])(case["query"], 10)
         query_ms = (time.perf_counter() - start) * 1000
@@ -323,9 +334,17 @@ def worker(root, token, case_id):
     elif any(sample["status"] != "ok" for sample in warm) and case.get("measurement") != "contract":
         result.update(status="error", error="WARM_QUERY_ERROR")
     result["stable_rankings"] = all([hit["id"] for hit in sample["ranking"]] == [hit["id"] for hit in cold["ranking"]] for sample in warm)
-    if case.get("filters", {}).get("source_system") and not unsupported:
+    if not unsupported and (case.get("filters", {}).get("source_system")
+            or case["domain"] == "documents" and any(value is not None for value in case.get("filters", {}).values())):
         control_case = {**case, "filters": {}}
         result["scope_control"] = sample_query(gateway, control_case, state)
+        if case["domain"] == "documents":
+            from retrieval_metrics import _in_scope
+            outside = sorted(hit["id"] for hit in result["scope_control"]["ranking"]
+                             if not _in_scope(hit, case["filters"]))
+            returned = {hit["id"] for hit in cold["ranking"]}
+            result["scope_evidence"] = {"excluded_ids": [alias for alias in outside if alias not in returned],
+                "retained_gold_ids": sorted(returned & set(case["relevant_ids"]))}
     return result
 
 

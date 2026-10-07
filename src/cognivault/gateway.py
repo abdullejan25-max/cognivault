@@ -286,9 +286,10 @@ class Gateway:
             result["write_provenance"] = store.get_write_provenance("document", record.uri)
         return {"documents": results}
 
-    def search_documents(self, query: str, limit: int = 5, offset: int = 0) -> dict:
+    def search_documents(self, query: str, limit: int = 5, offset: int = 0, *,
+                         source_ids: list[str] | None = None, page_range: list[int] | None = None) -> dict:
         self._require_capability("read")
-        page = self._documents().search(query, limit, offset)
+        page = self._documents().search(query, limit, offset, source_ids=source_ids, page_range=page_range)
         return {"total": page.total, "has_more": page.has_more,
                 "results": [{"chunk_uri": item.uri, "document_uri": item.document_uri,
                              "page_number": item.page_number,

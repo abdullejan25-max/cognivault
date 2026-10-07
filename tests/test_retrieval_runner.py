@@ -77,8 +77,32 @@ def test_synthetic_setup_binds_ids_without_querying_and_reopens_gateway(monkeypa
 
 def test_unsupported_filters_are_not_client_filtered():
     r = runner()
-    assert r.unsupported_filters({"domain": "documents", "filters": {"source_ids": ["book-a"]}}) == ["source_ids"]
+    assert r.unsupported_filters({"domain": "documents", "filters": {"source_ids": ["book-a"], "page_range": [64, 65]}}) == []
+    assert r.unsupported_filters({"domain": "documents", "filters": {"chapter_ids": ["chapter-a"]}}) == ["chapter_ids"]
     assert r.unsupported_filters({"domain": "history", "filters": {"source_system": "codex"}}) == []
+
+
+def test_document_native_scope_and_unscoped_controls_retain_frozen_gold():
+    r = runner()
+    from retrieval_metrics import evaluate_case
+    manifest, cases, digest = r.load_fixture()
+    assert digest == "07ebc25e54c2003c24913fa5dbe8603d1a8b85a3fb681c7e65be6d7b82a4e8ad"
+    root, token = r.create_root(digest)
+    r.prepare(root, token, manifest, digest)
+    expected_excluded = {
+        "documents-01": ["book-b:p65:c1"],
+        "documents-02": ["book-a:p66:c1"],
+        "documents-06": ["book-b:p65:c1", "book-lantern-festival:p1:c1"]}
+    for case in cases:
+        if case["case_id"] not in expected_excluded:
+            continue
+        observation = r.worker(root, token, case["case_id"])
+        result = evaluate_case(case, observation)
+        assert result["filter_case"] == 1 and result["scope_pair"]["pass"]
+        assert result["scope_pair"]["retained_gold"] == len(case["relevant_ids"])
+        assert observation["scope_evidence"]["excluded_ids"] == expected_excluded[case["case_id"]]
+        assert observation["scope_evidence"]["retained_gold_ids"] == sorted(case["relevant_ids"])
+        assert observation["stable_rankings"] and len(observation["warm_ms"]) == 5
 
 
 def test_worker_timeout_does_not_export_stderr_or_root(monkeypatch):
