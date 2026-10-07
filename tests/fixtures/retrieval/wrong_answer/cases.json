@@ -1,0 +1,309 @@
+[
+  {
+    "case_id": "wrong_answer-01",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "1/2 + 1/3",
+    "query_type": [
+      "exact_error"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-02",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "分母",
+    "query_type": [
+      "concept"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions",
+      "wrong:equal-parts"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3,
+      "wrong:equal-parts": 2
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      },
+      "wrong:equal-parts": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ],
+      "wrong:equal-parts": [
+        "分母不能直接相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-03",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "等分单位",
+    "query_type": [
+      "cause"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions",
+      "wrong:equal-parts"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3,
+      "wrong:equal-parts": 2
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      },
+      "wrong:equal-parts": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ],
+      "wrong:equal-parts": [
+        "分母不能直接相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-04",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "2/3 + 1/6",
+    "query_type": [
+      "similar_error"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:equal-parts"
+    ],
+    "relevance_grades": {
+      "wrong:equal-parts": 3
+    },
+    "expected_locators": {
+      "wrong:equal-parts": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:equal-parts": [
+        "分母不能直接相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-05",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "Latest denominator analysis",
+    "query_type": [
+      "latest_analysis"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-06",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "分母",
+    "query_type": [
+      "time_range"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions",
+      "wrong:equal-parts"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3,
+      "wrong:equal-parts": 2
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      },
+      "wrong:equal-parts": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ],
+      "wrong:equal-parts": [
+        "分母不能直接相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": [
+        "2026-01-01T00:00:00Z",
+        "2026-01-03T00:00:00Z"
+      ],
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-07",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "1/2",
+    "query_type": [
+      "same_image_different_question_answer"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "wrong:fractions"
+    ],
+    "relevance_grades": {
+      "wrong:fractions": 3
+    },
+    "expected_locators": {
+      "wrong:fractions": {
+        "source_id": "shared-image",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "wrong:fractions": [
+        "分母代表等分单位，先通分再相加"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "wrong_answer-08",
+    "domain": "wrong_answer",
+    "path": "wrong_answer",
+    "query": "p15_absent_crystal_penguin",
+    "query_type": [
+      "no_result"
+    ],
+    "should_have_result": false,
+    "relevant_ids": [],
+    "relevance_grades": {},
+    "expected_locators": {},
+    "expected_support": {},
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  }
+]
