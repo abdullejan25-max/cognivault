@@ -677,6 +677,10 @@ class Gateway:
         from .recovery.service import plan
         return plan(self)
 
+    def recovery_snapshot_status(self, snapshot_key, expected_manifest_sha256=None):
+        from .recovery.status import status
+        return status(self, snapshot_key, expected_manifest_sha256)
+
     def create_recovery_snapshot(self, snapshot_key):
         from .recovery.service import create
         return create(self, snapshot_key)

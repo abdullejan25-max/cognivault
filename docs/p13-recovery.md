@@ -5,6 +5,13 @@ Hosts do not discover recovery tools. Data locations come from trusted private
 configuration; tools accept a bounded snapshot key, never arbitrary paths.
 Keep configuration, snapshots, restores, manifests and receipts outside Git.
 
+`recovery_snapshot_status(snapshot_key=..., expected_manifest_sha256=...)`
+provides bounded read-only metadata reconciliation for administrators. Its
+`published_unverified` state and `metadata_consistent` flag do not prove payload
+integrity; explicitly call `verify_recovery_snapshot(..., restore=false)` for
+that proof. Owner remains unknown and automatic resume is unsupported. P16 is
+PARTIAL; see the [finite recovery contract](research/p16-finite-recovery-contract.md).
+
 ```toml
 [recovery]
 root = "<ABSOLUTE_PRIVATE_RECOVERY_ROOT>"
