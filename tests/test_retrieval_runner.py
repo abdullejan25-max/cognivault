@@ -127,6 +127,73 @@ def test_real_qmd_owned_runtime_integration_only():
     assert state["qmd_version"] == "2.8.3" and state["node_version"].startswith("v")
 
 
+def test_real_qmd_incremental_and_fresh_rebuild_equal_hits_and_worker_stability():
+    """Acceptance of existing QMD behavior; no gold queries or production index."""
+    import os
+    import subprocess
+    from dataclasses import replace
+    from cognivault.adapters.study_qmd import QmdStudyBackend
+    node, cli = os.environ.get("P15_TEST_QMD_NODE"), os.environ.get("P15_TEST_QMD_CLI")
+    if not node or not cli:
+        pytest.skip("Explicit real QMD runtime not supplied")
+    r = runner()
+    manifest, _, digest = r.load_fixture()
+    root, token = r.create_root(digest)
+    state = r.prepare(root, token, manifest, digest, node, cli)
+    assert state["qmd_ready"], state.get("qmd_setup_error")
+    runtime = r.qmd_runtime(root, state)
+    query = "p15_consistency_amber_whale"
+    first = root / "study" / "consistency-first.md"
+    first.write_text(query + " invented initial evidence", encoding="utf-8")
+
+    def update(target):
+        argv, environment = target.command_and_environment(root / "study")
+        completed = subprocess.run(argv + ["update"], env=environment, cwd=target.cwd,
+            shell=False, capture_output=True, encoding="utf-8", timeout=120)
+        assert completed.returncode == 0, "Owned synthetic index update failed"
+
+    update(runtime)
+    gateway = r.gateway_for(root, state)
+    before = gateway.search_study(query, 10)
+    assert len(before["results"]) == 1
+    # Change existing authored text and add a second authored file; preserve both.
+    first.write_text(query + " invented revised evidence", encoding="utf-8")
+    (root / "study" / "consistency-second.md").write_text(query + " invented second evidence", encoding="utf-8")
+    update(runtime)
+    incremental = gateway.search_study(query, 10)
+    assert len(incremental["results"]) == 2
+    fresh_root = root / "qmd-rebuild"
+    for name in ("work", "index", "config", "cache", "home", "userprofile"):
+        (fresh_root / name).mkdir(parents=True)
+    (fresh_root / "config" / "index.yml").write_text(
+        (runtime.config_dir / "index.yml").read_text(encoding="utf-8"), encoding="utf-8")
+    fresh = replace(runtime, runtime_root=fresh_root, cwd=fresh_root / "work",
+        index_path=fresh_root / "index" / "index.sqlite", config_dir=fresh_root / "config",
+        cache_dir=fresh_root / "cache", home_dir=fresh_root / "home", userprofile_dir=fresh_root / "userprofile")
+    update(fresh)
+    rebuilt_gateway = r.Gateway(gateway.config, QmdStudyBackend(gateway.config, runtime=fresh, timeout_seconds=60))
+    rebuilt = rebuilt_gateway.search_study(query, 10)
+    assert {row["source_path"] for row in incremental["results"]} == {row["source_path"] for row in rebuilt["results"]}
+    # Real fresh worker uses the prebuilt incremental index and repeats five times.
+    import json
+    program = """import json,sys
+from pathlib import Path
+import retrieval_runner as r
+root=Path(sys.argv[1]); state=json.loads((root/'state.json').read_text())
+gateway=r.gateway_for(root,state)
+print(json.dumps([gateway.search_study(sys.argv[2],10)['results'] for _ in range(6)]))
+"""
+    environment = dict(os.environ, PYTHONPATH=str(r.REPO / "scripts") + os.pathsep + str(r.REPO / "src"),
+                       PYTHONIOENCODING="utf-8", PYTHONUTF8="1")
+    child = subprocess.run([sys.executable, "-c", program, str(root), query], env=environment,
+        shell=False, capture_output=True, encoding="utf-8", timeout=180)
+    assert child.returncode == 0, "Owned synthetic fresh-worker search failed"
+    samples = json.loads(child.stdout)
+    rankings = [[row["source_path"] for row in sample] for sample in samples]
+    assert len(rankings) == 6 and len(rankings[0]) == 2
+    assert all(ranking == rankings[0] for ranking in rankings[1:])
+
+
 def test_report_manifest_roundtrip_and_frozen_unsupported_even_on_worker_failure(monkeypatch):
     import evaluate_retrieval as cli
     monkeypatch.setattr(cli, "prepare", lambda *args: {"qmd_ready": False})
