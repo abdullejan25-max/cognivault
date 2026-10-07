@@ -124,7 +124,7 @@ def test_payload_corruption_and_no_payload_sqlite_calls(tmp_path,monkeypatch):
     g=published(tmp_path);(g.config.recovery_root/'snapshots/example/payload/study/invented.txt').write_bytes(b'bad')
     before=tree(g.config.recovery_root)
     with monkeypatch.context() as m:
-        for name in ('plan','snapshot','check_payload','history_proof','restored_gateway','sqlite_proof','inventory'):
+        for name in ('plan','create','verify','snapshot','check_payload','history_proof','restored_gateway','sqlite_proof','inventory','files'):
             m.setattr(service,name,lambda *a,**k: pytest.fail('status touched payload/SQLite'))
         m.setattr(service.sqlite3,'connect',lambda *a,**k:pytest.fail('SQLite opened'))
         assert observe(g)['metadata_consistent']
