@@ -80,6 +80,8 @@ TDD：新增native scope tests首先19 failed（missing kwargs / MCP schema）�
 
 采用依据：三个冻结case的具体不可表达scope已被原生合同覆盖，排除4个越范围命中且保留4/4gold；共同23case质量/定位/排序没有回退，既有capacity安全仍拒绝。没有排名或索引改善证据，不另加候选，不改gold，不优化Study/WA排序，不扩展chapter/date。生产与native Host效果仍UNKNOWN，合成scope结果不外推真实教材质量。
 
+后续独立 review 发现：forced MCP 调用中的显式 `source_ids: null` / `page_range: null` 被 handler 当作省略字段，可能扩大范围。修复仅在 MCP handler 调用 Gateway 前拒绝显式 null（`INVALID_ARGUMENT`），保持 Python optional-None 与 MCP 省略字段兼容；实际 MCP 五种 null 组合的 backend 零调用测试由5 failed转为通过，连同 schema/权限/兼容回归共7 passed。上述 `6d4b5b5` 冻结测量与原始 raw 保留，表示合法输入的候选结果；它不包含此后修复或最终 HEAD 验证，后者由 root 单独记录。
+
 ## 共同集合的原始分母与定位计数
 
 以下从两份raw按baseline supported IDs选择23case后使用未改scorer汇总；质量/locator两侧完全相等，仅latency不同。省略latency（上文相同case集合比较，完整samples在外部raw）。不混入新增case，不改旧P15文档。

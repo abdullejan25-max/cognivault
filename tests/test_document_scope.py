@@ -110,3 +110,37 @@ def test_actual_mcp_schema_and_forced_calls(scoped):
             assert forced.isError
             assert forced.structuredContent["error"]["code"] == "PERMISSION_DENIED"
     anyio.run(check)
+
+
+@pytest.mark.parametrize("scopes", [
+    {"source_ids": None}, {"page_range": None},
+    {"source_ids": None, "page_range": None},
+    {"source_ids": ["document://sha256/" + "0" * 64], "page_range": None},
+    {"source_ids": None, "page_range": [1, 1]},
+])
+def test_forced_mcp_null_scope_rejected_before_backend(scoped, monkeypatch, scopes):
+    store, gateway, _, _ = scoped
+    calls = []
+    native_search = store.search
+
+    def tracked_search(*args, **kwargs):
+        calls.append((args, kwargs))
+        return native_search(*args, **kwargs)
+
+    monkeypatch.setattr(store, "search", tracked_search)
+
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
+            response = await client.call_tool("search_documents", {"query": "needle", **scopes})
+            # Backend dispatch itself is forbidden for malformed supplied scope.
+            assert calls == []
+            assert response.isError
+            assert response.structuredContent["error"]["code"] == "INVALID_ARGUMENT"
+            assert "results" not in response.structuredContent
+    anyio.run(check)
+
+
+def test_python_optional_none_remains_compatible(scoped):
+    store, gateway, _, _ = scoped
+    assert store.search("needle", source_ids=None, page_range=None) == store.search("needle")
+    assert gateway.search_documents("needle", source_ids=None, page_range=None) == gateway.search_documents("needle")

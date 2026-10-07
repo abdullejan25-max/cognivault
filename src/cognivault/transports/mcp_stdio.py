@@ -610,6 +610,10 @@ def create_mcp_server(gateway: Gateway) -> Server:
             if name == "search_documents":
                 if set(arguments) - {"query", "limit", "offset", "source_ids", "page_range"} or "query" not in arguments:
                     raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")
+                # Input schema validation is disabled at this handler boundary.
+                # Supplied JSON null must not become the Python API's omitted scope.
+                if any(field in arguments and arguments[field] is None for field in ("source_ids", "page_range")):
+                    raise GatewayError("INVALID_ARGUMENT", "Invalid document scope")
                 return {"ok": True, **gateway.search_documents(arguments["query"], arguments.get("limit", 5),
                                                                 arguments.get("offset", 0),
                                                                 source_ids=arguments.get("source_ids"),
