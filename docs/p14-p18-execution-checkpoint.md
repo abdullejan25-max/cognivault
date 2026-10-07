@@ -1,6 +1,6 @@
 # CogniVault 自主开发 checkpoint
 
-更新时间：2026-10-07 16:55 Asia/Shanghai。执行依据：[三天计划](superpowers/plans/2026-10-07-three-day-autonomous-development.md)及用户 2026-10-07 自主开发总指令。
+更新时间：2026-10-07 17:15 Asia/Shanghai。执行依据：[三天计划](superpowers/plans/2026-10-07-three-day-autonomous-development.md)及用户 2026-10-07 自主开发总指令。
 
 ## Repository
 
@@ -18,11 +18,11 @@
 | P14 复用审查 | DONE | `4957a75`、`f5a843c`；文件级地图独立 spec/quality review 通过 |
 | 页码合同 / discovery | DONE（窄范围） | `ae6e34f`；RED 4 failed / 8 passed → GREEN 12 passed → 相关回归 93 passed / 1 skipped；独立 review 通过 |
 | 下游 projection 页码 | DONE | `ca510d2`；RED 65/999 失败，GREEN 29 passed；相关回归 67 passed / 1 skipped；独立 spec/quality review 通过 |
-| P15 gold / evaluator | PARTIAL（等待独立 review） | gold `64a5f19`、实现至 `854e673`；32 cases / 4 域，23 passed 含 QMD 2.8.3 sentinel；尚未跑质量 baseline |
-| P15 baseline | 尚未开始 | 不优化搜索；记录 raw rankings、分母、coverage、cold/warm、errors |
-| P16 recovery | 尚未开始 | 先规格和故障 tests；只 status/reconciliation，未知 owner 不接管 |
-| P17 retrieval | DEFERRED | 等 P15 实测决定，零范围泄漏或可重复排名收益 |
-| P18 / Phase B | 尚未开始 | 已有 workflow 回读、工程巡检与精确 diff 验证 |
+| P15 gold / evaluator | DONE | `64a5f19` gold、实现至 `e8b2ee9`；独立 review 通过；28 passed 含中文 worker 回归 / QMD sentinel |
+| P15 baseline | PARTIAL（等待独立 review） | `4f0c120`；固定 `a663156` 实测：32 cases / supported23 / unsupported8 / capacity合同1通过；29 passed 含增量、重建与cold/warm一致性 |
+| P16 recovery | 正在开始 | Astra 安全设计：只元数据 status，不读取payload；owner unknown、resume unsupported、integrity not_verified |
+| P17 retrieval | 待实施 | 已测得 documents01/02/06 范围缺口；单一source_ids/page_range候选，不引入索引引擎 |
+| P18 / Phase B | PARTIAL | `dfa7557`+`a663156` official workflow独立review通过；深路径receipt已确定性复现，修复待实施 |
 | Native Host | UNKNOWN | 直读 workflow：unknown MCP server；trust 无法核实，无绕过 |
 | Production | UNKNOWN | 无正式连接，未访问生产数据 |
 
@@ -43,3 +43,9 @@ Task 2 第一轮相关回归有两个 ingestion receipt `STORAGE_UNAVAILABLE`；
 ## P15 评分器验证
 
 Fixture revision `p15-synthetic-1`，SHA-256 `07ebc25e54c2003c24913fa5dbe8603d1a8b85a3fb681c7e65be6d7b82a4e8ad`。人工 gold 在查询前单独提交；评分保留 errors/timeouts 的零分分母，unsupported 与 capacity probe 分组，source-only 不混入 canonical History 宏平均。16 canonical + 1 source-only 均由 Gateway 导入并回读；未读取生产。Cold 指新进程 first request，不称 OS cache cold；warm 5 次。下一安全动作为独立 reviewer 通过后运行 Task4 固定 baseline。
+
+## P15 有效基线与修复
+
+首轮 baseline 因 Windows child输出cp936/父UTF8解码失败中断，不计质量；`e8b2ee9` 实际中文subprocess RED5fail→GREEN5pass，P15定向28passed，独立review通过。readback失败保留native命中/query-only耗时但质量仍0。最终基线实测code `a663156`、raw SHA-256 `a26d711596f63658858c057d668fcd711fad1c8b6432167e86ef35b161de963d`，cold32/warm160。四域宏Recall@10=0.95、MRR@10=0.908333；otherwise-supported errors0。Root 独立从gold/raw重算所有eligible正例Recall/MRR，无不一致。完整分母/定位/32case/原samples见[P15报告](research/p15-retrieval-baseline.md)。两个gold都前二时R1=.5不叫排名bug。Documents06是来源+页码范围，不是chapter；chapter缺口在Study07。
+
+错题保存流程增加独立bundle回读、partial复用和revision≠attempt；review发现本次save失败不能推断没有已存analysis，`a663156` 修正并复审Approved。PhaseB receipt路径234字符成功，265/305/346失败errno2；authority已提交且Gatewayverify通过，短路径retry复用。仅extended物理路径对照3/3成功，尚未实施，不称真实数据损坏。下一安全动作：P16规格/故障tests/status，然后采用或拒绝P17测得候选、receipt窄修复与统一最终验证。
