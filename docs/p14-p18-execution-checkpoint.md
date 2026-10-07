@@ -1,6 +1,6 @@
 # CogniVault 自主开发 checkpoint
 
-更新时间：2026-10-07 22:12 Asia/Shanghai。执行依据：[三天计划](superpowers/plans/2026-10-07-three-day-autonomous-development.md)及用户 2026-10-07 自主开发总指令。
+更新时间：2026-10-07 22:34 Asia/Shanghai。执行依据：[三天计划](superpowers/plans/2026-10-07-three-day-autonomous-development.md)及用户 2026-10-07 自主开发总指令。
 
 ## Repository
 
@@ -21,8 +21,8 @@
 | P15 gold / evaluator | DONE | `64a5f19` gold、实现至 `e8b2ee9`；独立 review 通过；28 passed 含中文 worker 回归 / QMD sentinel |
 | P15 baseline | DONE | `4f0c120`；独立 review核验raw hash/32case/定位指标与原samples通过，基线 supported23 / unsupported8 / capacity合同1通过 |
 | P16 recovery | PARTIAL | `006d155`规格先行、实现`4275eb9`/`358d3a0`、分类修正`2f293d2`；Astra安全审查/修正复审通过；owner unknown、resume unsupported、integrity not_verified |
-| P17 retrieval | DEFERRED（下一工作包） | 已测得 documents01/02/06 范围缺口；单一source_ids/page_range候选，不引入索引引擎 |
-| P18 / Phase B | PARTIAL | `dfa7557`+`a663156` official workflow独立review通过；深路径receipt已确定性复现，修复待实施 |
+| P17 retrieval | DONE（合成promotion） | code `6d4b5b5` / report `d2c5389` / null guard `b99e4d9`；3新scope通过，gold4/4、outside0/4、common23不回退，独立review/修正复审通过 |
+| P18 / Phase B | DONE（窄范围） | official workflow回读及CI配置审查通过；receipt `f6714bb` RED1→GREEN1，14相关tests通过，独立review通过；最终CI待运行 |
 | Native Host | UNKNOWN | 直读 workflow：unknown MCP server；trust 无法核实，无绕过 |
 | Production | UNKNOWN | 无正式连接，未访问生产数据 |
 
@@ -55,3 +55,11 @@ Fixture revision `p15-synthetic-1`，SHA-256 `07ebc25e54c2003c24913fa5dbe8603d1a
 P16 status规格commit `006d155` 在代码前；新测试30passed。联合77tests：68passed / 9failed（全部既有restore_capacity保护，当前C卷约2.4GiB不足4GiB保留量），不冒领绿。`2f293d2` 数值1e400分类修正RED1fail→GREEN13passed/18deselected；AstraMedium独立Approve并复审修正Approve。读取元数据不调用plan/create/verify/payload/SQLite、不创建文件；元数据自洽不是完整性PASS，targetbinding不可用，worker未知不接管。P16整体PARTIAL，自动publish/resume没有实现。
 
 `4b02a95` 将WindowsCI配置从selected扩展为safe synthetic full suite，保留原lock/build/privacy/isolated install；独立结构reviewApprove（没有YAMLparser验证，GitHub最终执行待做）。本机仅C卷，不清理未知dirs/不降容量guard。临时venv第二次python launcher缺失，原因UNKNOWN，日志仍在；按uv.lock在本任务专属非Temp外置位置重建并核Python3.12.8/MCP1.30.0/pypdf6.19.0/pytest9.1.1。原baselineraw/logs另存任务专属证据副本，hash不变。下一节点：P17一个scope候选实测promotion、receipt窄修复、最终完整验证/基线重跑/总review/精确HEAD跨平台CI和报告。
+
+## 实现收口与最终验证 gate
+
+P17 codefreeze `6d4b5b5` 实测新增scope3/3、排除4条范围外、保留gold4/4、returnedoutside0/4；共同23case全部ranking/quality/locator不变，commonDocument20warm样本P95 35.649→32.693ms，不宣称提速收益。新增supported26/32，其余5unsupported/1capacity合同，未改gold/评分器；比较报告[见P17](research/p17-retrieval-comparison.md)。Review发现MCP显式null会省略范围；`b99e4d9` 强制5组合RED→GREEN7passed/19deselected，Gateway零调用，独立复审Approve；原有效输入测量保留。
+
+PhaseB `f6714bb` 来源receipt用Windowsextended物理mkdir/reparse/open；315字符真实RED来源已提交且Gateway读回完整，GREEN firstimported/secondreused，相关14passed（真实junction/hardlink/排他碰撞/normalization回执兼容）。逻辑receipt/hash/provenance/idempotency/权限/allowlist/xb/fsync不变，独立reviewApprove。UNC未实测。
+
+实现阶段收口；未push/merge/tag/release。当前下一节点仅：最终固定gold基准重跑、安全合成全集（保留本机容量限制实际结果）、uvlock/diff、wheel/sdist/privacy/isolatedinstall、全分支Astra独立review、最终exactHEAD跨平台CI与最终报告。上述最终验证现在仍未完成，不能称release-ready。
