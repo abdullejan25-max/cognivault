@@ -17,8 +17,8 @@
 |---|---|---|
 | P14 复用审查 | DONE | `4957a75`、`f5a843c`；文件级地图独立 spec/quality review 通过 |
 | 页码合同 / discovery | DONE（窄范围） | `ae6e34f`；RED 4 failed / 8 passed → GREEN 12 passed → 相关回归 93 passed / 1 skipped；独立 review 通过 |
-| 下游 projection 页码 | 尚未开始 | review 确认 renderer 仍限制 64；单独对齐 MAX_PAGES 并做 RED/GREEN，不把窄修复冒充完整链路 |
-| P15 gold / evaluator | 尚未开始 | 32 完全人工 cases，每 relevant ID 独立 locator/support；先 gold 再查询 |
+| 下游 projection 页码 | DONE | `ca510d2`；RED 65/999 失败，GREEN 29 passed；相关回归 67 passed / 1 skipped；独立 spec/quality review 通过 |
+| P15 gold / evaluator | 正在开始 | 32 完全人工 cases，每 relevant ID 独立 locator/support；先提交冻结 gold，再查询 |
 | P15 baseline | 尚未开始 | 不优化搜索；记录 raw rankings、分母、coverage、cold/warm、errors |
 | P16 recovery | 尚未开始 | 先规格和故障 tests；只 status/reconciliation，未知 owner 不接管 |
 | P17 retrieval | DEFERRED | 等 P15 实测决定，零范围泄漏或可重复排名收益 |
