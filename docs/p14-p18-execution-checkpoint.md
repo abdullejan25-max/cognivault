@@ -15,8 +15,9 @@
 
 | 工作包 | 状态 | 证据 / 下一步 |
 |---|---|---|
-| P14 复用审查 | DONE（待独立 review） | [候选地图](research/p14-candidate-reuse-review.md)；精确 Git slices 已复核 |
-| 页码合同 / discovery | 尚未开始 | 先写 RED regression，再窄修复；page 64/65/999/1000 与四种权限矩阵 |
+| P14 复用审查 | DONE | `4957a75`、`f5a843c`；文件级地图独立 spec/quality review 通过 |
+| 页码合同 / discovery | DONE（窄范围） | `ae6e34f`；RED 4 failed / 8 passed → GREEN 12 passed → 相关回归 93 passed / 1 skipped；独立 review 通过 |
+| 下游 projection 页码 | 尚未开始 | review 确认 renderer 仍限制 64；单独对齐 MAX_PAGES 并做 RED/GREEN，不把窄修复冒充完整链路 |
 | P15 gold / evaluator | 尚未开始 | 32 完全人工 cases，每 relevant ID 独立 locator/support；先 gold 再查询 |
 | P15 baseline | 尚未开始 | 不优化搜索；记录 raw rankings、分母、coverage、cold/warm、errors |
 | P16 recovery | 尚未开始 | 先规格和故障 tests；只 status/reconciliation，未知 owner 不接管 |
@@ -32,3 +33,9 @@
 微信始终 SKIP_WECHAT；原始用户资料保护；无 ownership 证明不删除；原始 authority/provenance/identity/version/capability 保持兼容；真实数据只经 Gateway。允许派生重建不等于允许 direct SQLite 或碰原始文件。不得 bulk cherry-pick、自动 merge/tag/release。生产/Host blocker 不阻止合成工程。
 
 每个重要节点更新本文件：commits、修改文件、RED/GREEN 命令与结果、fixture revision/hash、review、失败/阻断/延后、新问题、next safe action。最终汇总写入 `docs/checkpoints/2026-10-10-autonomous-development-report.md`，报告实际完成时间，不伪称持续运行了 72 小时。
+
+## 新发现与接续
+
+Task 2 第一轮相关回归有两个 ingestion receipt `STORAGE_UNAVAILABLE`；较短路径用例通过，缩短新增 fixture inbox 后全组通过。原始 errno 尚未确认，属于待复现路径风险，不能宣称已修复 Windows 长路径。保留该次失败证据，后续工程巡检用独立 fixture 判断。Task2 当前修改文件为 wrong-answer adapter、MCP transport 及 wrong-answer/permission/canonical tests，未涉及 migration 代码。
+
+外置预审 venv 的 python launcher 已不存在，按当前 uv.lock 重新建立本轮独立 dev 环境（Python3.12.8、MCP1.30.0、pytest9.1.1）；pytest 从当前仓库读取 src，避免已安装旧 wheel 代替当前实现。
