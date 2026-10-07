@@ -10,6 +10,7 @@ import pytest
 from mcp.shared.memory import create_connected_server_and_client_session
 
 from cognivault.adapters.documents import SQLiteDocumentStore
+from cognivault.adapters.history import SQLiteHistoryBackend
 import cognivault.adapters.documents as documents_adapter
 from cognivault.config import AppConfig
 from cognivault.contracts import GatewayError
@@ -75,6 +76,32 @@ def test_ingest_capability_exposes_document_ingestion_but_not_analysis_write(tmp
             assert {"register_asset", "ingest_documents", "process_document_ocr_pages"} <= names
             assert "register_wrong_answer_source" not in names
             assert "save_wrong_answer_analysis" not in names
+
+    anyio.run(check)
+
+
+@pytest.mark.parametrize("capabilities", [frozenset({"read"}), frozenset({"ingest"})])
+def test_normalization_discovery_requires_read_and_ingest_without_creating_database(tmp_path, capabilities):
+    database = tmp_path / "synthetic-history.sqlite3"
+    inbox = tmp_path / "synthetic-inbox"
+    inbox.mkdir()
+    gateway = Gateway(
+        AppConfig("0.6.0", history_database=database, history_migration_inbox=inbox),
+        None, SQLiteHistoryBackend(database), capabilities=capabilities,
+        qmd_discoverable=lambda: False,
+    )
+
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
+            names = {tool.name for tool in (await client.list_tools()).tools}
+            denied = await client.call_tool("normalize_history_sources", {"source_set_sha256": "0" * 64})
+            assert denied.isError is True
+            assert denied.structuredContent["error"]["code"] == "PERMISSION_DENIED"
+            assert not database.exists()
+            assert list(inbox.iterdir()) == []
+            assert "normalize_history_sources" not in names
+        assert not database.exists()
+        assert list(inbox.iterdir()) == []
 
     anyio.run(check)
 

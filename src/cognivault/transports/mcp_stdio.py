@@ -372,11 +372,12 @@ def create_mcp_server(gateway: Gateway) -> Server:
         from .recovery_tools import recovery_tools
         tools.extend(recovery_tools(gateway,read_only,write_only))
         ingest_tools = {"register_asset", "ingest_documents", "ingest_document_file", "ingest_history_sources",
-                        "process_document_ocr_pages"}
+                        "process_document_ocr_pages", "normalize_history_sources"}
         write_tools = {"register_wrong_answer_source", "save_wrong_answer_analysis",
                        "update_wrong_answer_analysis"}
         projection_tools = {"projection_snapshot"}
-        read_tools = {tool.name for tool in tools} - ingest_tools - write_tools - projection_tools
+        read_tools = ({tool.name for tool in tools} - ingest_tools - write_tools - projection_tools) \
+            | {"normalize_history_sources"}
         capabilities = getattr(gateway, "capabilities", frozenset({"read"}))
         return [tool for tool in tools
                 if (tool.name not in read_tools or "read" in capabilities or "admin" in capabilities)
