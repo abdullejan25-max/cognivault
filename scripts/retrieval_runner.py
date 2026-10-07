@@ -225,6 +225,8 @@ def unsupported_filters(case):
 
 def sample_query(gateway, case, state):
     start = time.perf_counter()
+    raw, query_ms = None, None
+    ranking, readbacks = [], []
     try:
         domain = case["domain"]
         if domain == "history":
@@ -235,7 +237,7 @@ def sample_query(gateway, case, state):
         query_ms = (time.perf_counter() - start) * 1000
         rows = raw.get("results", raw.get("sources", raw.get("conversations", [])))
         reverse = {native: alias for alias, native in state["aliases"].items()}
-        ranking, readbacks = [], []
+        # Bind every native search hit before any evidence readback can fail.
         for row in rows:
             evidence = row.get("snippet", "")
             if domain == "study":
@@ -244,33 +246,43 @@ def sample_query(gateway, case, state):
             elif domain == "documents":
                 native = row["chunk_uri"]
                 locator = {"source_id": reverse.get(row["document_uri"], row["document_uri"]), "page_number": row["page_number"], "chapter_id": None, "section": row["section"]}
-                if "original_asset_source" in case.get("query_type", []):
-                    readbacks.extend([gateway.fetch_document(row["document_uri"]),
-                        gateway.fetch_document_page(row["document_uri"], row["page_number"]),
-                        gateway.fetch_asset(row["source_asset_uri"], length=1024)])
             elif domain == "wrong_answer":
                 native = row["source_id"]
                 locator = {"source_id": reverse.get(row["source_uri"], row["source_uri"]), "page_number": row.get("page_number"), "chapter_id": None}
-                # Search evidence may include latest analysis; retain bundle as explicit readback.
                 evidence = json.dumps(row, ensure_ascii=False)
-                bundle = gateway.get_wrong_answer_bundle(native)
-                readbacks.append(bundle)
-                latest = max(bundle["analyses"], key=lambda analysis: analysis["version"], default=None)
-                evidence += "\n" + json.dumps(latest, ensure_ascii=False)
             elif case.get("path") == "source_only":
                 native = row["source_id"]
                 locator = {"source_id": reverse.get(native, native), "page_number": None, "chapter_id": None, "source_system": row["source_system"]}
-                # source-only aliases share native ID: select unit alias independently from alias bindings.
-                readback = gateway.fetch_history_source(native)
-                readbacks.append(readback)
-                evidence = base64.b64decode(readback["content_base64"]).decode()
             else:
                 native = row["conversation_id"]
+                # Canonical search exposes no source locator; readback supplies it.
+                locator = {"source_id": None,
+                           "page_number": None, "chapter_id": None, "source_system": row["source_system"]}
+            alias = reverse.get(native, native)
+            if domain == "history" and case.get("path") == "source_only":
+                alias = next((a for a, value in state["aliases"].items() if a.startswith("source-only:") and value == native), alias)
+                locator["source_id"] = next((a for a, value in state["aliases"].items() if a.startswith("history-source:") and value == native), locator["source_id"])
+            ranking.append({"id": alias, "native_id": native, "locator": locator, "evidence": evidence})
+        for row, hit in zip(rows, ranking):
+            native = hit["native_id"]
+            if domain == "documents" and "original_asset_source" in case.get("query_type", []):
+                readbacks.append(gateway.fetch_document(row["document_uri"]))
+                readbacks.append(gateway.fetch_document_page(row["document_uri"], row["page_number"]))
+                readbacks.append(gateway.fetch_asset(row["source_asset_uri"], length=1024))
+            elif domain == "wrong_answer":
+                bundle = gateway.get_wrong_answer_bundle(native)
+                readbacks.append(bundle)
+                latest = max(bundle["analyses"], key=lambda analysis: analysis["version"], default=None)
+                hit["evidence"] += "\n" + json.dumps(latest, ensure_ascii=False)
+            elif domain == "history" and case.get("path") == "source_only":
+                readback = gateway.fetch_history_source(native)
+                readbacks.append(readback)
+                hit["evidence"] = base64.b64decode(readback["content_base64"]).decode()
+            elif domain == "history":
                 fetched = gateway.fetch_canonical_conversation(native)
                 readbacks.append(fetched)
                 source_ids = {view["source_id"] for view in fetched["views"]}
-                locator = {"source_id": reverse.get(next(iter(source_ids)), next(iter(source_ids))) if len(source_ids) == 1 else None,
-                           "page_number": None, "chapter_id": None, "source_system": row["source_system"]}
+                hit["locator"]["source_id"] = reverse.get(next(iter(source_ids)), next(iter(source_ids))) if len(source_ids) == 1 else None
                 excerpts = []
                 for view in fetched["views"]:
                     for message in view["messages"]:
@@ -278,15 +290,14 @@ def sample_query(gateway, case, state):
                         readbacks.append(message_readback)
                         payload = json.loads(base64.b64decode(message_readback["content_base64"]))
                         excerpts.extend(part["text"] for part in payload["parts"] if "text" in part)
-                evidence = "\n".join(excerpts)
-            alias = reverse.get(native, native)
-            if domain == "history" and case.get("path") == "source_only":
-                alias = next((a for a, value in state["aliases"].items() if a.startswith("source-only:") and value == native), alias)
-                locator["source_id"] = next((a for a, value in state["aliases"].items() if a.startswith("history-source:") and value == native), locator["source_id"])
-            ranking.append({"id": alias, "native_id": native, "locator": locator, "evidence": evidence})
+                hit["evidence"] = "\n".join(excerpts)
         return {"status": "ok", "ranking": ranking, "native_result": raw, "readbacks": readbacks,
                 "elapsed_ms": query_ms, "evidence_readback_ms": (time.perf_counter() - start) * 1000 - query_ms}
     except GatewayError as error:
+        if query_ms is not None:
+            return {"status": "error", "error": error.code, "readback_error": error.code,
+                    "query_status": "ok", "ranking": ranking, "native_result": raw, "readbacks": readbacks,
+                    "elapsed_ms": query_ms, "evidence_readback_ms": (time.perf_counter() - start) * 1000 - query_ms}
         return {"status": "error", "error": error.code, "ranking": [], "elapsed_ms": (time.perf_counter() - start) * 1000}
 
 
@@ -321,13 +332,21 @@ def worker(root, token, case_id):
 def invoke_worker(root, token, case_id, timeout=420):
     environment = {key: value for key, value in os.environ.items() if not key.startswith(("CODEX_HOST_E2E", "QMD_REAL_SMOKE_", "QMD_SMOKE_"))}
     environment["PYTHONPATH"] = str(REPO / "src")
+    # Parent decoding does not control the Windows child's pipe encoding.
+    environment["PYTHONIOENCODING"] = "utf-8"
+    environment["PYTHONUTF8"] = "1"
     try:
         completed = subprocess.run([sys.executable, str(REPO / "scripts" / "evaluate_retrieval.py"),
             "--worker", str(root), "--token", token, "--case-id", case_id], shell=False,
             capture_output=True, text=True, encoding="utf-8", timeout=timeout, env=environment)
         if completed.returncode:
             return {"status": "error", "error": "WORKER_FAILED", "ranking": [], "warm_ms": []}
-        return json.loads(completed.stdout)
+        if not isinstance(completed.stdout, str):
+            raise ValueError("Worker output is missing")
+        result = json.loads(completed.stdout)
+        if not isinstance(result, dict):
+            raise ValueError("Worker output is not an observation object")
+        return result
     except subprocess.TimeoutExpired:
         return {"status": "error", "error": "WORKER_TIMEOUT", "ranking": [], "warm_ms": []}
     except (ValueError, UnicodeError):

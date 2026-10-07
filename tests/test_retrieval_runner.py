@@ -170,3 +170,59 @@ def test_parent_keeps_actual_unscoped_diagnostic_status(monkeypatch):
     report = json.loads(cli.run().read_text(encoding="utf-8"))
     observed = next(case["observation"] for case in report["cases"] if case["case_id"] == "documents-01")
     assert observed["diagnostic_status"] == "ok"
+
+
+def test_real_chinese_worker_roundtrip_overrides_inherited_output_encoding(monkeypatch):
+    import subprocess
+    r = runner()
+    native_run = subprocess.run
+    monkeypatch.setenv("PYTHONIOENCODING", "cp936")
+    monkeypatch.setenv("PYTHONUTF8", "0")
+    program = "import json; print(json.dumps({'status':'ok','ranking':[{'evidence':'\\u5206\\u6bcd \\u00b7 \\u793a\\u4f8b'}]},ensure_ascii=False))"
+    def real_child(argv, **kwargs):
+        # Exercise real Python stdout bytes using exactly the runner's child environment.
+        return native_run([sys.executable, "-c", program], **kwargs)
+    monkeypatch.setattr(subprocess, "run", real_child)
+    result = r.invoke_worker(Path("C:/synthetic-private"), "token", "integration-only")
+    assert result["status"] == "ok"
+    assert result["ranking"][0]["evidence"] == "分母 · 示例"
+
+
+@pytest.mark.parametrize("stdout", [None, "null", "[]"])
+def test_none_or_nonobject_worker_output_is_conservative_error(monkeypatch, stdout):
+    import subprocess
+    r = runner()
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: subprocess.CompletedProcess(args, 0, stdout, "private"))
+    result = r.invoke_worker(Path("C:/synthetic-private"), "token", "integration-only")
+    assert result == {"status": "error", "error": "WORKER_BAD_OUTPUT", "ranking": [], "warm_ms": []}
+
+
+def test_readback_failure_preserves_all_search_hits_and_query_only_timing(monkeypatch):
+    r = runner()
+    rows = [{"chunk_uri": "native-one", "document_uri": "native-book", "page_number": 65,
+             "section": "Invented", "snippet": "Invented one", "source_asset_uri": "native-asset"},
+            {"chunk_uri": "native-two", "document_uri": "native-book", "page_number": 66,
+             "section": "Invented", "snippet": "Invented two", "source_asset_uri": "native-asset"}]
+    raw = {"results": rows}
+    class NativeShape:
+        def search_documents(self, query, limit):
+            return raw
+        def fetch_document(self, uri):
+            return {"document": {"document_uri": uri}}
+        def fetch_document_page(self, uri, page):
+            raise r.GatewayError("INTERNAL_ERROR", "private diagnostic excluded")
+    clock_values = iter([0, .01, 1.01])
+    monkeypatch.setattr(r.time, "perf_counter", lambda: next(clock_values))
+    observed = r.sample_query(NativeShape(), {"domain": "documents", "query": "probe",
+        "query_type": ["original_asset_source"], "filters": {}}, {"aliases": {
+        "book-a": "native-book", "book-a:p65:c1": "native-one", "book-a:p66:c1": "native-two"}})
+    assert observed["status"] == "error" and observed["readback_error"] == "INTERNAL_ERROR"
+    assert observed["query_status"] == "ok" and observed["native_result"] == raw
+    assert [hit["id"] for hit in observed["ranking"]] == ["book-a:p65:c1", "book-a:p66:c1"]
+    assert observed["elapsed_ms"] == 10 and observed["evidence_readback_ms"] == 1000
+    assert observed["readbacks"] == [{"document": {"document_uri": "native-book"}}]
+    # The retained diagnostic ranking never earns retrieval quality credit on error.
+    import retrieval_metrics
+    from test_retrieval_evaluation import gold
+    score = retrieval_metrics.evaluate_case(gold(), observed)
+    assert score["recall@10"] == score["mrr@10"] == 0 and not score["empty_prediction"]

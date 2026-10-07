@@ -30,3 +30,5 @@ Cold 是每 case 一个 fresh Python worker 的第一条 Gateway query，索引�
 人工错误样例验证：rank `[b65, a65, a65]`，gold `{a65,a66}`，Recall@1=0/2，Recall@3=1/2，MRR@10=1/2，returned source correctness=1/2，source/page/citation case correctness均0/1。positive 假空 + negative 真空产生 no-result precision=1/2；另一个 negative timeout 保留 negative empty recall=1/2，不被记为空。
 
 Task 4 填写实际 baseline 的 commit、版本/profile manifest、32 case 分母、unsupported/error/contract coverage、定位缺口与 latency，并给出 raw result.json 的 Git 外证据位置。当前无依据调整 backend，也无依据宣称生产检索质量。
+
+Task 3b 修正 Windows worker 的输出协议：child 显式 `PYTHONIOENCODING=utf-8` / `PYTHONUTF8=1`，覆盖继承的 cp936；缺失 stdout 或非 object JSON 记 `WORKER_BAD_OUTPUT`。Search 成功但 evidence readback 失败时，保留所有 native ranking / result 与已成功的 readbacks，`elapsed_ms` 保持 query-only，失败 readback 耗时另记；case 仍显式 error、质量零分。新增真实中文 subprocess 回归先复现 readerthread UTF-8 decode failure / stdout None，修复后 P15 定向验证 **28 passed / 21.91s**（含真实 QMD synthetic sentinel）。Gold hash、算法与指标分母未改；首次失败 baseline 没有有效结果，应在新 owned runtime 重新运行。
