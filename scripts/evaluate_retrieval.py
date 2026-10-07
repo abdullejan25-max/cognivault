@@ -26,7 +26,8 @@ def run(qmd_node=None, qmd_cli=None):
         if case["domain"] == "study" and not state["qmd_ready"]:
             unsupported.append("real_qmd_runtime")
         if unsupported:
-            observation.update(diagnostic_status=observation["status"], status="unsupported", unsupported=unsupported)
+            observation.update(diagnostic_status=observation.get("diagnostic_status", observation["status"]),
+                               status="unsupported", unsupported=unsupported)
     results = [evaluate_case(case, observed) for case, observed in zip(cases, observations)]
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO, shell=False, capture_output=True,
                             text=True, timeout=10).stdout.strip()

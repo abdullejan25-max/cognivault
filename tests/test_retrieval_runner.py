@@ -161,3 +161,12 @@ def test_wrong_answer_evidence_does_not_use_superseded_analysis():
     assert "latest evidence" in sample["ranking"][0]["evidence"]
     assert "superseded evidence" not in sample["ranking"][0]["evidence"]
     assert len(sample["readbacks"][0]["analyses"]) == 2
+
+
+def test_parent_keeps_actual_unscoped_diagnostic_status(monkeypatch):
+    import evaluate_retrieval as cli
+    monkeypatch.setattr(cli, "prepare", lambda *args: {"qmd_ready": False})
+    monkeypatch.setattr(cli, "invoke_worker", lambda *args: {"status": "unsupported", "diagnostic_status": "ok", "ranking": [], "warm_ms": []})
+    report = json.loads(cli.run().read_text(encoding="utf-8"))
+    observed = next(case["observation"] for case in report["cases"] if case["case_id"] == "documents-01")
+    assert observed["diagnostic_status"] == "ok"

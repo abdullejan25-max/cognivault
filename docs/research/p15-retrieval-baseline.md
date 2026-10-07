@@ -25,7 +25,7 @@ Gold IDs 从 ingestion 返回值、确定性 native chunk identity、History `so
 
 Cold 是每 case 一个 fresh Python worker 的第一条 Gateway query，索引已建好；计时包含 Gateway query 和 QMD subprocess，不包含 fixture setup，不声称清空 OS cache。随后至少五次同参数 warm query；全部样本与错误保留，报告 cold/warm ranking 是否一致。
 
-2026-10-07 定向验证：`tests/test_retrieval_evaluation.py` + `tests/test_retrieval_runner.py`，显式提供真实 QMD Node / CLI 的一次最终运行 **22 passed / 22.64s**。先 RED 后 GREEN，独立错误 ranking 覆盖错书/页、重复、漏检、假空、false positive、越 scope、unsupported、error 与 N/A；runner 覆盖无搜索绑定、Gateway ingest、真实 isolated QMD sentinel、capacity guard、timeout / malformed worker output、manifest roundtrip。未运行完整 suite 或 32-case quality baseline。
+2026-10-07 定向验证：`tests/test_retrieval_evaluation.py` + `tests/test_retrieval_runner.py`，显式提供真实 QMD Node / CLI 的一次最终运行 **23 passed / 22.78s**。先 RED 后 GREEN，独立错误 ranking 覆盖错书/页、重复、漏检、假空、false positive、越 scope、unsupported、error 与 N/A；runner 覆盖无搜索绑定、Gateway ingest、真实 isolated QMD sentinel、capacity guard、timeout / malformed worker output、manifest roundtrip 与 unsupported diagnostic status 保全。未运行完整 suite 或 32-case quality baseline。
 
 人工错误样例验证：rank `[b65, a65, a65]`，gold `{a65,a66}`，Recall@1=0/2，Recall@3=1/2，MRR@10=1/2，returned source correctness=1/2，source/page/citation case correctness均0/1。positive 假空 + negative 真空产生 no-result precision=1/2；另一个 negative timeout 保留 negative empty recall=1/2，不被记为空。
 
