@@ -152,6 +152,22 @@ def test_broken_metadata(tmp_path,file,data):
     path.write_bytes(data);assert observe(g)['state']=='needs_action'
 
 
+def test_overflow_json_number_is_invalid_metadata(tmp_path):
+    g=published(tmp_path)
+    path=g.config.recovery_root/'snapshots/example/manifest.json'
+    manifest=json.loads(path.read_bytes())
+    manifest['history_proof']['opaque_overflow']=0
+    # 1e400 is valid JSON numeric syntax; Infinity would fail at parsing already.
+    data=encoded(manifest).replace(b'"opaque_overflow":0',b'"opaque_overflow":1e400')
+    assert b'1e400' in data and b'Infinity' not in data
+    path.write_bytes(data)
+    before=tree(g.config.recovery_root)
+    out=observe(g)
+    assert out['state']=='needs_action' and out['reason_codes']==['METADATA_INVALID']
+    assert not out['metadata_consistent'] and 'manifest_sha256' not in out
+    assert tree(g.config.recovery_root)==before
+
+
 def test_digest_and_configuration_shape(tmp_path):
     g=published(tmp_path);out=observe(g)
     assert observe(g,expected_manifest_sha256=out['manifest_sha256'])['expected_manifest_match']=='matches'

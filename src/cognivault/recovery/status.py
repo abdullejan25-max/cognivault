@@ -129,10 +129,11 @@ def status(g, snapshot_key, expected_manifest_sha256=None):
         manifest=parse(blobs[0][1]);catalog=parse(blobs[2][1])
         if not manifest_shape(manifest,snapshot_key) or type(catalog) is not dict or set(catalog)!={'manifest_sha256'} or not digest(catalog['manifest_sha256']):
             reasons.append('METADATA_INVALID');return out
+        value=hashlib.sha256(encoded(manifest)).hexdigest()
     except (ValueError,UnicodeError,RecursionError,GatewayError) as error:
         if isinstance(error,GatewayError) and error.code!='INVALID_ARGUMENT':raise
         reasons.append('METADATA_INVALID');return out
-    value=hashlib.sha256(encoded(manifest)).hexdigest();out['manifest_sha256']=value
+    out['manifest_sha256']=value
     if expected_manifest_sha256 is not None:
         out['expected_manifest_match']='matches' if expected_manifest_sha256==value else 'mismatch'
         if expected_manifest_sha256!=value:reasons.append('EXPECTED_MANIFEST_MISMATCH')
