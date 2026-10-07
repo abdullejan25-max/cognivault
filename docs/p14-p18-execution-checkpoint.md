@@ -27,7 +27,7 @@
 
 ## 起始验证与约束
 
-基线安全合成全集：875 passed / 12 skipped；QMD 2.8.3 synthetic runtime smoke 单独 1 passed；wheel/sdist、contents privacy audit、独立 wheel install PASS。均为前一预审在同一基线的证据，不冒充新实现验证。基线 CI 精确 main 已通过；本开发分支 CI 尚未运行。
+基线安全合成全集：875 passed / 12 skipped；QMD 2.8.3 synthetic runtime smoke 单独 1 passed；wheel/sdist、contents privacy audit、独立 wheel install PASS。均为前一预审在同一基线的证据，不冒充新实现验证；完整证据入口见[预审当前状态](research/2026-10-07-post-release-architecture-preaudit.md#L103)。基线 CI 精确 main 已通过；本开发分支 CI 尚未运行。
 
 微信始终 SKIP_WECHAT；原始用户资料保护；无 ownership 证明不删除；原始 authority/provenance/identity/version/capability 保持兼容；真实数据只经 Gateway。允许派生重建不等于允许 direct SQLite 或碰原始文件。不得 bulk cherry-pick、自动 merge/tag/release。生产/Host blocker 不阻止合成工程。
 

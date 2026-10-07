@@ -19,6 +19,21 @@
 
 `main_present` 仅指具体已有能力；混合行分开解释已有与候选，不能把旧候选视为当前发布。
 
+## 文件级接续证据
+
+以下路径均相对当前 repository。`absent` 指当前 main 尚无对应文件/能力，候选路径只可通过表内 commit 的 `git show` 查看。公开预审的 [当前验证结果](2026-10-07-post-release-architecture-preaudit.md#L103)、[候选与主线边界](2026-10-07-post-release-architecture-preaudit.md#L123)、[复现问题](2026-10-07-post-release-architecture-preaudit.md#L242)、[旧评价器四项缺陷](2026-10-07-post-release-architecture-preaudit.md#L339)提供核验入口。
+
+| Slice | 当前实现路径 | 当前测试路径 | 当前文档 / absent | 拟采用文件 |
+|---|---|---|---|---|
+| `d2186a9` | `src/cognivault/adapters/documents.py`、`adapters/wrong_answers.py`、`obsidian_projection.py`、`transports/mcp_stdio.py` | `tests/test_wrong_answers.py`、`test_wrong_answer_mcp.py`、`test_obsidian_projection.py` | 预审 §4 页码复现；65–999 正确登记回归 absent | 首批 `adapters/wrong_answers.py`、相关 wrong-answer tests；projection 后续独立回归，非盲移植 |
+| `803a953/b375d86` | `.codex/setup_mcp.py`、`src/cognivault/gateway.py`、`runtime.py`、`transports/mcp_stdio.py`；`control_plane.py` absent | `tests/test_codex_project_bootstrap.py`、`test_phase8_permissions.py`、`test_canonical_gateway.py`、`test_mcp_stdio.py` | `docs/codex-host-setup.md`、`privacy-boundary.md`；统一 binding/status 文档 absent | 首批仅 `transports/mcp_stdio.py`、权限与 MCP tests；不采用通用 control plane |
+| `3075048` | `src/cognivault/recovery/service.py`、`recovery/io.py`、`migration/history_ledger.py`；`operations/ledger.py` absent | `tests/test_recovery.py`、`test_recovery_supplement.py`、`test_history_ledger.py`；统一任务 tests absent | `docs/p13-recovery.md`、预审 §3 Recovery；有限 status/reconciliation 合同 absent | `docs/research/p16-finite-recovery-contract.md`、`tests/test_operation_recovery.py`；规格确定后才采用聚焦 status 模块与 Gateway/MCP 接口 |
+| `27253cc` | `src/cognivault/adapters/study_qmd.py`、`documents.py`、`wrong_answers.py`、`canonical_history.py`；评价器 absent | `tests/test_qmd_runtime_smoke.py`、现有领域 tests；quality evaluator tests absent | 预审 §6 P15 设计；main baseline 报告 absent | `tests/fixtures/retrieval/manifest.json`、四域 `cases.json`、`scripts/evaluate_retrieval.py`、`tests/test_retrieval_evaluation.py`、`docs/research/p15-retrieval-baseline.md` |
+| `db03e6d` | `src/cognivault/workflows/wrong_answer.md`、`gateway.py`、`adapters/wrong_answers.py`；batch/lifecycle adapter absent | `tests/test_wrong_answers.py`、`test_wrong_answer_mcp.py`、`test_projection_collector.py` | 正式 workflow 即唯一规则来源；预审 §3 Daily Workflows | `workflows/wrong_answer.md`、`tests/test_wrong_answer_mcp.py`，只补回读；其他候选不采用 |
+| platform/package | `install.cmd`、`install.ps1`、`scripts/setup_local.py`、`pyproject.toml`、`.github/workflows/ci.yml` | `tests/test_windows_installer.py`、`test_project_metadata.py`、`test_mcp_identity_transition.py` | `README.md`、`docs/*-host-setup.md`；本分支最终精确 HEAD CI 尚无 | 优先执行现有 build/install/privacy scripts；仅覆盖证据要求新增的 test/CI slice |
+
+首行路径写全，其余同单元格缩写沿用相同目录；没有指向真实数据路径。上述是待执行文件边界，是否最终修改由 regression 与 measured gap 决定。
+
 ## 执行规则与新指令优先级
 
 - 采用 2026-10-07 总指令执行 Phase A；前一预审的“仅调查”停止点已完成，不再阻止获授权实现。
