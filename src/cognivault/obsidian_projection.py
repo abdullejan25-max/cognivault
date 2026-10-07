@@ -15,6 +15,7 @@ import json
 import re
 
 from .contracts import HistoryItem, HistorySource
+from .adapters.documents import MAX_PAGES
 
 
 _LOGICAL_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z")
@@ -210,7 +211,7 @@ def _validate_wrong_bundle(bundle: object) -> tuple[dict, tuple[dict, ...], int]
             or type(source.get("source_uri")) is not str \
             or not (_ASSET_URI.fullmatch(source["source_uri"]) or _DOCUMENT_URI.fullmatch(source["source_uri"])) \
             or (source.get("page_number") is not None and
-                (type(source["page_number"]) is not int or not 1 <= source["page_number"] <= 64
+                (type(source["page_number"]) is not int or not 1 <= source["page_number"] <= MAX_PAGES
                  or source["source_uri"].startswith("asset://"))) \
             or not _valid_text(source.get("question_text"), _MAX_ANSWER_TEXT) \
             or not _valid_text(source.get("student_answer"), _MAX_ANSWER_TEXT) \
