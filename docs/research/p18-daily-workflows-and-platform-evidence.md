@@ -7,7 +7,7 @@
 | 用户需求 | 当前入口 | 限制与结果说明 |
 |---|---|---|
 | 分析错题，必要时查教材，按要求保存 | 通过连接的 `cognivault` 读取 `study-workflow://wrong-answer`；唯一规范文件为 [wrong_answer.md](../../src/cognivault/workflows/wrong_answer.md) | 执行规范中的分析、保存和独立回读；本页不另写一套流程。只有保存回执而没有完成回读时，必须说明验证未完成。 |
-| 找教材中的概念或例题 | 用具体概念查询 `search_study` 或 `search_documents`，再读取实际命中的 Study 来源或 `fetch_document` / `fetch_document_page`；需要视觉核实时读取原 PDF 页图 | Study 查询只有 `query` / `limit`；document 查询有 `query` / `limit` / `offset`，没有教材、页码或章节范围参数。返回的文档 ID、页码用于核对与读取，不能当作已支持的查询筛选。章节词只是查询词，不能保证结果来自指定章节。 |
+| 找教材中的概念或例题 | 用具体概念查询 `search_study` 或 `search_documents`，再读取实际命中的 Study 来源或 `fetch_document` / `fetch_document_page`；需要视觉核实时读取原 PDF 页图 | Study 查询只有 `query` / `limit`；document 查询有 `query` / `limit` / `offset`，并支持 `source_ids`（1..64 个 canonical document URI）与 `page_range`（包含两端的物理页码1..999）；二者取交集并先过滤后分页，未知有效文档 ID 返回空。全库2048候选容量限制仍适用。章节与日期区间仍缺原生筛选；章节词只是查询词，不能保证结果来自指定章节。此能力已由 P17 synthetic native Gateway/MCP 验证，当前真实 native Host / production 仍 UNKNOWN。 |
 | 回顾已保存的错题 | 用主题词 `search_wrong_answers`，再用实际返回的 source ID 读取 `get_wrong_answer_bundle`；分页按工具 schema 执行 | 错题搜索只有 `query` / `limit` / `offset`，没有日期区间筛选。不能保证“最近三天”的完整集合，不能把无匹配解释成全库没有错题。分析版本是修改历史，不能据此推断多次作答、反复犯错或进步。 |
 
 教材搜索命中后应核对实际来源与页码；不相关的命中应排除，并明确没有找到可验证参考时的限制。搜索摘要和提取文本不等于原页面的视觉证据。没有可读取的原页图时，结论应标明所依据的文本层或 OCR。回顾已有分析时，应区分已保存的解释与本次重新核实的原题证据。
