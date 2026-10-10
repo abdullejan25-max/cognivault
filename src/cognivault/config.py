@@ -22,3 +22,4 @@ class AppConfig:
     qmd_snapshot_config: Path | None = None
     qmd_snapshot_index: Path | None = None
     recovery_include_study: bool = True
+    memory_database: Path | None = None
