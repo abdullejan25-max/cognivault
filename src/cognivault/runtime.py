@@ -12,6 +12,7 @@ from .adapters.qmd_snapshot import QmdSnapshotSources, create_disposable_qmd_run
 from .adapters.study_qmd import QmdStudyBackend
 from .config import AppConfig
 from .gateway import Gateway
+from .adapters.memory import SQLiteMemoryStore
 
 
 def load_gateway_from_config(config_file: Path) -> Gateway:
@@ -83,6 +84,17 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
     else:
         raise ValueError("Invalid local configuration")
 
+    memory_cfg = raw.get("memory", {"backend": "not_configured"})
+    if type(memory_cfg) is not dict:
+        raise ValueError("Invalid local configuration")
+    if memory_cfg == {"backend": "not_configured"}:
+        memory_database = None
+    elif set(memory_cfg) == {"backend", "database"} and memory_cfg.get("backend") == "sqlite" \
+            and type(memory_cfg.get("database")) is str and Path(memory_cfg["database"]).is_absolute():
+        memory_database = Path(memory_cfg["database"])
+    else:
+        raise ValueError("Invalid local configuration")
+
     permissions = raw.get("permissions", {"capabilities": ["read"]})
     if type(permissions) is not dict or set(permissions) != {"capabilities"}:
         raise ValueError("Invalid local configuration")
@@ -97,6 +109,7 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
                        Path(asset_database) if asset_database else None,
                        Path(ingest_root) if ingest_root else None,
                        Path(migration_inbox) if migration_inbox else None)
+    config = replace(config, memory_database=memory_database)
     recovery = raw.get("recovery")
     if recovery is not None:
         if type(recovery) is not dict or "root" not in recovery \
@@ -157,5 +170,6 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
         history_backend,
         qmd_discoverable=qmd_discoverable,
         document_store=document_store,
+        memory_store=SQLiteMemoryStore(memory_database) if memory_database else None,
         capabilities=frozenset(configured_capabilities),
     )
