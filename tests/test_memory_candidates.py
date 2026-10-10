@@ -28,11 +28,41 @@ def test_pending_review_commit_reopen_and_duplicate(tmp_path):
     first = g.commit_memory_candidate(c["candidate_id"])
     assert first["memory"]["value"] == "engineering"
     assert g.commit_memory_candidate(c["candidate_id"])["reused"]
+
     assert g.list_memory_candidates()["candidates"][0]["state"] == "approved"
     from cognivault.adapters.memory import SQLiteMemoryStore
     g.memory_store = SQLiteMemoryStore(g.memory_store.database_path)
     assert g.list_memory_candidates()["candidates"][0]["review"]["note"] == "Explicitly confirmed still current"
     assert g.commit_memory_candidate(c["candidate_id"])["reused"]
+
+
+def test_semantic_paraphrase_requires_review_and_preserves_canonical_fact(tmp_path):
+    g, ref, *_, memory = scenario(tmp_path)
+    mid = memory["memory"]["memory_id"]
+    c = propose(g, ref, predicate="职业规划", value="希望学习工程专业",
+                semantic_links=[dict(memory_id=mid, expected_version=1,
+                                     relation="same_as", reason="工程专业目标的不同措辞")])
+    assert c["relations"][0]["snapshot"]["value"] == "engineering with physics"
+    assert g.search_memory("职业规划")["total"] == 0
+    g.capabilities |= {"admin"}
+    with pytest.raises(GatewayError):
+        g.review_memory_candidate(c["candidate_id"], "approve", "Reviewed")
+    g.review_memory_candidate(c["candidate_id"], "approve", "Confirmed equivalent", "confirmed_update")
+    receipt = g.commit_memory_candidate(c["candidate_id"])
+    assert receipt["memory"]["memory_id"] == mid
+    assert receipt["memory"]["value"] == "engineering with physics"
+    assert g.commit_memory_candidate(c["candidate_id"])["reused"]
+    assert propose(g,ref,predicate="职业规划",value="希望学习工程专业",semantic_links=[dict(memory_id=mid,expected_version=1,relation="same_as",reason="工程专业目标的不同措辞")])["candidate_id"] == c["candidate_id"]
+
+
+def test_supersedes_rejects_undated_or_nonlater_change(tmp_path):
+    g, ref, *_, memory = scenario(tmp_path)
+    c = propose(g, ref, semantic_links=[dict(memory_id=memory["memory"]["memory_id"],
+                expected_version=1, relation="supersedes", reason="声称目标变化")])
+    g.capabilities |= {"admin"}
+    with pytest.raises(GatewayError) as e:
+        g.review_memory_candidate(c["candidate_id"], "approve", "Confirmed", "confirmed_update")
+    assert e.value.code == "CONFLICT"
 
 
 def test_source_integrity_feedback_and_historical_guard(tmp_path):
@@ -110,3 +140,53 @@ def test_meaningful_punctuation_and_duplicate_promotion_replay(tmp_path):
     replay = g.commit_memory_candidate(dup["candidate_id"])
     assert replay["reused"] and replay["memory"]["version"] == first["memory"]["version"]
     assert not replay["memory"]["is_current"]
+
+
+def test_semantic_learning_update_packet_and_consideration_guard(tmp_path):
+    from cognivault.contracts import HistoryImportItem
+    g, ref, doc, wrong, memory = scenario(tmp_path)
+    newer = g.history_backend.import_items("synthetic-decision",[HistoryImportItem("two","recent","user","现在正式决定先复习受力分析。","2026-10-09T00:00:00Z")])[0]
+    c = propose(g,newer,quote="现在正式决定先复习受力分析。",value="先复习受力分析",claim_mode="decided",
+                evidence_refs=[doc["document_uri"],wrong["source_id"]],semantic_links=[dict(memory_id=memory["memory"]["memory_id"],expected_version=1,relation="supersedes",reason="较新的明确学习目标替换旧目标")])
+    packet = g.fetch_memory_candidate(c["candidate_id"])
+    assert not packet["competing_memories"][0]["changed"]
+    assert packet["candidate"]["claim_mode"] == "decided"
+    g.capabilities |= {"admin"}
+    g.review_memory_candidate(c["candidate_id"],"approve","核对新旧来源确认学习目标变化","confirmed_update")
+    updated = g.commit_memory_candidate(c["candidate_id"])["memory"]
+    assert updated["version"] == 2 and doc["document_uri"] in updated["source_refs"]
+    assert g.fetch_memory_candidate(c["candidate_id"])["competing_memories"][0]["changed"]
+    evidence = g.retrieve_evidence({"memory":"受力分析","history":"chose","study":"physics"})
+    assert evidence["status"] == "COMPLETE"
+    assert any(e["citation"] == updated["memory_id"]+"#version=2" for e in evidence["evidence"])
+    considered = propose(g,newer,quote="现在正式决定先复习受力分析。",predicate="alternative",claim_mode="consideration")
+    with pytest.raises(GatewayError): g.review_memory_candidate(considered["candidate_id"],"approve","Cannot infer decision")
+
+
+def test_unicode_slot_and_semantic_argument_validation(tmp_path):
+    g, ref, *_ = scenario(tmp_path)
+    g.create_memory("Ａlice","goal","engineering",[ref],"unicode")
+    c = propose(g,ref,subject="Alice")
+    assert c["relations"][0]["kind"] == "duplicate"
+    for links in ([],[dict(memory_id="bad",expected_version=True,relation="same_as",reason="x")],
+                  [dict(memory_id="bad",expected_version=1,relation="unknown",reason="x")]):
+        with pytest.raises(GatewayError): propose(g,ref,semantic_links=links)
+    with pytest.raises(GatewayError): propose(g,ref,evidence_refs=["document://fabricated"])
+
+
+
+def test_contradiction_pending_and_equivalent_source_capacity(tmp_path):
+    from cognivault.contracts import HistoryImportItem
+    g, ref, *_ = scenario(tmp_path)
+    refs = g.history_backend.import_items("synthetic-decision",[
+        HistoryImportItem(str(i),"source","user","engineering is my goal", "2026-01-01T00:00:00Z") for i in range(17)])
+    target = g.create_memory("self","bounded","engineering",list(refs[:16]),"bounded",epistemic_status="verified",verification_note="Synthetic originals")
+    link = dict(memory_id=target["memory"]["memory_id"],expected_version=1,relation="same_as",reason="Equivalent goal statement")
+    c = propose(g,refs[16],predicate="bounded",semantic_links=[link])
+    g.capabilities |= {"admin"}
+    with pytest.raises(GatewayError) as e: g.review_memory_candidate(c["candidate_id"],"approve","Confirmed","confirmed_update")
+    assert e.value.code == "CONFLICT" and g.fetch_memory_candidate(c["candidate_id"])["candidate"]["state"] == "pending"
+    link["relation"] = "contradicts"
+    conflict = propose(g,ref,predicate="bounded",value="medicine",semantic_links=[link])
+    assert conflict["relations"][-1]["reason"] == "Equivalent goal statement"
+    with pytest.raises(GatewayError): g.commit_memory_candidate(conflict["candidate_id"])

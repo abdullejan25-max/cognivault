@@ -220,3 +220,15 @@ def test_memory_runtime_rejects_other_database_auxiliaries(tmp_path, suffix):
     c.write_text('[gateway]\nversion="0.8.0"\n[study]\nbackend="not_configured"\n[history]\nbackend="sqlite"\ndatabase="'+db+'"\n[memory]\nbackend="sqlite"\ndatabase="'+db+suffix+'"\n')
     with pytest.raises(ValueError):
         load_gateway_from_config(c)
+
+
+def test_source_recency_uses_chronology_not_lexical_order(tmp_path, monkeypatch):
+    from cognivault.memory_service import decorate
+    from test_evidence_bundle import scenario
+    g, ref, *_ = scenario(tmp_path)
+    import cognivault.memory_service as service
+    monkeypatch.setattr(service,"resolve_sources",lambda *_: [
+        {"status":"resolved","occurred_at":"2026-10-10T09:00:00+08:00"},
+        {"status":"resolved","occurred_at":"2026-10-10T02:00:00Z"}])
+    record = g.memory_store.search("goal")["memories"][0]
+    assert decorate(g,record)["source_latest_at"] == "2026-10-10T02:00:00Z"

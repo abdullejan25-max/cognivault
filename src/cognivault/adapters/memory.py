@@ -68,6 +68,8 @@ class SQLiteMemoryStore:
                 con = sqlite3.connect(path, timeout=5)
             else:
                 con = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
+            import unicodedata
+            con.create_function("cv_normalized", 1, lambda v: " ".join(unicodedata.normalize("NFKC", v).casefold().split()), deterministic=True)
             con.row_factory = sqlite3.Row
             con.execute("PRAGMA foreign_keys=ON")
             return con
@@ -202,7 +204,7 @@ class SQLiteMemoryStore:
                     if existing is not None:
                         return existing
                     rows = con.execute("SELECT f.memory_id FROM memory_facts f JOIN memory_versions v USING(memory_id) "
-                                       "WHERE f.subject=? AND f.predicate=? AND v.state='active' AND v.version="
+                                       "WHERE cv_normalized(f.subject)=cv_normalized(?) AND cv_normalized(f.predicate)=cv_normalized(?) AND v.state='active' AND v.version="
                                        "(SELECT MAX(version) FROM memory_versions WHERE memory_id=f.memory_id)",
                                        (subject, predicate)).fetchall()
                     if rows:
@@ -337,6 +339,20 @@ class SQLiteMemoryStore:
     def _same(record, value, refs, state, status, note):
         return (record["value"], sorted(record["source_refs"]), record["state"], record["epistemic_status"], record["verification_note"]) == (value, refs, state, status, note)
 
+    def matching_slot(self, subject, predicate):
+        """Bounded exact normalized slot lookup; no lexical prefilter."""
+        self._validate_path()
+        if not self.database_path.exists(): return {"memories": [], "total": 0}
+        try:
+            with closing(self._connect()) as con:
+                con.execute("BEGIN")
+                query = "FROM memory_facts f JOIN memory_versions v USING(memory_id) WHERE cv_normalized(f.subject)=cv_normalized(?) AND cv_normalized(f.predicate)=cv_normalized(?) AND v.state='active' AND v.version=(SELECT MAX(version) FROM memory_versions WHERE memory_id=f.memory_id)"
+                total = con.execute("SELECT COUNT(*) " + query,(subject,predicate)).fetchone()[0]
+                rows = con.execute("SELECT f.memory_id " + query + " ORDER BY f.memory_id LIMIT 20",(subject,predicate)).fetchall()
+                return {"memories":[self._record(con,r[0]) for r in rows], "total":total}
+        except sqlite3.Error:
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable") from None
+
     def versions(self, memory_id: str, limit: int = 5, offset: int = 0) -> dict:
         if type(memory_id) is not str or MEMORY_ID.fullmatch(memory_id) is None or type(limit) is not int or not 1 <= limit <= 20 or type(offset) is not int or not 0 <= offset <= 1000:
             raise _invalid()
@@ -345,6 +361,7 @@ class SQLiteMemoryStore:
             raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")
         try:
             with closing(self._connect()) as con:
+                con.execute("BEGIN")
                 total = con.execute("SELECT COUNT(*) FROM memory_versions WHERE memory_id=?", (memory_id,)).fetchone()[0]
                 if not total:
                     raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")

@@ -3,6 +3,7 @@
 Reference resolution proves availability, never semantic truth. Verified is an
 explicit, reported caller review with a note and currently accessible sources.
 """
+from datetime import datetime, timezone
 from .contracts import GatewayError
 from .adapters.memory import _references, SQLiteMemoryStore
 from .provenance import ReportedIdentity
@@ -36,7 +37,14 @@ def decorate(gateway, record):
     result["effective_epistemic_status"] = ("unverified" if record["epistemic_status"] == "verified" and not result["sources_resolved"] else record["epistemic_status"])
     result["evidence_verified"] = False  # Semantic truth is never inferred from ID existence.
     times = [r["occurred_at"] for r in result["source_resolution"] if r.get("occurred_at")]
-    result["source_latest_at"] = max(times) if times else None
+    parsed = []
+    for time in times:
+        try:
+            stamp = datetime.fromisoformat(time.replace("Z", "+00:00"))
+            if stamp.tzinfo is not None: parsed.append(stamp.astimezone(timezone.utc))
+        except (ValueError,TypeError):
+            pass  # Invalid or undated evidence cannot establish recency.
+    result["source_latest_at"] = max(parsed).isoformat().replace("+00:00","Z") if parsed else None
     result["currency_verified"] = False  # Recording now cannot make an old statement current.
     result["is_current"] = record["state"] == "active"
     return result

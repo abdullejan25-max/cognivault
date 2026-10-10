@@ -977,9 +977,9 @@ class Gateway:
         from .evidence import retrieve
         return retrieve(self, queries, limit)
 
-    def propose_memory_candidate(self, source_ref, quote, subject, predicate, value, classification, confidence, basis):
+    def propose_memory_candidate(self, source_ref, quote, subject, predicate, value, classification, confidence, basis, semantic_links=None, claim_mode="explicit", evidence_refs=None):
         from .memory_candidates import propose
-        return propose(self, source_ref, quote, subject, predicate, value, classification, confidence, basis)
+        return propose(self, source_ref, quote, subject, predicate, value, classification, confidence, basis, semantic_links, claim_mode, evidence_refs)
 
     def find_memory_candidates(self, query, limit=5):
         from .memory_candidates import find
@@ -988,6 +988,10 @@ class Gateway:
     def list_memory_candidates(self, limit=5, offset=0):
         from .memory_candidates import listing
         return listing(self, limit, offset)
+
+    def fetch_memory_candidate(self, candidate_id):
+        from .memory_candidates import fetching
+        return fetching(self, candidate_id)
 
     def review_memory_candidate(self, candidate_id, decision, note, resolution="none"):
         from .memory_candidates import review
