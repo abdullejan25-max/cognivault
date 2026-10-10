@@ -80,3 +80,15 @@ def test_normalized_history_search_targets_messages_not_first_view(tmp_path):
     messages = [e for e in r["evidence"] if e["citation"].startswith("message:")]
     assert messages and messages[0]["source_refs"]
     assert g.search_canonical_messages("missing") ["total"] == 0
+
+
+def test_chinese_physics_query_fallback_and_uncertain_fact_labels(tmp_path):
+    g, ref, *_, memory = scenario(tmp_path)
+    result = g.retrieve_evidence({"history":"物理", "study":"摩擦力", "memory":"目标"}, limit=2)
+    assert all(result["domains"][d]["returned"] for d in ("history","study","memory"))
+    assert any(e["citation"].startswith("wrong-answer://") for e in result["evidence"])
+    m = next(e for e in result["evidence"] if e["domain"] == "memory")
+    assert m["currency_verified"] is False and m["source_latest_at"] == "2026-01-01T00:00:00Z"
+    g.revise_memory(memory["memory"]["memory_id"], "maybe engineering", [ref], 1, "uncertain", epistemic_status="inference")
+    result = g.retrieve_evidence({"memory":"目标"})
+    assert result["evidence"][0]["temporal_scope"] == "inference"

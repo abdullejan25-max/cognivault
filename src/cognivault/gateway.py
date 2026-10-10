@@ -977,6 +977,26 @@ class Gateway:
         from .evidence import retrieve
         return retrieve(self, queries, limit)
 
+    def propose_memory_candidate(self, source_ref, quote, subject, predicate, value, classification, confidence, basis):
+        from .memory_candidates import propose
+        return propose(self, source_ref, quote, subject, predicate, value, classification, confidence, basis)
+
+    def find_memory_candidates(self, query, limit=5):
+        from .memory_candidates import find
+        return find(self, query, limit)
+
+    def list_memory_candidates(self, limit=5, offset=0):
+        from .memory_candidates import listing
+        return listing(self, limit, offset)
+
+    def review_memory_candidate(self, candidate_id, decision, note, resolution="none"):
+        from .memory_candidates import review
+        return review(self, candidate_id, decision, note, resolution)
+
+    def commit_memory_candidate(self, candidate_id):
+        from .memory_candidates import commit
+        return commit(self, candidate_id)
+
     def search_canonical_messages(self, query, limit=5, offset=0):
         self._require_capability("read")
         return self._canonical_history_store().search_messages(query, limit, offset)
