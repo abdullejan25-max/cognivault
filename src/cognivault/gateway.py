@@ -97,6 +97,7 @@ class Gateway:
         history_backend: HistoryBackend | None = None,
         qmd_discoverable: Callable[[], bool] | None = None,
         document_store: SQLiteDocumentStore | None = None,
+        memory_store=None,
         capabilities: frozenset[str] = frozenset({"read"}),
     ) -> None:
         if type(capabilities) is not frozenset or not capabilities <= {
@@ -108,6 +109,7 @@ class Gateway:
         self.history_backend = history_backend or NotConfiguredHistoryBackend()
         self.qmd_discoverable = qmd_discoverable or (lambda: shutil.which("qmd") is not None)
         self.document_store = document_store
+        self.memory_store = memory_store
         self.capabilities = capabilities
 
     def _require_capability(self, capability: str) -> None:
