@@ -5,7 +5,7 @@ explicit, reported caller review with a note and currently accessible sources.
 """
 from datetime import datetime, timezone
 from .contracts import GatewayError
-from .adapters.memory import _references, SQLiteMemoryStore
+from .adapters.memory import _references, SQLiteMemoryStore, validate_target_guard
 from .provenance import ReportedIdentity
 
 
@@ -45,6 +45,10 @@ def decorate(gateway, record):
         except (ValueError,TypeError):
             pass  # Invalid or undated evidence cannot establish recency.
     result["source_latest_at"] = max(parsed).isoformat().replace("+00:00","Z") if parsed else None
+    result["source_time_status"] = ("future" if any(t > datetime.now(timezone.utc) for t in parsed)
+                                    else "reported" if parsed else "undated")
+    if record["epistemic_status"] == "verified" and result["source_time_status"] == "future":
+        result["effective_epistemic_status"] = "unverified"
     result["currency_verified"] = False  # Recording now cannot make an old statement current.
     result["is_current"] = record["state"] == "active"
     return result
@@ -57,6 +61,8 @@ def execute(gateway, operation, arguments):
     if store is None:
         raise GatewayError("STORAGE_UNAVAILABLE", "Memory is not configured")
     args = dict(arguments)
+    if operation in {"revise", "retire"}:
+        args["target_guard"] = validate_target_guard(args.get("target_guard"))
     if write:
         status = args.get("epistemic_status", "unverified")
         note = args.get("verification_note")

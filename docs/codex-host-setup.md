@@ -29,3 +29,11 @@ From a trusted project, confirm `cognivault` appears in a newly created Codex De
 An inline MCP override or a synthetic Host test does not prove that a normal Codex Desktop project session loaded `.codex/config.toml`. A clean-clone release check should begin with the README, configure only disposable/synthetic local paths, run setup and tests, and verify MCP startup plus `health_report` in a new trusted Desktop conversation.
 
 Earlier Desktop PASS results retain their original names in the historical checkpoints. The renamed build needs its own actual Host and existing-data Gateway checks; those are not established by this setup guide.
+
+## Isolated Desktop acceptance
+
+From the installed development environment, run `python scripts/prepare_desktop_acceptance.py --root <empty-directory-outside-Git>` to prepare invented data and separate writer/reader projects. Existing nonempty directories are refused, preserving earlier evidence. The generated `DESKTOP-ACCEPTANCE.md` explains project trust and all six Gates; preparation and SDK preflight remain distinct from real Desktop receipts.
+
+Copy each generated `prompts/*.txt` file in full as one Desktop message. Revision, reader permission checks and restart reads carry the same complete `memory_id`, `subject` and `predicate`, also recorded in `acceptance-manifest.json`. For a revision, fetch that exact ID, check its identity, and pass the returned `target_guard` unchanged. An incomplete ID must stop a write; matching a source reference is insufficient to choose another target because several facts can share one source. Read-only `fetch_memory_request` checks the idempotency receipt without replaying a write.
+
+Record actual tool arguments/results and task IDs. A reader with no discoverable write tool proves discovery isolation, while `PERMISSION_DENIED` proves an attempted call was rejected; report the observed case. New conversations alone do not prove an application restart. If Desktop cannot legally be restarted automatically, preserve that Gate as BLOCKED for one focused manual action. Never relabel CLI or SDK results as Desktop acceptance.

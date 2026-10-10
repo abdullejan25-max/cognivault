@@ -33,7 +33,8 @@ def find(g, query, limit=5):
     for e in bundle["evidence"]:
         if e.get("role") != "user" or e["citation"] in seen: continue
         text = e["excerpt"].casefold()
-        cues = [cue for cue in ("目标","打算","喜欢","不再","最近","goal","prefer","plan","chose") if cue in text]
+        cues = [cue for cue in ("目标","打算","喜欢","不再","最近","决定","计划","偏好",
+                               "goal","prefer","plan","chose","decided","decision") if cue in text]
         if not cues: continue
         seen.add(e["citation"])
         suggestions.append(dict(source_ref=e["citation"],excerpt=e["excerpt"],source_time=e.get("occurred_at"),
@@ -112,6 +113,17 @@ def validate_semantic_sources(g,c):
 
 def normalized(value):
     return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+
+def dated_source(value):
+    """A reported future or ambiguous date cannot support a current fact."""
+    try:
+        if type(value) is not str: raise ValueError()
+        date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if date.tzinfo is None or date > datetime.now(timezone.utc): raise ValueError()
+        return date.astimezone(timezone.utc)
+    except (ValueError, TypeError):
+        raise GatewayError("CONFLICT", "Current-fact promotion needs a valid nonfuture dated source") from None
 
 
 def read(con, cid):
@@ -263,6 +275,7 @@ def review(g, candidate_id, decision, note, resolution="none"):
                         raise GatewayError("CONFLICT", "A considered choice cannot become a decided current fact")
                     if c["classification"] in {"historical_statement", "inference"} or c["source_role"] != "user" or not c["source_time"] or c["relation_scan_truncated"] or len(c["relations"]) > 1:
                         raise GatewayError("CONFLICT", "Candidate needs clarification before current-fact promotion")
+                    new_source_time = dated_source(c["source_time"])
                     if any(r["kind"] in {"possible_conflict", "same_as", "contradicts", "supersedes"} for r in c["relations"]) and resolution != "confirmed_update":
                         raise GatewayError("CONFLICT", "Candidate conflict needs explicit confirmation")
                     for r in c["relations"]:
@@ -276,8 +289,7 @@ def review(g, candidate_id, decision, note, resolution="none"):
                                 dates = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in times if t]
                                 if not dates or any(d.tzinfo is None for d in dates): raise ValueError()
                                 old = max(d.astimezone(timezone.utc) for d in dates)
-                                new = datetime.fromisoformat(c["source_time"].replace("Z", "+00:00"))
-                                if new.tzinfo is None or not old < new <= datetime.now(timezone.utc): raise ValueError()
+                                if not old < new_source_time: raise ValueError()
                             except (ValueError, TypeError):
                                 raise GatewayError("CONFLICT", "Supersession needs a strictly later dated original source") from None
                 con.execute("INSERT INTO memory_candidate_reviews VALUES (?,?,?,?,?)", (candidate_id,decision,note,resolution,utc_now()))
@@ -297,6 +309,7 @@ def commit(g, candidate_id):
     source = original(g,c["source_ref"])
     if source["content_sha256"] != c["content_sha256"] or c["quote"] not in source["text"] or source["role"] != c["source_role"] or source["source_time"] != c["source_time"]:
         raise GatewayError("CONFLICT", "Candidate source has changed")
+    dated_source(source["source_time"])
     args = dict(value=c["value"],source_refs=sorted(set([c["source_ref"]]+c.get("evidence_refs",[]))),idempotency_key="candidate-"+candidate_id[10:],
                 epistemic_status="verified",verification_note=c["review"]["note"])
     if c["relations"]:
@@ -304,6 +317,8 @@ def commit(g, candidate_id):
         if relation["kind"] == "same_as":
             args["value"] = relation["snapshot"]["value"]
             args["source_refs"] = sorted(set(relation["snapshot"]["source_refs"] + args["source_refs"]))
+        target = g.fetch_memory(relation["memory_id"], version=relation["version"])["memory"]
+        args["target_guard"] = target["target_guard"]
         # Use the store's immutable request receipt even for duplicate values.
         # A newly reviewed source/assessment is evidence, not a new invented fact.
         return g.revise_memory(relation["memory_id"],expected_version=relation["version"],**args)

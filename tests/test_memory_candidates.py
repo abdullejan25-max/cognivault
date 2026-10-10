@@ -65,6 +65,47 @@ def test_supersedes_rejects_undated_or_nonlater_change(tmp_path):
     assert e.value.code == "CONFLICT"
 
 
+def test_future_history_remains_pending_instead_of_becoming_current_fact(tmp_path):
+    from cognivault.contracts import HistoryImportItem
+    g, *_ = scenario(tmp_path)
+    future = g.history_backend.import_items("synthetic-decision", [HistoryImportItem(
+        "future", "learning", "user", "My study goal is reviewing friction.",
+        "2999-01-01T00:00:00Z")])[0]
+    c = propose(g, future, quote="My study goal is reviewing friction.",
+                predicate="study_goal", value="reviewing friction")
+    g.capabilities |= {"admin"}
+    with pytest.raises(GatewayError) as e:
+        g.review_memory_candidate(c["candidate_id"], "approve", "Confirmed current learning goal")
+    assert e.value.code == "CONFLICT"
+    assert g.fetch_memory_candidate(c["candidate_id"])["candidate"]["state"] == "pending"
+    assert g.search_memory("study_goal")["total"] == 0
+    g.review_memory_candidate(c["candidate_id"], "reject", "Source date is in the future")
+
+
+def test_commit_rechecks_source_time_after_clock_correction(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    import cognivault.memory_candidates as candidates
+    from cognivault.contracts import HistoryImportItem
+    g, *_ = scenario(tmp_path)
+    future = g.history_backend.import_items("synthetic-decision", [HistoryImportItem(
+        "clock-skew", "learning", "user", "My study goal is reviewing friction.",
+        "2999-01-01T00:00:00Z")])[0]
+    c = propose(g, future, quote="My study goal is reviewing friction.",
+                predicate="study_goal", value="reviewing friction")
+    g.capabilities |= {"admin"}
+    class FutureClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(3000, 1, 1, tzinfo=timezone.utc)
+    with monkeypatch.context() as clock:
+        clock.setattr(candidates, "datetime", FutureClock)
+        g.review_memory_candidate(c["candidate_id"], "approve", "Reviewed with an incorrect system clock")
+    with pytest.raises(GatewayError) as e:
+        g.commit_memory_candidate(c["candidate_id"])
+    assert e.value.code == "CONFLICT"
+    assert g.search_memory("study_goal")["total"] == 0
+
+
 def test_source_integrity_feedback_and_historical_guard(tmp_path):
     g, ref, *_, memory = scenario(tmp_path)
     for changes in ({"quote":"fabricated quote"}, {"source_ref":memory["memory"]["memory_id"]}):
@@ -86,7 +127,8 @@ def test_conflict_requires_confirmation_and_optimistic_version(tmp_path):
     with pytest.raises(GatewayError): g.review_memory_candidate(c["candidate_id"], "approve", "Reviewed")
     g.review_memory_candidate(c["candidate_id"], "approve", "Confirmed changed goal", resolution="confirmed_update")
     assert g.fetch_memory(mid)["memory"]["version"] == 1
-    g.revise_memory(mid, "medicine", [ref], 1, "concurrent-update")
+    g.revise_memory(mid, "medicine", [ref], 1, "concurrent-update",
+                    target_guard=g.fetch_memory(mid)["memory"]["target_guard"])
     with pytest.raises(GatewayError) as e: g.commit_memory_candidate(c["candidate_id"])
     assert e.value.code == "CONFLICT"
     assert g.fetch_memory(mid)["memory"]["value"] == "medicine"
@@ -126,6 +168,19 @@ def test_find_is_bounded_and_does_not_write_candidate_or_memory(tmp_path):
     with pytest.raises(GatewayError): g.find_memory_candidates("goal")
 
 
+def test_chinese_explicit_learning_decision_is_found_without_persisting(tmp_path):
+    from cognivault.contracts import HistoryImportItem
+    g, *_ = scenario(tmp_path)
+    recent = g.history_backend.import_items("synthetic-decision", [HistoryImportItem(
+        "recent-learning", "learning", "user", "现在正式决定先复习受力分析。",
+        "2026-10-09T00:00:00Z")])[0]
+    result = g.find_memory_candidates("受力分析")
+    assert result["suggestions"] and result["suggestions"][0]["source_ref"] == recent
+    assert "决定" in result["suggestions"][0]["cues"]
+    assert result["suggestions"][0]["confidence"] == "unknown"
+    assert not result["persisted"] and g.list_memory_candidates()["total"] == 0
+
+
 def test_meaningful_punctuation_and_duplicate_promotion_replay(tmp_path):
     g, ref, *_ = scenario(tmp_path)
     g.create_memory("self","language","C++",[ref],"language")
@@ -136,7 +191,8 @@ def test_meaningful_punctuation_and_duplicate_promotion_replay(tmp_path):
     g.review_memory_candidate(dup["candidate_id"],"approve","Reviewed original and confirmed current")
     first = g.commit_memory_candidate(dup["candidate_id"])
     mid = first["memory"]["memory_id"]
-    g.revise_memory(mid,"medicine",[ref],first["memory"]["version"],"later")
+    g.revise_memory(mid,"medicine",[ref],first["memory"]["version"],"later",
+                    target_guard=g.fetch_memory(mid)["memory"]["target_guard"])
     replay = g.commit_memory_candidate(dup["candidate_id"])
     assert replay["reused"] and replay["memory"]["version"] == first["memory"]["version"]
     assert not replay["memory"]["is_current"]

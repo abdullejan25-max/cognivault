@@ -953,13 +953,17 @@ class Gateway:
         from .memory_service import execute
         return execute(self, "create", dict(subject=subject, predicate=predicate, value=value, source_refs=source_refs, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
 
-    def revise_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, epistemic_status="unverified", verification_note=None, provenance=None):
+    def revise_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, target_guard=None, epistemic_status="unverified", verification_note=None, provenance=None):
         from .memory_service import execute
-        return execute(self, "revise", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
+        return execute(self, "revise", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, target_guard=target_guard, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
 
-    def retire_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, provenance=None):
+    def retire_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, target_guard=None, provenance=None):
         from .memory_service import execute
-        return execute(self, "retire", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, provenance=provenance))
+        return execute(self, "retire", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, target_guard=target_guard, provenance=provenance))
+
+    def fetch_memory_request(self, idempotency_key):
+        from .memory_service import execute
+        return execute(self, "request", dict(idempotency_key=idempotency_key))
 
     def fetch_memory(self, memory_id, *, version=None):
         from .memory_service import execute

@@ -396,6 +396,7 @@ class SQLiteHistoryBackend:
         words = re.findall(r"\w+", query.casefold())
         if not words:
             raise GatewayError("INVALID_ARGUMENT", "Invalid History search")
+        cjk_words = {word for word in words if re.search(r"[\u3400-\u9fff]", word)}
         filters = []
         params = []
         if source_id is not None:
@@ -406,6 +407,28 @@ class SQLiteHistoryBackend:
             params.append(conversation_id)
         where = " WHERE " + " AND ".join(filters) if filters else ""
         with closing(self._connect()) as connection:
+            if cjk_words:
+                # unicode61 keeps an unspaced Chinese sentence as one token.
+                # Filter literal Chinese terms in SQL so an unrelated prefix hit
+                # cannot hide an embedded phrase, or force a whole-corpus export.
+                literal_filters = filters + ["instr(lower(c.content), ?) > 0"] * len(cjk_words)
+                rows = connection.execute(
+                    "SELECT i.*, c.content FROM history_items i "
+                    "JOIN history_content c ON c.sha256 = i.content_sha256 WHERE " +
+                    " AND ".join(literal_filters) +
+                    " ORDER BY i.created_at DESC, i.item_id ASC LIMIT ?",
+                    [*params, *sorted(cjk_words), _SEARCH_CANDIDATE_LIMIT + 1],
+                ).fetchall()
+                if len(rows) > _SEARCH_CANDIDATE_LIMIT:
+                    raise GatewayError("PAYLOAD_TOO_LARGE", "History search has too many candidates")
+                matches = [row for row in rows if all(
+                    any(word in token if word in cjk_words else
+                        token.startswith(word) or SequenceMatcher(None, word, token).ratio() >= 0.78
+                        for token in re.findall(r"\w+", row["content"].casefold()))
+                    for word in words
+                )]
+                return HistoryPage(tuple(self._item(row, connection) for row in matches[offset:offset + limit]),
+                                   len(matches), offset + limit < len(matches))
             fts_query = " AND ".join('"' + word.replace('"', '') + '"*' for word in words)
             fts_where = " WHERE history_fts MATCH ?"
             if filters:

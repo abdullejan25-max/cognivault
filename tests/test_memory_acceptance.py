@@ -154,7 +154,7 @@ def test_memory_recovery_includes_versions_and_relocates_store(tmp_path, monkeyp
     g.config = replace(g.config, memory_database=path)
     g.memory_store = SQLiteMemoryStore(path)
     mid = g.create_memory("self", "goal", "physics", [REF], "a")["memory"]["memory_id"]
-    g.revise_memory(mid, "engineering", [REF], 1, "b")
+    g.revise_memory(mid, "engineering", [REF], 1, "b", target_guard=g.fetch_memory(mid)["memory"]["target_guard"])
     snapshot = g.create_recovery_snapshot("memory-synthetic")
     assert snapshot["verified"]
     restored = g.verify_recovery_snapshot("memory-synthetic", restore=True)
@@ -169,7 +169,7 @@ def test_replayed_write_receipt_does_not_claim_current_fact(tmp_path):
     g = Gateway(AppConfig("0.8.0"), None, memory_store=store(tmp_path), capabilities=frozenset({"read","write"}))
     args = dict(subject="self", predicate="goal", value="physics", source_refs=[REF], idempotency_key="one")
     mid = g.create_memory(**args)["memory"]["memory_id"]
-    g.revise_memory(mid, "engineering", [REF], 1, "two")
+    g.revise_memory(mid, "engineering", [REF], 1, "two", target_guard=g.fetch_memory(mid)["memory"]["target_guard"])
     replay = g.create_memory(**args)
     assert replay["reused"] and replay["memory"]["version"] == 1
     assert replay["memory"]["is_current"] is False
@@ -188,28 +188,51 @@ def test_write_only_dedup_receipt_cannot_read_another_actor(tmp_path):
 def test_write_only_revision_receipt_does_not_disclose_identity(tmp_path):
     g = Gateway(AppConfig("0.8.0"), None, memory_store=store(tmp_path), capabilities=frozenset({"read","write"}))
     mid = g.create_memory("secret subject", "secret predicate", "old", [REF], "one")["memory"]["memory_id"]
+    guard = g.fetch_memory(mid)["memory"]["target_guard"]
     g.capabilities = frozenset({"write"})
-    result = g.revise_memory(mid, "new", [REF], 1, "two")
+    result = g.revise_memory(mid, "new", [REF], 1, "two", target_guard=guard)
     assert "subject" not in result["memory"] and "predicate" not in result["memory"]
 
 
 def test_search_uses_one_snapshot_during_concurrent_retirement(tmp_path, monkeypatch):
+    from threading import Event, Thread
     s = store(tmp_path)
     mid = s.create("self", "goal", "physics", [REF], "one")["memory"]["memory_id"]
-    with sqlite3.connect(s.database_path) as c:
-        c.execute("PRAGMA journal_mode=WAL")
     original = s._record
     done = False
+    writer_ready = Event()
+    writer_results = []
+    writer = None
+    def retire():
+        other = SQLiteMemoryStore(s.database_path)
+        original_audit = other._audit
+        def signal_audit(*args):
+            original_audit(*args)
+            writer_ready.set()  # Writes staged; COMMIT waits for the reader.
+        other._audit = signal_audit
+        try:
+            writer_results.append(other.revise(mid, "retired", [REF], 1, "two", retire=True))
+        except Exception as error:
+            writer_results.append(error)
     def interleave(con, memory_id, version=None):
-        nonlocal done
+        nonlocal done, writer
         if not done:
             done = True
-            SQLiteMemoryStore(s.database_path).revise(mid, "retired", [REF], 1, "two", retire=True)
+            writer = Thread(target=retire)
+            writer.start()
+            assert writer_ready.wait(3), "writer did not stage its revision"
         return original(con, memory_id, version)
     monkeypatch.setattr(s, "_record", interleave)
-    result = s.search("physics")
+    try:
+        result = s.search("physics")
+    finally:
+        if writer is not None:
+            writer.join(6)
+    assert writer is not None and not writer.is_alive()
+    assert len(writer_results) == 1 and isinstance(writer_results[0], dict)
     assert result["total"] == 1 and result["memories"][0]["state"] == "active"
     assert result["memories"][0]["value"] == "physics"
+    assert s.fetch(mid)["memory"]["state"] == "retired"
 
 
 @pytest.mark.parametrize("suffix", ["-journal", "-wal", "-shm"])

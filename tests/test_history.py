@@ -237,6 +237,41 @@ def test_history_import_migrates_existing_database_before_audit(tmp_path: Path) 
     assert audit == [(ids[0],)]
 
 
+def test_chinese_learning_phrases_match_inside_sentences_with_filters(tmp_path: Path, monkeypatch) -> None:
+    store = _store(tmp_path)
+    store.register_source("export-a", "Synthetic A")
+    store.register_source("export-b", "Synthetic B")
+    ids = store.import_items("export-a", [
+        _item("older", "learning", "此前决定复习受力分析和摩擦力。", "2026-01-01T00:00:00Z"),
+        _item("recent", "learning", "现在正式决定先复习受力分析。", "2026-10-09T00:00:00Z"),
+    ])
+    store.import_items("export-b", [
+        _item("other", "other", "受力分析：另一个人的学习目标。", "2026-10-10T00:00:00Z"),
+    ])
+    first = store.search("受力分析", source_id="export-a", conversation_id="learning", limit=1)
+    assert first.total == 2 and first.items[0].item_id == ids[1] and first.has_more
+    older = store.search("受力分析", source_id="export-a", conversation_id="learning", limit=1, offset=1)
+    assert older.items[0].item_id == ids[0] and not older.has_more
+    assert store.search("受力分析").total == 3
+    monkeypatch.setattr(history_adapter, "_SEARCH_CANDIDATE_LIMIT", 2)
+    assert store.search("受力分析", source_id="export-a").total == 2
+    assert store.search("缺失目标").total == 0
+    with pytest.raises(GatewayError) as e:
+        store.search("受力分析")
+    assert e.value.code == "PAYLOAD_TOO_LARGE"
+
+
+def test_mixed_chinese_query_preserves_english_prefix_matching(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.register_source("learning", "Synthetic learning")
+    ref = store.import_items("learning", [
+        _item("mixed", "study", "受力 physics acceleration", "2026-01-01T00:00:00Z"),
+    ])[0]
+    assert store.search("phys").items[0].item_id == ref
+    mixed = store.search("受力 phys")
+    assert mixed.total == 1 and mixed.items[0].item_id == ref
+
+
 def test_search_filters_paginates_and_handles_prefix_or_typo(tmp_path: Path) -> None:
     store = _store(tmp_path)
     store.register_source("export-a", "Invented export A")

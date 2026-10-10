@@ -29,7 +29,7 @@ def retrieve(gateway, queries, limit=3):
             if result:
                 for r in result["memories"]:
                     scope = "inference" if r["effective_epistemic_status"] == "inference" else "unverified_assertion" if r["effective_epistemic_status"] == "unverified" else "current"
-                    add(domain, r["memory_id"] + "#version=" + str(r["version"]), r["subject"] + ": " + r["predicate"] + " = " + r["value"], scope, epistemic_status=r["effective_epistemic_status"], verification_trust=r["verification_trust"], sources_resolved=r["sources_resolved"], source_refs=r["source_refs"], source_resolution=r["source_resolution"], recorded_at=r["recorded_at"], source_latest_at=r["source_latest_at"], currency_verified=False)
+                    add(domain, r["memory_id"] + "#version=" + str(r["version"]), r["subject"] + ": " + r["predicate"] + " = " + r["value"], scope, epistemic_status=r["effective_epistemic_status"], verification_trust=r["verification_trust"], sources_resolved=r["sources_resolved"], source_refs=r["source_refs"], source_resolution=r["source_resolution"], recorded_at=r["recorded_at"], source_latest_at=r["source_latest_at"], source_time_status=r["source_time_status"], currency_verified=False)
         elif domain == "history":
             result = attempt("history_items", lambda: focused(query, lambda q: gateway.search_history(q, limit=limit), "results"))
             if result:
