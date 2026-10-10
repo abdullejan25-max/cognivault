@@ -38,7 +38,7 @@ def private_inbox(gateway):
         root=Path(configured).resolve(strict=True)
         if not root.is_dir() or any((p/".git").exists() for p in (root,*root.parents)):
             raise GatewayError("OUTSIDE_ALLOWLIST","Unsafe migration inbox")
-        for protected in (gateway.config.study_root,gateway.config.history_database,
+        for protected in (gateway.config.memory_database,gateway.config.study_root,gateway.config.history_database,
                           gateway.config.asset_root,gateway.config.asset_database):
             if protected is not None:
                 protected=Path(protected).resolve()

@@ -480,3 +480,13 @@ def test_source_only_wrong_answer_is_not_reported_as_analysis_version_verified(t
     wrong=g.verify_recovery_snapshot('source-only-domains',restore=True)['domain_readback']['wrong_answers']
     assert wrong['state']=='source_only' and wrong['source_readback_verified']
     assert wrong['analysis_records']==0 and not wrong['analysis_version_readback_verified']
+
+
+@pytest.fixture(autouse=True)
+def synthetic_disk_capacity(monkeypatch):
+    import shutil
+    original = shutil.disk_usage
+    def enough(path):
+        usage = original(path)
+        return type(usage)(usage.total + 64*1024**3, usage.used, usage.free + 64*1024**3)
+    monkeypatch.setattr(shutil, "disk_usage", enough)

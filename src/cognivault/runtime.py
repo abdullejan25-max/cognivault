@@ -95,6 +95,13 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
     else:
         raise ValueError("Invalid local configuration")
 
+    if memory_database is not None:
+        # Validate before returning a runtime; never share schema/audit files across stores.
+        memory_store = SQLiteMemoryStore(memory_database)
+        memory_store._validate_path()
+        if any(memory_database.resolve() == Path(other).resolve() for other in (history_database, asset_database) if other is not None):
+            raise ValueError("Memory database must be separate from other stores")
+
     permissions = raw.get("permissions", {"capabilities": ["read"]})
     if type(permissions) is not dict or set(permissions) != {"capabilities"}:
         raise ValueError("Invalid local configuration")
@@ -164,6 +171,16 @@ def load_gateway_from_config(config_file: Path) -> Gateway:
         qmd_discoverable = lambda: (
             sources.node_executable.is_file() and sources.cli_entrypoint.is_file()
         )
+    if memory_database is not None:
+        # SQLite owns auxiliary file names as well as the main database name.
+        protected_databases = [history_database, asset_database, config.qmd_snapshot_index]
+        if config.recovery_sidecar_root is not None:
+            protected_databases.append(config.recovery_sidecar_root / "ledger.sqlite3")
+        def sqlite_paths(path):
+            return {Path(str(path) + suffix).resolve() for suffix in ("", "-journal", "-wal", "-shm")}
+        memory_paths = sqlite_paths(memory_database)
+        if any(memory_paths & sqlite_paths(other) for other in protected_databases if other is not None):
+            raise ValueError("Memory database overlaps another SQLite store")
     return Gateway(
         config,
         study_backend,

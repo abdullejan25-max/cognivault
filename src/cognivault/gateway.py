@@ -948,3 +948,35 @@ class Gateway:
     @staticmethod
     def _clean_text(value: str) -> str:
         return " ".join("".join(" " if unicodedata.category(char).startswith("C") else char for char in value).split())
+
+    def create_memory(self, subject, predicate, value, source_refs, idempotency_key, *, epistemic_status="unverified", verification_note=None, provenance=None):
+        from .memory_service import execute
+        return execute(self, "create", dict(subject=subject, predicate=predicate, value=value, source_refs=source_refs, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
+
+    def revise_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, epistemic_status="unverified", verification_note=None, provenance=None):
+        from .memory_service import execute
+        return execute(self, "revise", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
+
+    def retire_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, provenance=None):
+        from .memory_service import execute
+        return execute(self, "retire", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, provenance=provenance))
+
+    def fetch_memory(self, memory_id, *, version=None):
+        from .memory_service import execute
+        return execute(self, "fetch", dict(memory_id=memory_id, version=version))
+
+    def search_memory(self, query, limit=5, offset=0):
+        from .memory_service import execute
+        return execute(self, "search", dict(query=query, limit=limit, offset=offset))
+
+    def memory_versions(self, memory_id, limit=5, offset=0):
+        from .memory_service import execute
+        return execute(self, "versions", dict(memory_id=memory_id, limit=limit, offset=offset))
+
+    def retrieve_evidence(self, queries, limit=3):
+        from .evidence import retrieve
+        return retrieve(self, queries, limit)
+
+    def search_canonical_messages(self, query, limit=5, offset=0):
+        self._require_capability("read")
+        return self._canonical_history_store().search_messages(query, limit, offset)

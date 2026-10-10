@@ -38,7 +38,7 @@ def test_versioned_lifecycle_reopen_and_evidence_status(tmp_path):
     assert g.memory_store.search("物化地")["total"] == 0
     reopened = SQLiteMemoryStore(tmp_path / "memory.db")
     assert reopened.fetch(mid)["memory"]["version"] == 3
-    assert reopened.revise(mid, "again", [REF], 2, "retire-1", retire=True)["reused"] is True
+    assert reopened.revise(mid, "retired after correction", [REF], 2, "retire-1", retire=True)["reused"] is True
 
 
 def test_invalid_claims_and_idempotency_conflict(tmp_path):
