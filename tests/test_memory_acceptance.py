@@ -185,6 +185,33 @@ def test_write_only_dedup_receipt_cannot_read_another_actor(tmp_path):
     assert r["receipt_only"]
 
 
+def test_write_only_revision_receipt_does_not_disclose_identity(tmp_path):
+    g = Gateway(AppConfig("0.8.0"), None, memory_store=store(tmp_path), capabilities=frozenset({"read","write"}))
+    mid = g.create_memory("secret subject", "secret predicate", "old", [REF], "one")["memory"]["memory_id"]
+    g.capabilities = frozenset({"write"})
+    result = g.revise_memory(mid, "new", [REF], 1, "two")
+    assert "subject" not in result["memory"] and "predicate" not in result["memory"]
+
+
+def test_search_uses_one_snapshot_during_concurrent_retirement(tmp_path, monkeypatch):
+    s = store(tmp_path)
+    mid = s.create("self", "goal", "physics", [REF], "one")["memory"]["memory_id"]
+    with sqlite3.connect(s.database_path) as c:
+        c.execute("PRAGMA journal_mode=WAL")
+    original = s._record
+    done = False
+    def interleave(con, memory_id, version=None):
+        nonlocal done
+        if not done:
+            done = True
+            SQLiteMemoryStore(s.database_path).revise(mid, "retired", [REF], 1, "two", retire=True)
+        return original(con, memory_id, version)
+    monkeypatch.setattr(s, "_record", interleave)
+    result = s.search("physics")
+    assert result["total"] == 1 and result["memories"][0]["state"] == "active"
+    assert result["memories"][0]["value"] == "physics"
+
+
 @pytest.mark.parametrize("suffix", ["-journal", "-wal", "-shm"])
 def test_memory_runtime_rejects_other_database_auxiliaries(tmp_path, suffix):
     from cognivault.runtime import load_gateway_from_config

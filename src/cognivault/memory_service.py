@@ -74,6 +74,8 @@ def execute(gateway, operation, arguments):
     elif write:
         receipt = result["memory"]
         fields = ("memory_id", "version", "subject", "predicate", "value", "state", "source_refs", "epistemic_status", "verification_note")
+        if operation != "create":
+            fields = tuple(k for k in fields if k not in {"subject", "predicate"})
         result["memory"] = {k: receipt[k] for k in fields}
         result["receipt_only"] = True
     return result

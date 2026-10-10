@@ -307,6 +307,7 @@ class SQLiteMemoryStore:
             return {"memories": [], "total": 0}
         try:
             with closing(self._connect()) as con:
+                con.execute("BEGIN")  # Pin count, matches and records to one read snapshot.
                 where = ("FROM memory_facts f JOIN memory_versions v USING(memory_id) "
                          "WHERE v.version=(SELECT MAX(version) FROM memory_versions "
                          "WHERE memory_id=f.memory_id) AND v.state='active' "
