@@ -20,6 +20,7 @@ EVIDENCE_ID = re.compile(
     r"(?:document|wrong-answer)://sha256/[0-9a-f]{64})\Z"
 )
 REQUEST_KEY = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}\Z")
+RECORD_HASH = re.compile(r"[0-9a-f]{64}\Z")
 
 
 def _invalid() -> GatewayError:
@@ -46,6 +47,26 @@ def _digest(payload: dict) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
+def validate_target_guard(guard: object) -> dict:
+    """A read binding, not an authorization token or a semantic truth claim."""
+    if type(guard) is not dict or set(guard) != {"memory_id", "subject", "predicate", "version", "record_sha256"}:
+        raise _invalid()
+    if type(guard["memory_id"]) is not str or MEMORY_ID.fullmatch(guard["memory_id"]) is None \
+            or type(guard["version"]) is not int or not 1 <= guard["version"] <= 1000000 \
+            or type(guard["record_sha256"]) is not str or RECORD_HASH.fullmatch(guard["record_sha256"]) is None:
+        raise _invalid()
+    _text(guard["subject"], 200)
+    _text(guard["predicate"], 120)
+    return dict(guard)
+
+
+def target_guard(record: dict) -> dict:
+    fields = ("memory_id", "subject", "predicate", "version", "value", "state",
+              "source_refs", "epistemic_status", "verification_note", "recorded_at")
+    return {**{k: record[k] for k in ("memory_id", "subject", "predicate", "version")},
+            "record_sha256": _digest({k: record[k] for k in fields})}
+
+
 class SQLiteMemoryStore:
     """No automatic extraction. Only explicit writes with versioned source claims.
 
@@ -64,10 +85,21 @@ class SQLiteMemoryStore:
         self._validate_path()
         path = self.database_path
         try:
+            # Even mode=ro can create WAL/shm files on its first SELECT. Memory
+            # uses the default DELETE journal mode; reject externally converted
+            # WAL files before opening SQLite, including on write operations.
+            # SQLite header offsets 18/19 identify WAL read/write format (2).
+            if path.exists():
+                with path.open("rb") as stream:
+                    header = stream.read(20)
+                if len(header) >= 20 and 2 in header[18:20]:
+                    raise GatewayError("STORAGE_UNAVAILABLE", "WAL Memory storage is unsupported")
             if write:
                 con = sqlite3.connect(path, timeout=5)
             else:
                 con = sqlite3.connect(path.as_uri() + "?mode=ro", uri=True, timeout=5)
+            import unicodedata
+            con.create_function("cv_normalized", 1, lambda v: " ".join(unicodedata.normalize("NFKC", v).casefold().split()), deterministic=True)
             con.row_factory = sqlite3.Row
             con.execute("PRAGMA foreign_keys=ON")
             return con
@@ -157,6 +189,7 @@ class SQLiteMemoryStore:
         result["verification_trust"] = "reported" if result["epistemic_status"] == "verified" else "unavailable"
         result["evidence_verified"] = False
         result["write_provenance"] = get_provenance(con, "memory", memory_id, result["version"])
+        result["target_guard"] = target_guard(result)
         return result
 
     @staticmethod
@@ -202,7 +235,7 @@ class SQLiteMemoryStore:
                     if existing is not None:
                         return existing
                     rows = con.execute("SELECT f.memory_id FROM memory_facts f JOIN memory_versions v USING(memory_id) "
-                                       "WHERE f.subject=? AND f.predicate=? AND v.state='active' AND v.version="
+                                       "WHERE cv_normalized(f.subject)=cv_normalized(?) AND cv_normalized(f.predicate)=cv_normalized(?) AND v.state='active' AND v.version="
                                        "(SELECT MAX(version) FROM memory_versions WHERE memory_id=f.memory_id)",
                                        (subject, predicate)).fetchall()
                     if rows:
@@ -232,7 +265,8 @@ class SQLiteMemoryStore:
     def revise(self, memory_id: str, value: str, source_refs: list[str],
                expected_version: int, idempotency_key: str, *,
                retire: bool = False, identity: ReportedIdentity | None = None,
-               epistemic_status: str = "unverified", verification_note: str | None = None) -> dict:
+               epistemic_status: str = "unverified", verification_note: str | None = None,
+               target_guard: dict | None = None) -> dict:
         self._assessment(epistemic_status, verification_note)
         if type(memory_id) is not str or MEMORY_ID.fullmatch(memory_id) is None \
                 or type(expected_version) is not int or not 1 <= expected_version <= 1000000 \
@@ -243,6 +277,13 @@ class SQLiteMemoryStore:
         refs = _references(source_refs)
         state = "retired" if retire else "active"
         payload = {"op": "revise", "memory_id": memory_id, "value": value, "source_refs": refs, "expected_version": expected_version, "state": state}
+        # Legacy low-level callers remain readable/replayable. Gateway mutations
+        # always require a guard; it is validated again inside the transaction.
+        if target_guard is not None:
+            target_guard = validate_target_guard(target_guard)
+            if target_guard["memory_id"] != memory_id or target_guard["version"] != expected_version:
+                raise GatewayError("CONFLICT", "Memory target binding conflicts")
+            payload["target_guard"] = target_guard
         if epistemic_status != "unverified" or verification_note is not None:
             payload.update(epistemic_status=epistemic_status, verification_note=verification_note)
         digest = _digest(payload)
@@ -260,6 +301,8 @@ class SQLiteMemoryStore:
                         raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")
                     if previous["version"] != expected_version or previous["state"] == "retired":
                         raise GatewayError("CONFLICT", "Memory version conflicts")
+                    if target_guard is not None and previous["target_guard"] != target_guard:
+                        raise GatewayError("CONFLICT", "Memory target binding conflicts")
                     if self._same(previous, value, refs, state, epistemic_status, verification_note):
                         con.execute("INSERT INTO memory_requests VALUES (?,?,?,?)", (idempotency_key, digest, memory_id, expected_version))
                         return {"memory": previous, "reused": True}
@@ -277,6 +320,29 @@ class SQLiteMemoryStore:
                                 (idempotency_key, digest, memory_id, version))
                     self._audit(con, "retire_memory" if retire else "revise_memory", memory_id)
                     return {"memory": self._record(con, memory_id, version), "reused": False}
+        except (sqlite3.Error, OSError):
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable") from None
+
+    def request(self, idempotency_key: str) -> dict:
+        """Inspect the committed binding without replay, migration or audit writes."""
+        if type(idempotency_key) is not str or REQUEST_KEY.fullmatch(idempotency_key) is None:
+            raise _invalid()
+        self._validate_path()
+        if not self.database_path.exists():
+            raise GatewayError("RESOURCE_NOT_FOUND", "Memory request was not found")
+        try:
+            with closing(self._connect()) as con:
+                con.execute("BEGIN")
+                if not con.execute("SELECT 1 FROM sqlite_master WHERE name='memory_requests'").fetchone():
+                    raise GatewayError("RESOURCE_NOT_FOUND", "Memory request was not found")
+                row = con.execute("SELECT idempotency_key,request_sha256,memory_id,version "
+                                  "FROM memory_requests WHERE idempotency_key=?", (idempotency_key,)).fetchone()
+                if row is None:
+                    raise GatewayError("RESOURCE_NOT_FOUND", "Memory request was not found")
+                memory = self._record(con, row["memory_id"], row["version"])
+                if memory is None:
+                    raise GatewayError("STORAGE_UNAVAILABLE", "Memory request record is unavailable")
+                return {"request": dict(row), "memory": memory}
         except (sqlite3.Error, OSError):
             raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable") from None
 
@@ -337,6 +403,20 @@ class SQLiteMemoryStore:
     def _same(record, value, refs, state, status, note):
         return (record["value"], sorted(record["source_refs"]), record["state"], record["epistemic_status"], record["verification_note"]) == (value, refs, state, status, note)
 
+    def matching_slot(self, subject, predicate):
+        """Bounded exact normalized slot lookup; no lexical prefilter."""
+        self._validate_path()
+        if not self.database_path.exists(): return {"memories": [], "total": 0}
+        try:
+            with closing(self._connect()) as con:
+                con.execute("BEGIN")
+                query = "FROM memory_facts f JOIN memory_versions v USING(memory_id) WHERE cv_normalized(f.subject)=cv_normalized(?) AND cv_normalized(f.predicate)=cv_normalized(?) AND v.state='active' AND v.version=(SELECT MAX(version) FROM memory_versions WHERE memory_id=f.memory_id)"
+                total = con.execute("SELECT COUNT(*) " + query,(subject,predicate)).fetchone()[0]
+                rows = con.execute("SELECT f.memory_id " + query + " ORDER BY f.memory_id LIMIT 20",(subject,predicate)).fetchall()
+                return {"memories":[self._record(con,r[0]) for r in rows], "total":total}
+        except sqlite3.Error:
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable") from None
+
     def versions(self, memory_id: str, limit: int = 5, offset: int = 0) -> dict:
         if type(memory_id) is not str or MEMORY_ID.fullmatch(memory_id) is None or type(limit) is not int or not 1 <= limit <= 20 or type(offset) is not int or not 0 <= offset <= 1000:
             raise _invalid()
@@ -345,6 +425,7 @@ class SQLiteMemoryStore:
             raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")
         try:
             with closing(self._connect()) as con:
+                con.execute("BEGIN")
                 total = con.execute("SELECT COUNT(*) FROM memory_versions WHERE memory_id=?", (memory_id,)).fetchone()[0]
                 if not total:
                     raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")

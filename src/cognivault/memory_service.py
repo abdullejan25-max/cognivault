@@ -3,8 +3,9 @@
 Reference resolution proves availability, never semantic truth. Verified is an
 explicit, reported caller review with a note and currently accessible sources.
 """
+from datetime import datetime, timezone
 from .contracts import GatewayError
-from .adapters.memory import _references, SQLiteMemoryStore
+from .adapters.memory import _references, SQLiteMemoryStore, validate_target_guard
 from .provenance import ReportedIdentity
 
 
@@ -14,14 +15,16 @@ def resolve_sources(gateway, refs):
     for ref in refs:
         try:
             if ref.startswith("history:"):
-                gateway.fetch_history_item(ref)
+                source_time = gateway.fetch_history_item(ref)["item"]["created_at"]
             elif ref.startswith("message:"):
-                gateway.fetch_canonical_message(ref, length=1, evidence_limit=1)
+                source_time = gateway.fetch_canonical_message(ref, length=1, evidence_limit=1)["message"].get("occurred_at")
             elif ref.startswith("document://"):
                 gateway.fetch_document(ref)
+                source_time = None
             else:
                 gateway.get_wrong_answer_bundle(ref, limit=1)
-            result.append({"source_ref": ref, "status": "resolved"})
+                source_time = None
+            result.append({"source_ref": ref, "status": "resolved", "occurred_at":source_time})
         except GatewayError as error:
             result.append({"source_ref": ref, "status": "unavailable", "error_code": error.code})
     return result
@@ -33,6 +36,20 @@ def decorate(gateway, record):
     result["sources_resolved"] = all(r["status"] == "resolved" for r in result["source_resolution"])
     result["effective_epistemic_status"] = ("unverified" if record["epistemic_status"] == "verified" and not result["sources_resolved"] else record["epistemic_status"])
     result["evidence_verified"] = False  # Semantic truth is never inferred from ID existence.
+    times = [r["occurred_at"] for r in result["source_resolution"] if r.get("occurred_at")]
+    parsed = []
+    for time in times:
+        try:
+            stamp = datetime.fromisoformat(time.replace("Z", "+00:00"))
+            if stamp.tzinfo is not None: parsed.append(stamp.astimezone(timezone.utc))
+        except (ValueError,TypeError):
+            pass  # Invalid or undated evidence cannot establish recency.
+    result["source_latest_at"] = max(parsed).isoformat().replace("+00:00","Z") if parsed else None
+    result["source_time_status"] = ("future" if any(t > datetime.now(timezone.utc) for t in parsed)
+                                    else "reported" if parsed else "undated")
+    if record["epistemic_status"] == "verified" and result["source_time_status"] == "future":
+        result["effective_epistemic_status"] = "unverified"
+    result["currency_verified"] = False  # Recording now cannot make an old statement current.
     result["is_current"] = record["state"] == "active"
     return result
 
@@ -44,6 +61,8 @@ def execute(gateway, operation, arguments):
     if store is None:
         raise GatewayError("STORAGE_UNAVAILABLE", "Memory is not configured")
     args = dict(arguments)
+    if operation in {"revise", "retire"}:
+        args["target_guard"] = validate_target_guard(args.get("target_guard"))
     if write:
         status = args.get("epistemic_status", "unverified")
         note = args.get("verification_note")
