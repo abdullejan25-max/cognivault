@@ -26,6 +26,13 @@ backend = "not_configured"
 # database = "C:/PATH/TO/PRIVATE_RUNTIME/history.db"
 # The parent directory must exist. No source is discovered or imported automatically.
 
+# Durable Memory is disabled unless explicitly configured.
+# Source references are claims only, not automatically verified against History/Study.
+# [memory]
+# backend = "sqlite"
+# database = "C:/PATH/TO/PRIVATE_RUNTIME/memory.db"
+# The parent directory must already exist; no personal files are imported.
+
 [assets]
 backend = "not_configured"
 
