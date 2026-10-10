@@ -38,7 +38,7 @@ def private_inbox(gateway):
         root=Path(configured).resolve(strict=True)
         if not root.is_dir() or any((p/".git").exists() for p in (root,*root.parents)):
             raise GatewayError("OUTSIDE_ALLOWLIST","Unsafe migration inbox")
-        for protected in (gateway.config.study_root,gateway.config.history_database,
+        for protected in (gateway.config.memory_database,gateway.config.study_root,gateway.config.history_database,
                           gateway.config.asset_root,gateway.config.asset_database):
             if protected is not None:
                 protected=Path(protected).resolve()
@@ -173,12 +173,16 @@ def ingest(gateway, relative_manifest, expected_manifest_sha256, *, cursor=0, li
               **{name:sum(r["disposition"]==state for r in results) for name,state in (("imported","imported"),("reused","reused"),("errors","error"))},
               "canonical_messages_created":0,"recorded_at":utc_now()}
     folder=root/"receipts"
+    io_folder=folder
+    if os.name=="nt" and not str(folder).startswith("\\\\?\\"):
+        value=str(folder.absolute())
+        io_folder=Path("\\\\?\\UNC\\"+value[2:] if value.startswith("\\\\") else "\\\\?\\"+value)
     try:
-        folder.mkdir(exist_ok=True)
-        if _path_has_reparse_point(folder): raise GatewayError("OUTSIDE_ALLOWLIST","Unsafe receipt target")
+        io_folder.mkdir(exist_ok=True)
+        if _path_has_reparse_point(io_folder): raise GatewayError("OUTSIDE_ALLOWLIST","Unsafe receipt target")
         name=expected_manifest_sha256+"-"+str(cursor)+"-"+uuid4().hex+".json"
         data=json.dumps(response,sort_keys=True,separators=(",",":")).encode()
-        with (folder/name).open("xb") as stream:
+        with (io_folder/name).open("xb") as stream:
             stream.write(data)
             stream.flush()
             os.fsync(stream.fileno())

@@ -288,7 +288,12 @@ def test_wrong_answer_analysis_count_is_bounded_across_bundles(monkeypatch) -> N
     ("source_uri", "page_number"),
     [
         ("asset://sha256/" + "d" * 64, 1),
-        ("document://sha256/" + "d" * 64, 65),
+        ("asset://sha256/" + "d" * 64, 999),
+        ("document://sha256/" + "d" * 64, 0),
+        ("document://sha256/" + "d" * 64, -1),
+        ("document://sha256/" + "d" * 64, 1000),
+        ("document://sha256/" + "d" * 64, True),
+        ("document://sha256/" + "d" * 64, "65"),
     ],
 )
 def test_wrong_answer_page_number_matches_gateway_contract(source_uri: str, page_number: int) -> None:
@@ -297,6 +302,31 @@ def test_wrong_answer_page_number_matches_gateway_contract(source_uri: str, page
     bundle["source"]["page_number"] = page_number
     with pytest.raises(ProjectionError, match="Invalid projection snapshot"):
         render_projection(ProjectionSnapshot(wrong_answer_bundles=(bundle,)))
+
+
+@pytest.mark.parametrize("page_number", [64, 65, 999])
+def test_document_wrong_answer_renders_physical_page_and_preserves_source(page_number: int) -> None:
+    bundle = _wrong_answer_bundle()
+    source = bundle["source"]
+    source["source_uri"] = "document://sha256/" + "d" * 64
+    source["page_number"] = page_number
+    source["text_origin"] = "document_text"
+    for analysis in bundle["analyses"]:
+        analysis["source_refs"] = [source["source_uri"]]
+
+    files = render_projection(ProjectionSnapshot(wrong_answer_bundles=(bundle,)))
+    page = next(body for path, body in files.items() if path.startswith("WrongAnswers/items/"))
+
+    assert 'source_id: "wrong-answer://sha256/' + "a" * 64 + '"' in page
+    assert "Source: `document://sha256/" + "d" * 64 + "`" in page
+    assert f"Page: ` {page_number} `" in page
+    assert "Synthetic question" in page
+    assert "Synthetic answer" in page
+    assert 'event_time: "2026-08-31T00:00:00Z"' in page
+    assert "origin=source; actor=external_client; identity=reported (unverified); legacy=native" in page
+    assert "Source refs: ` document://sha256/" + "d" * 64 + " `" in page
+    assert source["page_number"] == page_number
+    assert source["text_origin"] == "document_text"
 
 
 def test_wrong_answer_source_requires_explicit_page_number_field() -> None:

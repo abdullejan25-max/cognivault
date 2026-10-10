@@ -1365,11 +1365,25 @@ class SQLiteDocumentStore:
                               (uri, page_number)).fetchone()
             return PageRecord(*row) if row else None
 
-    def search(self, query: str, limit: int = 5, offset: int = 0) -> SearchPage:
+    def search(self, query: str, limit: int = 5, offset: int = 0, *,
+               source_ids: list[str] | None = None, page_range: list[int] | None = None) -> SearchPage:
+        """Intersect canonical sources and inclusive physical pages before pagination.
+
+        Up to 64 source IDs, duplicates accepted and deduplicated. The existing
+        global candidate ceiling applies even when a narrower scope is requested.
+        """
         if type(query) is not str or not 1 <= len(query.strip()) <= 500 or "\x00" in query \
                 or type(limit) is not int or not 1 <= limit <= 20 \
                 or type(offset) is not int or not 0 <= offset <= 1000:
             raise GatewayError("INVALID_ARGUMENT", "Invalid document search")
+        if source_ids is not None and (type(source_ids) is not list or not 1 <= len(source_ids) <= 64
+                or any(type(uri) is not str or _DOC_URI.fullmatch(uri) is None for uri in source_ids)):
+            raise GatewayError("INVALID_ARGUMENT", "Invalid document source scope")
+        if page_range is not None and (type(page_range) is not list or len(page_range) != 2
+                or any(type(page) is not int or not 1 <= page <= MAX_PAGES for page in page_range)
+                or page_range[0] > page_range[1]):
+            raise GatewayError("INVALID_ARGUMENT", "Invalid document page scope")
+        sources = set(source_ids) if source_ids is not None else None
         words = query.casefold().split()
         with closing(self._connect()) as con:
             rows = con.execute(
@@ -1381,5 +1395,8 @@ class SQLiteDocumentStore:
             ).fetchall()
             if len(rows) > 2048:
                 raise GatewayError("PAYLOAD_TOO_LARGE", "Document search has too many candidates")
-            matches = [ChunkRecord(*row) for row in rows if all(word in row["text"].casefold() for word in words)]
+            matches = [ChunkRecord(*row) for row in rows
+                       if (sources is None or row["document_uri"] in sources)
+                       and (page_range is None or page_range[0] <= row["page_number"] <= page_range[1])
+                       and all(word in row["text"].casefold() for word in words)]
             return SearchPage(tuple(matches[offset:offset + limit]), len(matches), offset + limit < len(matches))

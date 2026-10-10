@@ -3,6 +3,8 @@ import base64
 from dataclasses import replace
 import hashlib
 import json
+import os
+from pathlib import Path
 
 import anyio
 from mcp.shared.memory import create_connected_server_and_client_session
@@ -51,6 +53,118 @@ def test_gateway_source_manifest_exact_rerun_readback_and_durable_receipt(tmp_pa
     assert g.search_history_sources(source_system="workbuddy")["total"]==1
     assert g.search_history_sources(query="SYNTHETIC_NO_RESULT")["total"]==0
     assert g.history_source_summary()["source_records"]==1
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows extended receipt path behavior")
+def test_gateway_windows_long_receipt_preserves_readback_and_rerun(tmp_path):
+    # Invented bytes only; empty authority setup follows the existing fixture.
+    g,short_inbox=setup(tmp_path)
+    inbox=tmp_path
+    while len(str(inbox)) < 201:
+        remaining=201-len(str(inbox))-1
+        if remaining <= 0:
+            break
+        inbox=inbox/("i"*min(40,remaining))
+    inbox.mkdir(parents=True)
+    assert len(str(inbox/"manifest.json")) < 260
+    assert len(str(inbox/"input.bin")) < 260
+    assert len(str(inbox/"receipts"/("a"*104))) > 300
+    raw=b'{"synthetic":"invented Windows source receipt"}\n'
+    digest=manifest(inbox,raw=raw)
+    g.config=replace(g.config,history_migration_inbox=inbox)
+    try:
+        first=g.ingest_history_sources("manifest.json",digest,limit=1)
+    except GatewayError as error:
+        # On the old implementation receipt failure must not hide a committed source.
+        assert error.code=="STORAGE_UNAVAILABLE"
+        assert g.history_source_summary()["source_records"]==1
+        source=g.search_history_sources(source_system="workbuddy")["sources"][0]
+        proof=g.verify_history_source(source["source_id"])
+        assert proof["verified"] and proof["sha256"]==hashlib.sha256(raw).hexdigest()
+        assert base64.b64decode(g.fetch_history_source(source["source_id"])["content_base64"])==raw
+        manifest(short_inbox,raw=raw)
+        g.config=replace(g.config,history_migration_inbox=short_inbox)
+        retry=g.ingest_history_sources("manifest.json",digest,limit=1)
+        assert retry["imported"]==0 and retry["reused"]==1
+        assert g.history_source_summary()["source_records"]==1
+        print("RED authority preserved: source_records=1, Gateway verify/raw readback PASS, short retry reused=1")
+        raise
+    second=g.ingest_history_sources("manifest.json",digest,limit=1)
+    assert first["imported"]==1 and first["errors"]==0
+    assert second["imported"]==0 and second["reused"]==1
+    identity=first["results"][0]["source_id"]
+    assert second["results"][0]["source_id"]==identity
+    proof=g.verify_history_source(identity)
+    assert proof["verified"] and proof["sha256"]==hashlib.sha256(raw).hexdigest()
+    assert base64.b64decode(g.fetch_history_source(identity)["content_base64"])==raw
+    assert g.history_source_summary()["source_records"]==1
+    for response in (first,second):
+        receipt=inbox/response["receipt"]["relative_path"]
+        assert len(str(receipt)) > 300
+        # Independent physical read of the generated synthetic receipt, not authority.
+        data=Path("\\\\?\\"+str(receipt)).read_bytes()
+        assert hashlib.sha256(data).hexdigest()==response["receipt"]["sha256"]
+        assert json.loads(data)=={key:value for key,value in response.items() if key!="receipt"}
+    print("GREEN long receipt: imported=1, reused=1, source_records=1, Gateway proof/raw and both receipt hashes PASS")
+    print(f"Synthetic paths: source={len(str(inbox/'input.bin'))}, manifest={len(str(inbox/'manifest.json'))}, receipt={len(str(receipt))}; source_sha256={proof['sha256']}; manifest_sha256={digest}")
+
+
+@pytest.mark.skipif(os.name != "nt", reason="Windows receipt junction safety")
+def test_gateway_receipt_junction_is_rejected_without_external_write(tmp_path):
+    import _winapi
+    g,inbox=setup(tmp_path)
+    digest=manifest(inbox)
+    outside=tmp_path/"synthetic-outside"
+    outside.mkdir()
+    _winapi.CreateJunction(str(outside),str(inbox/"receipts"))
+    with pytest.raises(GatewayError) as raised:
+        g.ingest_history_sources("manifest.json",digest,limit=1)
+    assert raised.value.code=="OUTSIDE_ALLOWLIST"
+    assert list(outside.iterdir())==[]
+    assert g.history_source_summary()["source_records"]==1
+
+
+def test_gateway_hardlinked_source_is_rejected_without_import(tmp_path):
+    g,inbox=setup(tmp_path)
+    digest=manifest(inbox)
+    os.link(inbox/"input.bin",tmp_path/"synthetic-alias.bin")
+    response=g.ingest_history_sources("manifest.json",digest,limit=1)
+    assert response["errors"]==1
+    assert response["results"][0]["error_code"]=="OUTSIDE_ALLOWLIST"
+    assert g.history_source_summary()["source_records"]==0
+
+
+def test_gateway_receipt_collision_preserves_existing_bytes(tmp_path,monkeypatch):
+    from uuid import UUID
+    from cognivault.migration import gateway_sources
+    g,inbox=setup(tmp_path)
+    digest=manifest(inbox)
+    monkeypatch.setattr(gateway_sources,"uuid4",lambda: UUID(int=1))
+    first=g.ingest_history_sources("manifest.json",digest,limit=1)
+    receipt=inbox/first["receipt"]["relative_path"]
+    value=str(receipt)
+    io_receipt=Path("\\\\?\\"+value) if os.name=="nt" else receipt
+    before=io_receipt.read_bytes()
+    with pytest.raises(GatewayError) as raised:
+        g.ingest_history_sources("manifest.json",digest,limit=1)
+    assert raised.value.code=="STORAGE_UNAVAILABLE"
+    assert io_receipt.read_bytes()==before
+    assert g.history_source_summary()["source_records"]==1
+
+
+def test_gateway_source_and_normalization_receipts_remain_independent(tmp_path):
+    g,inbox=setup(tmp_path)
+    imported=g.ingest_history_sources("manifest.json",manifest(inbox),limit=1)
+    snapshot=g.history_normalization_snapshot()
+    first=g.normalize_history_sources(snapshot["source_set_sha256"])
+    second=g.normalize_history_sources(snapshot["source_set_sha256"])
+    assert second["reused_sources"]==1 and second["errors"]==0
+    assert g.verify_history_source(imported["results"][0]["source_id"])["verified"]
+    for response in (imported,first,second):
+        receipt=inbox/response["receipt"]["relative_path"]
+        value=str(receipt)
+        io_receipt=Path("\\\\?\\"+value) if os.name=="nt" else receipt
+        assert hashlib.sha256(io_receipt.read_bytes()).hexdigest()==response["receipt"]["sha256"]
 
 
 @pytest.mark.parametrize("path", ["../input.bin", "C:/private/input.bin", "input.bin:stream", ".\\input.bin"])

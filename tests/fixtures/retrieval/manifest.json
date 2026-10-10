@@ -1,0 +1,644 @@
+{
+  "schema_version": 1,
+  "fixture_revision": "p15-synthetic-1",
+  "authorship": "Entirely invented independent gold; frozen before any retrieval query.",
+  "seed": 15,
+  "order": [
+    "study-01",
+    "study-02",
+    "study-03",
+    "study-04",
+    "study-05",
+    "study-06",
+    "study-07",
+    "study-08",
+    "documents-01",
+    "documents-02",
+    "documents-03",
+    "documents-04",
+    "documents-05",
+    "documents-06",
+    "documents-07",
+    "documents-08",
+    "wrong_answer-01",
+    "wrong_answer-02",
+    "wrong_answer-03",
+    "wrong_answer-04",
+    "wrong_answer-05",
+    "wrong_answer-06",
+    "wrong_answer-07",
+    "wrong_answer-08",
+    "history-01",
+    "history-02",
+    "history-03",
+    "history-04",
+    "history-05",
+    "history-06",
+    "history-07",
+    "history-08"
+  ],
+  "limit": 10,
+  "warm_samples": 5,
+  "profiles": [
+    "default",
+    "capacity-2049"
+  ],
+  "units": {
+    "study": "file",
+    "documents": "chunk/page",
+    "wrong_answer": "source",
+    "history": "canonical conversation",
+    "history_source_only": "source metadata",
+    "history_legacy": "legacy item (not quality scored)"
+  },
+  "candidates": {
+    "study": [
+      {
+        "id": "study:fractions.md",
+        "text": "分数通分 Common denominator。分母代表等分单位，先通分再相加。",
+        "chapter_id": "denominator"
+      },
+      {
+        "id": "study:equal-parts.md",
+        "text": "分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。",
+        "chapter_id": "fractions"
+      },
+      {
+        "id": "study:lantern.md",
+        "text": "Lantern route decision: keep the violet bridge open for night travel.",
+        "chapter_id": "route"
+      },
+      {
+        "id": "study:orbit.md",
+        "text": "Orbit review: the ellipse focus remains fixed while the radius changes.",
+        "chapter_id": "geometry"
+      },
+      {
+        "id": "study:density.md",
+        "text": "密度 density 等于质量除以体积，测量前校准天平。",
+        "chapter_id": "measurement"
+      },
+      {
+        "id": "study:inertia.md",
+        "text": "Inertia means resistance to changes in velocity, also called 惯性。",
+        "chapter_id": "mechanics"
+      },
+      {
+        "id": "study:fractions-calendar.md",
+        "text": "Fraction calendar divides a year into quarters, not arithmetic denominators.",
+        "chapter_id": "calendar"
+      },
+      {
+        "id": "study:lantern-festival.md",
+        "text": "Lantern festival paints violet bridges but makes no route decision.",
+        "chapter_id": "festival"
+      },
+      {
+        "id": "study:orbit-budget.md",
+        "text": "Orbit project budget lists circular coins and expense totals.",
+        "chapter_id": "finance"
+      },
+      {
+        "id": "study:density-colors.md",
+        "text": "Density of colored dots is an artistic pattern with no mass.",
+        "chapter_id": "art"
+      },
+      {
+        "id": "study:inertia-script.md",
+        "text": "Inertia is a fictional theatre character who loves tea.",
+        "chapter_id": "theatre"
+      },
+      {
+        "id": "study:river.md",
+        "text": "The invented silver river has three ferry stops.",
+        "chapter_id": "transport"
+      },
+      {
+        "id": "study:botany.md",
+        "text": "Azure flowers grow under invented amber lamps.",
+        "chapter_id": "botany"
+      },
+      {
+        "id": "study:music.md",
+        "text": "A crystal flute plays seven synthetic notes.",
+        "chapter_id": "music"
+      },
+      {
+        "id": "study:recipe.md",
+        "text": "Pear soup needs four invented spoonfuls of honey.",
+        "chapter_id": "recipe"
+      },
+      {
+        "id": "study:weather.md",
+        "text": "Synthetic cloud observations show a northward breeze.",
+        "chapter_id": "weather"
+      }
+    ],
+    "documents": [
+      {
+        "id": "book-a",
+        "title": "Invented Fraction Handbook",
+        "pages": 66,
+        "page_texts": {
+          "3": "Fraction calendar quarterly planning.",
+          "64": "# Equal units\n分母代表等分单位，先通分再相加。",
+          "65": "# Common denominator\n分母不能直接相加，因为分母代表等分单位。",
+          "66": "# Worked example\n共同分母示例 1/2 + 1/3 = 5/6。"
+        }
+      },
+      {
+        "id": "book-b",
+        "title": "Invented Violet Handbook",
+        "pages": 65,
+        "page_texts": {
+          "64": "# Route\nLantern route decision: keep the violet bridge open for night travel.",
+          "65": "Common denominator names a violet bridge design; this is not fraction addition."
+        }
+      },
+      {
+        "id": "book-fractions-calendar",
+        "title": "Invented fractions-calendar",
+        "pages": 1,
+        "page_texts": {
+          "1": "Fraction calendar divides a year into quarters, not arithmetic denominators."
+        }
+      },
+      {
+        "id": "book-lantern-festival",
+        "title": "Invented lantern-festival",
+        "pages": 1,
+        "page_texts": {
+          "1": "Lantern festival paints violet bridges but makes no route decision."
+        }
+      },
+      {
+        "id": "book-orbit-budget",
+        "title": "Invented orbit-budget",
+        "pages": 1,
+        "page_texts": {
+          "1": "Orbit project budget lists circular coins and expense totals."
+        }
+      },
+      {
+        "id": "book-density-colors",
+        "title": "Invented density-colors",
+        "pages": 1,
+        "page_texts": {
+          "1": "Density of colored dots is an artistic pattern with no mass."
+        }
+      },
+      {
+        "id": "book-inertia-script",
+        "title": "Invented inertia-script",
+        "pages": 1,
+        "page_texts": {
+          "1": "Inertia is a fictional theatre character who loves tea."
+        }
+      },
+      {
+        "id": "book-river",
+        "title": "Invented river",
+        "pages": 1,
+        "page_texts": {
+          "1": "The invented silver river has three ferry stops."
+        }
+      },
+      {
+        "id": "book-botany",
+        "title": "Invented botany",
+        "pages": 1,
+        "page_texts": {
+          "1": "Azure flowers grow under invented amber lamps."
+        }
+      },
+      {
+        "id": "book-music",
+        "title": "Invented music",
+        "pages": 1,
+        "page_texts": {
+          "1": "A crystal flute plays seven synthetic notes."
+        }
+      },
+      {
+        "id": "book-recipe",
+        "title": "Invented recipe",
+        "pages": 1,
+        "page_texts": {
+          "1": "Pear soup needs four invented spoonfuls of honey."
+        }
+      },
+      {
+        "id": "book-weather",
+        "title": "Invented weather",
+        "pages": 1,
+        "page_texts": {
+          "1": "Synthetic cloud observations show a northward breeze."
+        }
+      }
+    ],
+    "wrong_answer": [
+      {
+        "id": "wrong:fractions",
+        "source": "shared-image",
+        "question": "1/2 + 1/3",
+        "answer": "2/5",
+        "analysis": {
+          "error_type": "fractions",
+          "knowledge_points": [
+            "fractions"
+          ],
+          "reasoning": "分数通分 Common denominator。分母代表等分单位，先通分再相加。",
+          "correct_solution": "Check each step. 分数通分 Common denominator。分母代表等分单位，先通分再相加。",
+          "review_advice": "Review invented fractions"
+        },
+        "latest_analysis": {
+          "error_type": "denominator",
+          "knowledge_points": [
+            "fraction addition"
+          ],
+          "reasoning": "Latest denominator analysis: 分母代表等分单位，先通分再相加。",
+          "correct_solution": "1/2 + 1/3 = 5/6。",
+          "review_advice": "Practice common denominator."
+        }
+      },
+      {
+        "id": "wrong:equal-parts",
+        "source": "shared-image",
+        "question": "2/3 + 1/6",
+        "answer": "3/9",
+        "analysis": {
+          "error_type": "equal-parts",
+          "knowledge_points": [
+            "equal-parts"
+          ],
+          "reasoning": "分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。",
+          "correct_solution": "Check each step. 分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。",
+          "review_advice": "Review invented equal-parts"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:lantern",
+        "source": "shared-image",
+        "question": "Invented lantern exercise",
+        "answer": "Invented lantern answer",
+        "analysis": {
+          "error_type": "lantern",
+          "knowledge_points": [
+            "lantern"
+          ],
+          "reasoning": "Lantern route decision: keep the violet bridge open for night travel.",
+          "correct_solution": "Check each step. Lantern route decision: keep the violet bridge open for night travel.",
+          "review_advice": "Review invented lantern"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:orbit",
+        "source": "shared-image",
+        "question": "Invented orbit exercise",
+        "answer": "Invented orbit answer",
+        "analysis": {
+          "error_type": "orbit",
+          "knowledge_points": [
+            "orbit"
+          ],
+          "reasoning": "Orbit review: the ellipse focus remains fixed while the radius changes.",
+          "correct_solution": "Check each step. Orbit review: the ellipse focus remains fixed while the radius changes.",
+          "review_advice": "Review invented orbit"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:density",
+        "source": "shared-image",
+        "question": "Invented density exercise",
+        "answer": "Invented density answer",
+        "analysis": {
+          "error_type": "density",
+          "knowledge_points": [
+            "density"
+          ],
+          "reasoning": "密度 density 等于质量除以体积，测量前校准天平。",
+          "correct_solution": "Check each step. 密度 density 等于质量除以体积，测量前校准天平。",
+          "review_advice": "Review invented density"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:inertia",
+        "source": "shared-image",
+        "question": "Invented inertia exercise",
+        "answer": "Invented inertia answer",
+        "analysis": {
+          "error_type": "inertia",
+          "knowledge_points": [
+            "inertia"
+          ],
+          "reasoning": "Inertia means resistance to changes in velocity, also called 惯性。",
+          "correct_solution": "Check each step. Inertia means resistance to changes in velocity, also called 惯性。",
+          "review_advice": "Review invented inertia"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:fractions-calendar",
+        "source": "shared-image",
+        "question": "Invented fractions-calendar exercise",
+        "answer": "Invented fractions-calendar answer",
+        "analysis": {
+          "error_type": "fractions-calendar",
+          "knowledge_points": [
+            "fractions-calendar"
+          ],
+          "reasoning": "Fraction calendar divides a year into quarters, not arithmetic denominators.",
+          "correct_solution": "Check each step. Fraction calendar divides a year into quarters, not arithmetic denominators.",
+          "review_advice": "Review invented fractions-calendar"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:lantern-festival",
+        "source": "shared-image",
+        "question": "Invented lantern-festival exercise",
+        "answer": "Invented lantern-festival answer",
+        "analysis": {
+          "error_type": "lantern-festival",
+          "knowledge_points": [
+            "lantern-festival"
+          ],
+          "reasoning": "Lantern festival paints violet bridges but makes no route decision.",
+          "correct_solution": "Check each step. Lantern festival paints violet bridges but makes no route decision.",
+          "review_advice": "Review invented lantern-festival"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:orbit-budget",
+        "source": "shared-image",
+        "question": "Invented orbit-budget exercise",
+        "answer": "Invented orbit-budget answer",
+        "analysis": {
+          "error_type": "orbit-budget",
+          "knowledge_points": [
+            "orbit-budget"
+          ],
+          "reasoning": "Orbit project budget lists circular coins and expense totals.",
+          "correct_solution": "Check each step. Orbit project budget lists circular coins and expense totals.",
+          "review_advice": "Review invented orbit-budget"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:density-colors",
+        "source": "shared-image",
+        "question": "Invented density-colors exercise",
+        "answer": "Invented density-colors answer",
+        "analysis": {
+          "error_type": "density-colors",
+          "knowledge_points": [
+            "density-colors"
+          ],
+          "reasoning": "Density of colored dots is an artistic pattern with no mass.",
+          "correct_solution": "Check each step. Density of colored dots is an artistic pattern with no mass.",
+          "review_advice": "Review invented density-colors"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:inertia-script",
+        "source": "shared-image",
+        "question": "Invented inertia-script exercise",
+        "answer": "Invented inertia-script answer",
+        "analysis": {
+          "error_type": "inertia-script",
+          "knowledge_points": [
+            "inertia-script"
+          ],
+          "reasoning": "Inertia is a fictional theatre character who loves tea.",
+          "correct_solution": "Check each step. Inertia is a fictional theatre character who loves tea.",
+          "review_advice": "Review invented inertia-script"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:river",
+        "source": "shared-image",
+        "question": "Invented river exercise",
+        "answer": "Invented river answer",
+        "analysis": {
+          "error_type": "river",
+          "knowledge_points": [
+            "river"
+          ],
+          "reasoning": "The invented silver river has three ferry stops.",
+          "correct_solution": "Check each step. The invented silver river has three ferry stops.",
+          "review_advice": "Review invented river"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:botany",
+        "source": "shared-image",
+        "question": "Invented botany exercise",
+        "answer": "Invented botany answer",
+        "analysis": {
+          "error_type": "botany",
+          "knowledge_points": [
+            "botany"
+          ],
+          "reasoning": "Azure flowers grow under invented amber lamps.",
+          "correct_solution": "Check each step. Azure flowers grow under invented amber lamps.",
+          "review_advice": "Review invented botany"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:music",
+        "source": "shared-image",
+        "question": "Invented music exercise",
+        "answer": "Invented music answer",
+        "analysis": {
+          "error_type": "music",
+          "knowledge_points": [
+            "music"
+          ],
+          "reasoning": "A crystal flute plays seven synthetic notes.",
+          "correct_solution": "Check each step. A crystal flute plays seven synthetic notes.",
+          "review_advice": "Review invented music"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:recipe",
+        "source": "shared-image",
+        "question": "Invented recipe exercise",
+        "answer": "Invented recipe answer",
+        "analysis": {
+          "error_type": "recipe",
+          "knowledge_points": [
+            "recipe"
+          ],
+          "reasoning": "Pear soup needs four invented spoonfuls of honey.",
+          "correct_solution": "Check each step. Pear soup needs four invented spoonfuls of honey.",
+          "review_advice": "Review invented recipe"
+        },
+        "latest_analysis": null
+      },
+      {
+        "id": "wrong:weather",
+        "source": "shared-image",
+        "question": "Invented weather exercise",
+        "answer": "Invented weather answer",
+        "analysis": {
+          "error_type": "weather",
+          "knowledge_points": [
+            "weather"
+          ],
+          "reasoning": "Synthetic cloud observations show a northward breeze.",
+          "correct_solution": "Check each step. Synthetic cloud observations show a northward breeze.",
+          "review_advice": "Review invented weather"
+        },
+        "latest_analysis": null
+      }
+    ],
+    "history": [
+      {
+        "id": "conversation:fractions",
+        "source_id": "history-source:fractions",
+        "native_key": "p15-invented-fractions",
+        "source_system": "codex",
+        "text": "分数通分 Common denominator。分母代表等分单位，先通分再相加。",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:equal-parts",
+        "source_id": "history-source:equal-parts",
+        "native_key": "p15-invented-equal-parts",
+        "source_system": "codex",
+        "text": "分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:lantern",
+        "source_id": "history-source:lantern",
+        "native_key": "p15-invented-lantern",
+        "source_system": "codex",
+        "text": "Lantern route decision: keep the violet bridge open for night travel.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:orbit",
+        "source_id": "history-source:orbit",
+        "native_key": "p15-invented-orbit",
+        "source_system": "codex",
+        "text": "Orbit review: the ellipse focus remains fixed while the radius changes.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:density",
+        "source_id": "history-source:density",
+        "native_key": "p15-invented-density",
+        "source_system": "codex",
+        "text": "密度 density 等于质量除以体积，测量前校准天平。",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:inertia",
+        "source_id": "history-source:inertia",
+        "native_key": "p15-invented-inertia",
+        "source_system": "hermes",
+        "text": "Inertia means resistance to changes in velocity, also called 惯性。",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:fractions-calendar",
+        "source_id": "history-source:fractions-calendar",
+        "native_key": "p15-invented-fractions-calendar",
+        "source_system": "codex",
+        "text": "Fraction calendar divides a year into quarters, not arithmetic denominators.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:lantern-festival",
+        "source_id": "history-source:lantern-festival",
+        "native_key": "p15-invented-lantern-festival",
+        "source_system": "codex",
+        "text": "Lantern festival paints violet bridges but makes no route decision.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:orbit-budget",
+        "source_id": "history-source:orbit-budget",
+        "native_key": "p15-invented-orbit-budget",
+        "source_system": "codex",
+        "text": "Orbit project budget lists circular coins and expense totals.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:density-colors",
+        "source_id": "history-source:density-colors",
+        "native_key": "p15-invented-density-colors",
+        "source_system": "codex",
+        "text": "Density of colored dots is an artistic pattern with no mass.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:inertia-script",
+        "source_id": "history-source:inertia-script",
+        "native_key": "p15-invented-inertia-script",
+        "source_system": "codex",
+        "text": "Inertia is a fictional theatre character who loves tea.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:river",
+        "source_id": "history-source:river",
+        "native_key": "p15-invented-river",
+        "source_system": "codex",
+        "text": "The invented silver river has three ferry stops.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:botany",
+        "source_id": "history-source:botany",
+        "native_key": "p15-invented-botany",
+        "source_system": "codex",
+        "text": "Azure flowers grow under invented amber lamps.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:music",
+        "source_id": "history-source:music",
+        "native_key": "p15-invented-music",
+        "source_system": "codex",
+        "text": "A crystal flute plays seven synthetic notes.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:recipe",
+        "source_id": "history-source:recipe",
+        "native_key": "p15-invented-recipe",
+        "source_system": "codex",
+        "text": "Pear soup needs four invented spoonfuls of honey.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "conversation:weather",
+        "source_id": "history-source:weather",
+        "native_key": "p15-invented-weather",
+        "source_system": "codex",
+        "text": "Synthetic cloud observations show a northward breeze.",
+        "occurred_at": "2026-01-02T00:00:00Z"
+      },
+      {
+        "id": "source-only:metadata",
+        "source_id": "history-source:metadata",
+        "source_system": "workbuddy",
+        "native_key": "p15-metadata",
+        "text": "Invented metadata only; no canonical discussion",
+        "source_only": true
+      }
+    ]
+  }
+}

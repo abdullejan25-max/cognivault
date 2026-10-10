@@ -59,7 +59,7 @@ def test_protocol_lists_tools_with_narrow_inputs_and_correct_write_hints(tmp_pat
         async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
             listed = await client.list_tools()
             tools = {tool.name: tool for tool in listed.tools}
-            read_names = {"health_report", "search_study", "list_history_sources",
+            read_names = {"retrieve_evidence", "search_canonical_messages", "health_report", "search_study", "list_history_sources",
                           "list_legacy_sources", "search_legacy_sources", "fetch_legacy_source",
                           "search_history", "fetch_history_item", "search_documents",
                           "fetch_document", "fetch_document_page", "list_document_ocr_candidates",
