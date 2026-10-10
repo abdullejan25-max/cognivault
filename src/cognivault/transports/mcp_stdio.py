@@ -373,11 +373,13 @@ def create_mcp_server(gateway: Gateway) -> Server:
         tools.extend(source_tools(gateway,read_only,write_only,reported_provenance))
         from .canonical_tools import canonical_tools
         tools.extend(canonical_tools(gateway,read_only,write_only))
+        from .memory_tools import memory_tools
+        tools.extend(memory_tools(gateway,read_only,write_only))
         from .recovery_tools import recovery_tools
         tools.extend(recovery_tools(gateway,read_only,write_only))
         ingest_tools = {"register_asset", "ingest_documents", "ingest_document_file", "ingest_history_sources",
                         "process_document_ocr_pages", "normalize_history_sources"}
-        write_tools = {"register_wrong_answer_source", "save_wrong_answer_analysis",
+        write_tools = {"create_memory", "revise_memory", "retire_memory", "register_wrong_answer_source", "save_wrong_answer_analysis",
                        "update_wrong_answer_analysis"}
         projection_tools = {"projection_snapshot"}
         read_tools = ({tool.name for tool in tools} - ingest_tools - write_tools - projection_tools) \
@@ -522,6 +524,10 @@ def create_mcp_server(gateway: Gateway) -> Server:
                 import asyncio
                 recovery_result=await asyncio.to_thread(call_recovery_tool,gateway,name,arguments)
                 return {"ok":True,**recovery_result}
+            from .memory_tools import call_memory_tool
+            memory_result=call_memory_tool(gateway,name,arguments)
+            if memory_result is not None:
+                return {"ok":True,**memory_result}
             from .canonical_tools import call_canonical_tool
             canonical_result=call_canonical_tool(gateway,name,arguments)
             if canonical_result is not None:
