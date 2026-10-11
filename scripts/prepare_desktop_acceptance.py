@@ -88,9 +88,11 @@ def prepare_desktop(root):
     (prompt_dir / "00-mcp-startup.txt").write_text(
         "本轮仅做当前新本地任务的只读 MCP 启动诊断，不执行六项验收。"
         "禁止 shell、文件工具、其他服务器、检索及任何写入。\n"
+        "允许 functions.exec 仅承载 Host 工具元数据发现和下面授权的 health_report 调用；"
+        "工具命名空间延迟提供时，先从 ALL_TOOLS 的真实元数据发现，不把未内联定义当作未加载。\n"
         "先报告当前会话实际可见的 MCP 服务器名称和 cognivault_synthetic 工具名称；"
         "不要把设置页的 runtime 列表或旧会话缓存当作本会话加载证据。\n"
-        "本轮唯一允许调用的工具是 cognivault_synthetic 的 health_report，调用一次并保留完整输入输出；"
+        "本轮唯一允许执行的 Gateway 操作是 cognivault_synthetic 的 health_report，调用一次并保留完整输入输出；"
         "若该工具不可用，停止并明确报告未加载，不能调用 cognivault 或 study_system。\n"
         "根据当前 Host 实际提供的工具 schema，报告 revise_memory/retire_memory 是否可见，"
         "其 target_guard 属性及 required 列表；reader 不可见写工具时如实报告发现隔离。"
