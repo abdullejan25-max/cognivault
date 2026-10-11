@@ -57,3 +57,13 @@ def test_runtime_supplement_requires_explicit_false_and_defaults_full(tmp_path):
     assert load_gateway_from_config(cfg).config.recovery_include_study is True
     cfg.write_text(raw + 'include_study=false\n')
     assert load_gateway_from_config(cfg).config.recovery_include_study is False
+
+
+@pytest.fixture(autouse=True)
+def synthetic_disk_capacity(monkeypatch):
+    import shutil
+    original = shutil.disk_usage
+    def enough(path):
+        usage = original(path)
+        return type(usage)(usage.total + 64*1024**3, usage.used, usage.free + 64*1024**3)
+    monkeypatch.setattr(shutil, "disk_usage", enough)

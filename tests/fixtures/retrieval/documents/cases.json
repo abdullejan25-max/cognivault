@@ -1,0 +1,300 @@
+[
+  {
+    "case_id": "documents-01",
+    "domain": "documents",
+    "path": "documents",
+    "query": "Common denominator",
+    "query_type": [
+      "same_term_different_book",
+      "distractor_page"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-a:p65:c1"
+    ],
+    "relevance_grades": {
+      "book-a:p65:c1": 3
+    },
+    "expected_locators": {
+      "book-a:p65:c1": {
+        "source_id": "book-a",
+        "page_number": 65,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-a:p65:c1": [
+        "分母不能直接相加，因为分母代表等分单位。"
+      ]
+    },
+    "filters": {
+      "source_ids": [
+        "book-a"
+      ],
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-02",
+    "domain": "documents",
+    "path": "documents",
+    "query": "分母",
+    "query_type": [
+      "same_book_wrong_page",
+      "physical_page_64_65"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-a:p64:c1",
+      "book-a:p65:c1"
+    ],
+    "relevance_grades": {
+      "book-a:p64:c1": 3,
+      "book-a:p65:c1": 2
+    },
+    "expected_locators": {
+      "book-a:p64:c1": {
+        "source_id": "book-a",
+        "page_number": 64,
+        "chapter_id": null
+      },
+      "book-a:p65:c1": {
+        "source_id": "book-a",
+        "page_number": 65,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-a:p64:c1": [
+        "分母代表等分单位，先通分再相加。"
+      ],
+      "book-a:p65:c1": [
+        "分母不能直接相加，因为分母代表等分单位。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": [
+        64,
+        65
+      ],
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-03",
+    "domain": "documents",
+    "path": "documents",
+    "query": "分母代表等分单位",
+    "query_type": [
+      "physical_page_64_65",
+      "multi_page"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-a:p64:c1",
+      "book-a:p65:c1"
+    ],
+    "relevance_grades": {
+      "book-a:p64:c1": 3,
+      "book-a:p65:c1": 2
+    },
+    "expected_locators": {
+      "book-a:p64:c1": {
+        "source_id": "book-a",
+        "page_number": 64,
+        "chapter_id": null
+      },
+      "book-a:p65:c1": {
+        "source_id": "book-a",
+        "page_number": 65,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-a:p64:c1": [
+        "分母代表等分单位，先通分再相加。"
+      ],
+      "book-a:p65:c1": [
+        "分母不能直接相加，因为分母代表等分单位。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-04",
+    "domain": "documents",
+    "path": "documents",
+    "query": "共同分母示例",
+    "query_type": [
+      "section",
+      "original_asset_source"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-a:p66:c1"
+    ],
+    "relevance_grades": {
+      "book-a:p66:c1": 3
+    },
+    "expected_locators": {
+      "book-a:p66:c1": {
+        "source_id": "book-a",
+        "page_number": 66,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-a:p66:c1": [
+        "共同分母示例 1/2 + 1/3 = 5/6。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-05",
+    "domain": "documents",
+    "path": "documents",
+    "query": "Common denominator",
+    "query_type": [
+      "capacity_boundary"
+    ],
+    "should_have_result": false,
+    "relevant_ids": [],
+    "relevance_grades": {},
+    "expected_locators": {},
+    "expected_support": {},
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1",
+    "measurement": "contract",
+    "expected_error": "PAYLOAD_TOO_LARGE",
+    "profile": "capacity-2049"
+  },
+  {
+    "case_id": "documents-06",
+    "domain": "documents",
+    "path": "documents",
+    "query": "violet bridge",
+    "query_type": [
+      "distractor_page"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-b:p64:c1"
+    ],
+    "relevance_grades": {
+      "book-b:p64:c1": 3
+    },
+    "expected_locators": {
+      "book-b:p64:c1": {
+        "source_id": "book-b",
+        "page_number": 64,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-b:p64:c1": [
+        "Lantern route decision: keep the violet bridge open for night travel."
+      ]
+    },
+    "filters": {
+      "source_ids": [
+        "book-b"
+      ],
+      "page_range": [
+        64,
+        64
+      ],
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-07",
+    "domain": "documents",
+    "path": "documents",
+    "query": "分母不能直接相加",
+    "query_type": [
+      "concept_description",
+      "original_asset_source"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "book-a:p65:c1"
+    ],
+    "relevance_grades": {
+      "book-a:p65:c1": 3
+    },
+    "expected_locators": {
+      "book-a:p65:c1": {
+        "source_id": "book-a",
+        "page_number": 65,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "book-a:p65:c1": [
+        "分母不能直接相加，因为分母代表等分单位。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "documents-08",
+    "domain": "documents",
+    "path": "documents",
+    "query": "p15_absent_crystal_penguin",
+    "query_type": [
+      "no_result"
+    ],
+    "should_have_result": false,
+    "relevant_ids": [],
+    "relevance_grades": {},
+    "expected_locators": {},
+    "expected_support": {},
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  }
+]

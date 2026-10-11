@@ -1,0 +1,294 @@
+[
+  {
+    "case_id": "study-01",
+    "domain": "study",
+    "path": "study",
+    "query": "Common denominator",
+    "query_type": [
+      "keyword",
+      "mixed_language"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:fractions.md"
+    ],
+    "relevance_grades": {
+      "study:fractions.md": 3
+    },
+    "expected_locators": {
+      "study:fractions.md": {
+        "source_id": "study:fractions.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:fractions.md": [
+        "分数通分 Common denominator"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-02",
+    "domain": "study",
+    "path": "study",
+    "query": "为什么分母不能直接相加",
+    "query_type": [
+      "natural_language",
+      "chinese"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:equal-parts.md"
+    ],
+    "relevance_grades": {
+      "study:equal-parts.md": 3
+    },
+    "expected_locators": {
+      "study:equal-parts.md": {
+        "source_id": "study:equal-parts.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:equal-parts.md": [
+        "分母不能直接相加，因为分母代表等分单位"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-03",
+    "domain": "study",
+    "path": "study",
+    "query": "等分单位",
+    "query_type": [
+      "concept_description"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:fractions.md",
+      "study:equal-parts.md"
+    ],
+    "relevance_grades": {
+      "study:fractions.md": 3,
+      "study:equal-parts.md": 2
+    },
+    "expected_locators": {
+      "study:fractions.md": {
+        "source_id": "study:fractions.md",
+        "page_number": null,
+        "chapter_id": null
+      },
+      "study:equal-parts.md": {
+        "source_id": "study:equal-parts.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:fractions.md": [
+        "分数通分 Common denominator"
+      ],
+      "study:equal-parts.md": [
+        "分母不能直接相加，因为分母代表等分单位"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-04",
+    "domain": "study",
+    "path": "study",
+    "query": "resistance to changes in velocity",
+    "query_type": [
+      "synonym"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:inertia.md"
+    ],
+    "relevance_grades": {
+      "study:inertia.md": 3
+    },
+    "expected_locators": {
+      "study:inertia.md": {
+        "source_id": "study:inertia.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:inertia.md": [
+        "Inertia means resistance to changes in velocity, also called 惯性"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-05",
+    "domain": "study",
+    "path": "study",
+    "query": "密度 density",
+    "query_type": [
+      "mixed_language",
+      "chinese"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:density.md"
+    ],
+    "relevance_grades": {
+      "study:density.md": 3
+    },
+    "expected_locators": {
+      "study:density.md": {
+        "source_id": "study:density.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:density.md": [
+        "密度 density 等于质量除以体积，测量前校准天平"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-06",
+    "domain": "study",
+    "path": "study",
+    "query": "分母",
+    "query_type": [
+      "page_scoped"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:fractions.md"
+    ],
+    "relevance_grades": {
+      "study:fractions.md": 3
+    },
+    "expected_locators": {
+      "study:fractions.md": {
+        "source_id": "study:fractions.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:fractions.md": [
+        "分数通分 Common denominator"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": [
+        64,
+        65
+      ],
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-07",
+    "domain": "study",
+    "path": "study",
+    "query": "分母",
+    "query_type": [
+      "chapter_scoped"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "study:fractions.md"
+    ],
+    "relevance_grades": {
+      "study:fractions.md": 3
+    },
+    "expected_locators": {
+      "study:fractions.md": {
+        "source_id": "study:fractions.md",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "study:fractions.md": [
+        "分数通分 Common denominator"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": [
+        "fractions"
+      ],
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "study-08",
+    "domain": "study",
+    "path": "study",
+    "query": "不存在的绿铜小熊 p15_no_match",
+    "query_type": [
+      "no_result"
+    ],
+    "should_have_result": false,
+    "relevant_ids": [],
+    "relevance_grades": {},
+    "expected_locators": {},
+    "expected_support": {},
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  }
+]

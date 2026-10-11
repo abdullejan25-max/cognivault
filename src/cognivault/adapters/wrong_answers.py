@@ -10,7 +10,7 @@ import sqlite3
 from ..contracts import GatewayError
 from ..provenance import (ReportedIdentity, ensure_provenance_schema, get_provenance,
                           insert_provenance)
-from .documents import SQLiteDocumentStore, _audit
+from .documents import MAX_PAGES, SQLiteDocumentStore, _audit
 
 
 SOURCE_ID = re.compile(r"wrong-answer://sha256/[0-9a-f]{64}\Z")
@@ -114,7 +114,7 @@ class SQLiteWrongAnswerStore:
             self.documents.fetch_asset(doc.asset_uri, 0, 1)
             if page_number is None:
                 return doc.text_origin
-            if type(page_number) is not int or not 1 <= page_number <= 64:
+            if type(page_number) is not int or not 1 <= page_number <= MAX_PAGES:
                 raise _invalid()
             page = self.documents.fetch_page(source_uri, page_number)
             if page is None:

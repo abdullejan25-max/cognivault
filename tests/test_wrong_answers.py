@@ -39,6 +39,48 @@ def analysis() -> dict:
             "review_advice": "Practice a second fraction sum."}
 
 
+@pytest.mark.parametrize("page_count,page_number", [(65, 64), (65, 65), (999, 999)])
+def test_wrong_answer_source_accepts_existing_document_pages(tmp_path, page_count, page_number):
+    assets = tmp_path / "assets"
+    assets.mkdir()
+    gateway = Gateway(
+        AppConfig("0.1.0", tmp_path), None,
+        document_store=SQLiteDocumentStore(assets, tmp_path / "synthetic.db"),
+        capabilities=frozenset({"read", "write", "ingest"}),
+        qmd_discoverable=lambda: False,
+    )
+    text = "\f".join(f"Synthetic page {number}" for number in range(1, page_count + 1))
+    document = gateway.ingest_documents([{
+        "title": "Synthetic paginated exercise", "media_type": "text/plain",
+        "content_base64": base64.b64encode(text.encode()).decode(),
+    }])["documents"][0]
+    uri = document["document_uri"]
+    page = gateway.fetch_document_page(uri, page_number)["page"]
+    assert page["text"] == f"Synthetic page {page_number}"
+    source = gateway.register_wrong_answer_source(uri, "Synthetic Q", "Synthetic A", page_number)["source"]
+    assert source["page_number"] == page_number
+    assert source["source_uri"] == uri
+    assert source["text_origin"] == page["text_origin"]
+    assert gateway.register_wrong_answer_source(uri, "Synthetic Q", "Synthetic A", page_number)["source"] == source
+    assert gateway.get_wrong_answer_bundle(source["source_id"])["source"] == source
+
+
+@pytest.mark.parametrize("page_number,code", [(1000, "INVALID_ARGUMENT"), (65, "RESOURCE_NOT_FOUND")])
+def test_wrong_answer_source_preserves_document_page_errors(tmp_path, page_number, code):
+    gateway, uri, _, _ = gateway_with_sources(tmp_path)
+    with pytest.raises(GatewayError) as error:
+        gateway.register_wrong_answer_source(uri, "Synthetic Q", "Synthetic A", page_number)
+    assert error.value.code == code
+
+
+@pytest.mark.parametrize("page_number", [1, 65, 999])
+def test_wrong_answer_asset_source_rejects_page_number(tmp_path, page_number):
+    gateway, _, asset_uri, _ = gateway_with_sources(tmp_path)
+    with pytest.raises(GatewayError) as error:
+        gateway.register_wrong_answer_source(asset_uri, "Synthetic Q", "Synthetic A", page_number)
+    assert error.value.code == "INVALID_ARGUMENT"
+
+
 def test_source_is_immutable_and_idempotent(tmp_path: Path) -> None:
     gateway, doc_uri, _, _ = gateway_with_sources(tmp_path)
     data = {"source_uri": doc_uri, "page_number": 1,

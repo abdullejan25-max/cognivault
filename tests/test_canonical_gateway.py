@@ -107,6 +107,45 @@ def test_gateway_permissions_and_mcp_contract_and_no_result(tmp_path):
     anyio.run(check)
 
 
+@pytest.mark.parametrize("capabilities", [frozenset({"read", "ingest"}), frozenset({"admin"})])
+def test_normalization_discovery_and_execution_accept_read_ingest_or_admin(tmp_path, capabilities):
+    database = tmp_path / "synthetic-history.sqlite3"
+    history = SQLiteHistoryBackend(database)
+    history.initialize()
+    inbox = tmp_path / "i"
+    inbox.mkdir()
+    gateway = Gateway(
+        AppConfig("0.6.0", history_database=database, history_migration_inbox=inbox),
+        None, history, capabilities=capabilities,
+        qmd_discoverable=lambda: False,
+    )
+    raw = b'{"type":"session_meta","payload":{"id":"synthetic-permission-session"}}\n' \
+          b'{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Invented permission exercise"}]}}\n'
+    (inbox / "synthetic.jsonl").write_bytes(raw)
+    manifest = json.dumps({"schema_version": 1, "entries": [{
+        "source_system": "codex", "source_format": "jsonl", "record_kind": "raw_session",
+        "sha256": hashlib.sha256(raw).hexdigest(), "byte_count": len(raw),
+        "relative_path": "synthetic.jsonl",
+    }]}).encode()
+    (inbox / "manifest.json").write_bytes(manifest)
+    acquired = gateway.ingest_history_sources("manifest.json", hashlib.sha256(manifest).hexdigest())
+    assert acquired["errors"] == 0
+    snapshot = gateway.history_normalization_snapshot()["source_set_sha256"]
+
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
+            names = {tool.name for tool in (await client.list_tools()).tools}
+            assert "normalize_history_sources" in names
+            result = await client.call_tool("normalize_history_sources", {"source_set_sha256": snapshot})
+            assert result.isError is False
+            assert result.structuredContent["ok"] is True
+            assert result.structuredContent["new_messages"] == 1
+            assert result.structuredContent["new_conversations"] == 1
+
+    anyio.run(check)
+    assert gateway.canonical_history_summary()["messages"] == 1
+
+
 def test_canonical_store_failure_rolls_back_every_derived_row(tmp_path):
     from cognivault.normalization.adapters import normalize_source
     g,s=setup(tmp_path); sid=source(s)

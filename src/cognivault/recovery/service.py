@@ -36,7 +36,7 @@ def roots(g):
     cfg=g.config
     if cfg.recovery_root is None: fail('STORAGE_UNAVAILABLE')
     root=safe(cfg.recovery_root,directory=True,private=True)
-    protected=[cfg.study_root,cfg.history_database,cfg.asset_root,cfg.asset_database,
+    protected=[cfg.memory_database,cfg.study_root,cfg.history_database,cfg.asset_root,cfg.asset_database,
                cfg.recovery_sidecar_root,cfg.history_migration_inbox,cfg.qmd_snapshot_config,cfg.qmd_snapshot_index]
     for p in protected:
         if p is not None:
@@ -45,7 +45,7 @@ def roots(g):
     if len(root.parts)<3: fail('OUTSIDE_ALLOWLIST')
     if cfg.recovery_sidecar_root:
         safe(cfg.recovery_sidecar_root,directory=True,private=True)
-        for p in (cfg.study_root,cfg.history_database,cfg.asset_root,cfg.asset_database):
+        for p in (cfg.memory_database,cfg.study_root,cfg.history_database,cfg.asset_root,cfg.asset_database):
             if p is not None:
                 side=cfg.recovery_sidecar_root.resolve();other=Path(p).resolve()
                 if side.is_relative_to(other) or other.is_relative_to(side): fail('OUTSIDE_ALLOWLIST')
@@ -56,6 +56,7 @@ def inventory(g):
     cfg=g.config;entries=[];excluded=[]
     databases=[('history.sqlite3',cfg.history_database),('assets.sqlite3',cfg.asset_database),
                ('qmd-index.sqlite3',cfg.qmd_snapshot_index if cfg.recovery_include_study else None)]
+    if cfg.memory_database is not None: databases.append(('memory.sqlite3',cfg.memory_database))
     if cfg.recovery_sidecar_root: databases.append(('sidecar/ledger.sqlite3',cfg.recovery_sidecar_root/'ledger.sqlite3'))
     for rel,path in databases:
         if path is None: continue
@@ -184,10 +185,12 @@ def validate_manifest(g,manifest):
     if type(manifest['schema_version']) is not int or manifest['schema_version']!=1: fail()
     cfg=g.config
     components={'study':cfg.study_root is not None and cfg.recovery_include_study,'objects':cfg.asset_root is not None,'sidecar':cfg.recovery_sidecar_root is not None}
+    if cfg.memory_database is not None: components['memory']=True
     if type(manifest['components']) is not dict or set(manifest['components'])!=set(components) \
             or any(type(v) is not bool for v in manifest['components'].values()) or manifest['components']!=components: fail()
     if manifest['excluded_sidecar_paths']!=['sidecar/'+relative(v) for v in cfg.recovery_sidecar_exclusions]: fail()
     required={'history.sqlite3':True}
+    if cfg.memory_database is not None: required['memory.sqlite3']=True
     for rel,p,db in [('assets.sqlite3',cfg.asset_database,True),('qmd-index.sqlite3',cfg.qmd_snapshot_index if cfg.recovery_include_study else None,True),
                      ('qmd-config.yml',cfg.qmd_snapshot_config if cfg.recovery_include_study else None,False),('gateway-original.toml',cfg.gateway_config_file,False),
                      ('sidecar/ledger.sqlite3',cfg.recovery_sidecar_root,True)]:
@@ -236,6 +239,7 @@ def create(g,snapshot_key):
               'history_proof':hproof,'excluded_sidecar_paths':excluded,
               'components':{'study':g.config.study_root is not None and g.config.recovery_include_study,'objects':g.config.asset_root is not None,
                             'sidecar':g.config.recovery_sidecar_root is not None}}
+    if g.config.memory_database is not None: manifest['components']['memory']=True
     digest=write_json(stage/'manifest.json',manifest)
     with (stage/'manifest.sha256').open('x',encoding='ascii') as stream:stream.write(digest);stream.flush();os.fsync(stream.fileno())
     check_payload(stage,manifest)
@@ -252,12 +256,13 @@ def restored_gateway(g,target):
     from ..adapters.documents import SQLiteDocumentStore
     from ..gateway import Gateway
     payload=target/'payload'
-    cfg=replace(g.config,history_database=payload/'history.sqlite3',asset_database=payload/'assets.sqlite3',
+    cfg=replace(g.config,memory_database=payload/'memory.sqlite3' if g.config.memory_database is not None else None,history_database=payload/'history.sqlite3',asset_database=payload/'assets.sqlite3',
                 asset_root=payload/'objects',study_root=payload/'study' if g.config.recovery_include_study else None,history_migration_inbox=None,
                 recovery_root=None,recovery_sidecar_root=None,gateway_config_file=None,
                 qmd_snapshot_config=payload/'qmd-config.yml',qmd_snapshot_index=payload/'qmd-index.sqlite3')
     store=SQLiteDocumentStore(cfg.asset_root,cfg.asset_database) if cfg.asset_database.is_file() else None
-    return Gateway(cfg,None,SQLiteHistoryBackend(cfg.history_database),document_store=store,capabilities=frozenset({'read'}))
+    from ..adapters.memory import SQLiteMemoryStore
+    return Gateway(cfg,None,SQLiteHistoryBackend(cfg.history_database),document_store=store, memory_store=SQLiteMemoryStore(cfg.memory_database) if cfg.memory_database else None, capabilities=frozenset({'read'}))
 
 
 def prepare_restore_config(g,target):
@@ -282,6 +287,8 @@ def prepare_restore_config(g,target):
     data+='[history]\nbackend="sqlite"\ndatabase='+json.dumps(str(payload/'history.sqlite3'))+'\n'
     if cfg.asset_database is not None:
         data+='[assets]\nbackend="sqlite"\nroot='+json.dumps(str(payload/'objects'))+'\ndatabase='+json.dumps(str(payload/'assets.sqlite3'))+'\n'
+    if cfg.memory_database is not None:
+        data+='[memory]\nbackend="sqlite"\ndatabase='+json.dumps(str(payload/'memory.sqlite3'))+'\n'
     data+='[permissions]\ncapabilities=["read"]\n'
     path=safe(target/'gateway-restored.toml')
     if path.exists():

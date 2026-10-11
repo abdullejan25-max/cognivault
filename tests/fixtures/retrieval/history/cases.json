@@ -1,0 +1,296 @@
+[
+  {
+    "case_id": "history-01",
+    "domain": "history",
+    "path": "canonical",
+    "query": "route decision",
+    "query_type": [
+      "project_decision",
+      "distractor_conversation"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:lantern"
+    ],
+    "relevance_grades": {
+      "conversation:lantern": 3
+    },
+    "expected_locators": {
+      "conversation:lantern": {
+        "source_id": "history-source:lantern",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:lantern": [
+        "Lantern route decision: keep the violet bridge open for night travel."
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-02",
+    "domain": "history",
+    "path": "canonical",
+    "query": "ellipse focus",
+    "query_type": [
+      "previous_discussion"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:orbit"
+    ],
+    "relevance_grades": {
+      "conversation:orbit": 3
+    },
+    "expected_locators": {
+      "conversation:orbit": {
+        "source_id": "history-source:orbit",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:orbit": [
+        "Orbit review: the ellipse focus remains fixed while the radius changes."
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-03",
+    "domain": "history",
+    "path": "canonical",
+    "query": "Inertia",
+    "query_type": [
+      "source_system",
+      "agent_origin"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:inertia"
+    ],
+    "relevance_grades": {
+      "conversation:inertia": 3
+    },
+    "expected_locators": {
+      "conversation:inertia": {
+        "source_id": "history-source:inertia",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:inertia": [
+        "Inertia means resistance to changes in velocity, also called 惯性。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": "hermes"
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-04",
+    "domain": "history",
+    "path": "canonical",
+    "query": "route decision",
+    "query_type": [
+      "time_window"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:lantern"
+    ],
+    "relevance_grades": {
+      "conversation:lantern": 3
+    },
+    "expected_locators": {
+      "conversation:lantern": {
+        "source_id": "history-source:lantern",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:lantern": [
+        "Lantern route decision: keep the violet bridge open for night travel."
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": [
+        "2026-01-01T00:00:00Z",
+        "2026-01-03T00:00:00Z"
+      ],
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-05",
+    "domain": "history",
+    "path": "canonical",
+    "query": "分母",
+    "query_type": [
+      "source_specific"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:fractions",
+      "conversation:equal-parts"
+    ],
+    "relevance_grades": {
+      "conversation:fractions": 3,
+      "conversation:equal-parts": 2
+    },
+    "expected_locators": {
+      "conversation:fractions": {
+        "source_id": "history-source:fractions",
+        "page_number": null,
+        "chapter_id": null
+      },
+      "conversation:equal-parts": {
+        "source_id": "history-source:equal-parts",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:fractions": [
+        "分数通分 Common denominator。分母代表等分单位，先通分再相加。"
+      ],
+      "conversation:equal-parts": [
+        "分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。"
+      ]
+    },
+    "filters": {
+      "source_ids": [
+        "history-source:fractions",
+        "history-source:equal-parts"
+      ],
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-06",
+    "domain": "history",
+    "path": "source_only",
+    "query": "session_metadata",
+    "query_type": [
+      "source_only_metadata"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "source-only:metadata"
+    ],
+    "relevance_grades": {
+      "source-only:metadata": 3
+    },
+    "expected_locators": {
+      "source-only:metadata": {
+        "source_id": "history-source:metadata",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "source-only:metadata": [
+        "Invented metadata only; no canonical discussion"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": "workbuddy"
+    },
+    "fixture_revision": "p15-synthetic-1",
+    "unit": "source_metadata"
+  },
+  {
+    "case_id": "history-07",
+    "domain": "history",
+    "path": "canonical",
+    "query": "分母不能直接相加",
+    "query_type": [
+      "canonical_body",
+      "distractor_conversation"
+    ],
+    "should_have_result": true,
+    "relevant_ids": [
+      "conversation:equal-parts"
+    ],
+    "relevance_grades": {
+      "conversation:equal-parts": 3
+    },
+    "expected_locators": {
+      "conversation:equal-parts": {
+        "source_id": "history-source:equal-parts",
+        "page_number": null,
+        "chapter_id": null
+      }
+    },
+    "expected_support": {
+      "conversation:equal-parts": [
+        "分母不能直接相加，因为分母代表等分单位。共同分母示例 1/2 + 1/3 = 5/6。"
+      ]
+    },
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  },
+  {
+    "case_id": "history-08",
+    "domain": "history",
+    "path": "canonical",
+    "query": "p15_absent_crystal_penguin",
+    "query_type": [
+      "no_result"
+    ],
+    "should_have_result": false,
+    "relevant_ids": [],
+    "relevance_grades": {},
+    "expected_locators": {},
+    "expected_support": {},
+    "filters": {
+      "source_ids": null,
+      "page_range": null,
+      "chapter_ids": null,
+      "time_range": null,
+      "source_system": null
+    },
+    "fixture_revision": "p15-synthetic-1"
+  }
+]

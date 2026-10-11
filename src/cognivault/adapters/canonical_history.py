@@ -187,3 +187,22 @@ class CanonicalHistoryStore:
             metadata.update(normalized_at=row["normalized_at"],normalization_version=VERSION,provenance=get_provenance(c,"canonical_message",mid,1),
                             source_refs=sorted({e["source_id"] for e in evidence}),evidence=evidence,total_evidence=total_evidence,has_more_evidence=evidence_offset+evidence_limit<total_evidence)
             return {"message":metadata,"content_base64":base64.b64encode(raw).decode(),"content_bytes":row["content_bytes"],"content_sha256":row["content_sha256"],"offset":offset,"has_more":offset+length<row["content_bytes"]}
+
+    def search_messages(self, query, limit=5, offset=0):
+        if type(query) is not str or not 1 <= len(query.strip()) <= 500 or "\x00" in query:
+            raise GatewayError("INVALID_ARGUMENT", "Invalid canonical message query")
+        bounds(offset, limit, 20)
+        if offset > 1000:
+            raise GatewayError("INVALID_ARGUMENT", "Invalid canonical message offset")
+        with closing(self.history._connect()) as c:
+            if not self.exists(c):
+                return {"results":[], "total":0, "has_more":False}
+            args = (query.lower(),)
+            total = c.execute("SELECT COUNT(*) FROM p13_messages WHERE instr(lower(text),?)>0", args).fetchone()[0]
+            rows = c.execute("SELECT message_id,metadata,content_sha256,substr(text,1,500) snippet FROM p13_messages WHERE instr(lower(text),?)>0 ORDER BY message_id LIMIT ? OFFSET ?", (*args, limit, offset)).fetchall()
+            results = []
+            for row in rows:
+                metadata = json.loads(row["metadata"])
+                refs = [r[0] for r in c.execute("SELECT DISTINCT v.source_id FROM p13_message_evidence e JOIN p13_views v USING(view_id) WHERE e.message_id=? ORDER BY v.source_id LIMIT 16", (row["message_id"],))]
+                results.append({"message_id":row["message_id"], "snippet":row["snippet"], "content_sha256":row["content_sha256"], "occurred_at":metadata.get("occurred_at"), "role":metadata.get("role"), "source_refs":refs})
+            return {"results":results, "total":total, "has_more":offset+len(rows)<total}
