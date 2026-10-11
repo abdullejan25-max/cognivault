@@ -953,13 +953,17 @@ class Gateway:
         from .memory_service import execute
         return execute(self, "create", dict(subject=subject, predicate=predicate, value=value, source_refs=source_refs, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
 
-    def revise_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, epistemic_status="unverified", verification_note=None, provenance=None):
+    def revise_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, target_guard=None, epistemic_status="unverified", verification_note=None, provenance=None):
         from .memory_service import execute
-        return execute(self, "revise", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
+        return execute(self, "revise", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, target_guard=target_guard, epistemic_status=epistemic_status, verification_note=verification_note, provenance=provenance))
 
-    def retire_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, provenance=None):
+    def retire_memory(self, memory_id, value, source_refs, expected_version, idempotency_key, *, target_guard=None, provenance=None):
         from .memory_service import execute
-        return execute(self, "retire", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, provenance=provenance))
+        return execute(self, "retire", dict(memory_id=memory_id, value=value, source_refs=source_refs, expected_version=expected_version, idempotency_key=idempotency_key, target_guard=target_guard, provenance=provenance))
+
+    def fetch_memory_request(self, idempotency_key):
+        from .memory_service import execute
+        return execute(self, "request", dict(idempotency_key=idempotency_key))
 
     def fetch_memory(self, memory_id, *, version=None):
         from .memory_service import execute
@@ -976,6 +980,30 @@ class Gateway:
     def retrieve_evidence(self, queries, limit=3):
         from .evidence import retrieve
         return retrieve(self, queries, limit)
+
+    def propose_memory_candidate(self, source_ref, quote, subject, predicate, value, classification, confidence, basis, semantic_links=None, claim_mode="explicit", evidence_refs=None):
+        from .memory_candidates import propose
+        return propose(self, source_ref, quote, subject, predicate, value, classification, confidence, basis, semantic_links, claim_mode, evidence_refs)
+
+    def find_memory_candidates(self, query, limit=5):
+        from .memory_candidates import find
+        return find(self, query, limit)
+
+    def list_memory_candidates(self, limit=5, offset=0):
+        from .memory_candidates import listing
+        return listing(self, limit, offset)
+
+    def fetch_memory_candidate(self, candidate_id):
+        from .memory_candidates import fetching
+        return fetching(self, candidate_id)
+
+    def review_memory_candidate(self, candidate_id, decision, note, resolution="none"):
+        from .memory_candidates import review
+        return review(self, candidate_id, decision, note, resolution)
+
+    def commit_memory_candidate(self, candidate_id):
+        from .memory_candidates import commit
+        return commit(self, candidate_id)
 
     def search_canonical_messages(self, query, limit=5, offset=0):
         self._require_capability("read")

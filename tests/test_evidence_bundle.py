@@ -80,3 +80,40 @@ def test_normalized_history_search_targets_messages_not_first_view(tmp_path):
     messages = [e for e in r["evidence"] if e["citation"].startswith("message:")]
     assert messages and messages[0]["source_refs"]
     assert g.search_canonical_messages("missing") ["total"] == 0
+
+
+def test_chinese_physics_query_fallback_and_uncertain_fact_labels(tmp_path):
+    g, ref, *_, memory = scenario(tmp_path)
+    result = g.retrieve_evidence({"history":"物理", "study":"摩擦力", "memory":"目标"}, limit=2)
+    assert all(result["domains"][d]["returned"] for d in ("history","study","memory"))
+    assert any(e["citation"].startswith("wrong-answer://") for e in result["evidence"])
+    m = next(e for e in result["evidence"] if e["domain"] == "memory")
+    assert m["currency_verified"] is False and m["source_latest_at"] == "2026-01-01T00:00:00Z"
+    g.revise_memory(memory["memory"]["memory_id"], "maybe engineering", [ref], 1, "uncertain", epistemic_status="inference", target_guard=memory["memory"]["target_guard"])
+    result = g.retrieve_evidence({"memory":"目标"})
+    assert result["evidence"][0]["temporal_scope"] == "inference"
+
+
+def test_future_source_memory_is_not_current_answer_evidence(tmp_path):
+    from cognivault.contracts import HistoryImportItem
+    g, _ref, doc, _wrong, current = scenario(tmp_path)
+    future = g.history_backend.import_items("synthetic-decision", [HistoryImportItem(
+        "future-learning", "learning", "user", "I now prefer reviewing friction.",
+        "2999-01-01T00:00:00Z")])[0]
+    created = g.create_memory("self", "future_learning_goal", "reviewing friction", [future],
+        "future-learning-goal", epistemic_status="verified", verification_note="Synthetic source reported reviewed")
+    mid = created["memory"]["memory_id"]
+    before = g.memory_store.database_path.read_bytes()
+    memory = g.fetch_memory(mid)["memory"]
+    assert memory["epistemic_status"] == "verified"
+    assert memory["effective_epistemic_status"] == "unverified"
+    assert memory["source_time_status"] == "future" and not memory["currency_verified"]
+    bundle = g.retrieve_evidence({"memory":"future_learning_goal"})
+    evidence = bundle["evidence"][0]
+    assert evidence["temporal_scope"] == "unverified_assertion"
+    assert evidence["source_time_status"] == "future" and evidence["epistemic_status"] == "unverified"
+    assert before == g.memory_store.database_path.read_bytes()
+    assert g.fetch_memory(current["memory"]["memory_id"])["memory"]["source_time_status"] == "reported"
+    undated = g.create_memory("self", "textbook_assertion", "physics textbook available", [doc["document_uri"]],
+        "textbook-assertion", epistemic_status="verified", verification_note="Synthetic document available")
+    assert undated["memory"]["source_time_status"] == "undated"

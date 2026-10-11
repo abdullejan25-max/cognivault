@@ -81,7 +81,8 @@ def test_mcp_round_trip(tmp_path):
             mid = created["memory"]["memory_id"]
             revised = (await client.call_tool("revise_memory", {
                 "memory_id": mid, "value": "gradients", "source_refs": [REF],
-                "expected_version": 1, "idempotency_key": "revise-key"})).structuredContent
+                "expected_version": 1, "idempotency_key": "revise-key",
+                "target_guard": created["memory"]["target_guard"]})).structuredContent
             assert revised["memory"]["version"] == 2
             found = (await client.call_tool("search_memory", {"query": "gradients"})).structuredContent
             assert found["total"] == 1
