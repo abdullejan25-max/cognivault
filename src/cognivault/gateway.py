@@ -676,6 +676,10 @@ class Gateway:
         self._require_capability("read")
         return self._canonical_history_store().summary()
 
+    def canonical_history_platform_summary(self):
+        self._require_capability("read")
+        return self._canonical_history_store().platform_summary()
+
     def recovery_snapshot_plan(self):
         from .recovery.service import plan
         return plan(self)

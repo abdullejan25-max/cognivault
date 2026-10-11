@@ -63,3 +63,29 @@ schema, source identity, original-byte hash, or existing receipt digest.
 Counts of acquired files, legacy records, indexed sources, archive members and
 activity entries have distinct meanings. `canonical_messages_created` describes
 this operation (always zero), not a query for a future canonical table's total.
+
+## Preparing explicit authorized local sources
+
+`scripts/prepare_authorized_history.py` prepares original-byte snapshots and
+manifest references from repeatable `--source platform=absolute_path` arguments
+and an existing `--inbox`. Supported preparation labels are `codex`, `workbuddy`,
+`hermes`, and `chatgpt`; format support remains subject to normalization contracts.
+It does not discover accounts, call a Gateway, read authoritative stores, or import.
+
+Use only explicitly authorized raw input directories and the already configured
+private migration inbox. Do not select Study, History, Assets, Memory, backup or
+credential stores as inputs. Preparation rejects output/source overlap, links,
+reparse points and Git inboxes; it excludes credential names and database files.
+Stable sources are read twice and compared before publishing exact-byte snapshots.
+Malformed JSONL and changing files are retained at their original locations and
+reported as skipped. Limits are 512 MiB per file, 8 GiB total selected bytes,
+25,000 traversed entries and 5,000 entries per manifest.
+
+The JSON result returns counts, fixed error codes, manifest relative paths and
+SHA-256 values without source text or original absolute paths. `PREPARED_ONLY`
+does not establish completeness, ingestion or retrieval success. Inspect skipped
+counts. Existing output conflicts are preserved and return a nonzero exit code.
+Use the normal native MCP Host for subsequent ingestion, normalization, checksum
+verification and independent readback. Matching existing source bytes can still
+conflict on declared format, record kind or occurrence-time metadata; reconcile
+those fields against formal Gateway evidence instead of inventing replacements.

@@ -65,6 +65,67 @@ def test_source_set_addition_requires_new_snapshot_and_retains_existing_results(
     assert g.canonical_history_summary()["views"] == 2
 
 
+def test_summary_reports_platform_message_counts_and_original_time_ranges(tmp_path):
+    g, store = setup(tmp_path)
+    source(store, time="2026-01-02T00:00:00Z")
+    source(store, suffix="unknown time")
+    raw = json.dumps({"id": "invented-hermes", "messages": [
+        {"id": 1, "role": "user", "content": "Invented other platform", "timestamp": 1767398400.0}
+    ]}).encode()
+    store.import_bytes(SourceFileInput("hermes", "json", "raw_session", raw, hashlib.sha256(raw).hexdigest()))
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
+    summary = g.canonical_history_platform_summary()
+    assert summary["messages_by_source_system"] == {"codex": 2, "hermes": 1}
+    assert summary["message_time_ranges_by_source_system"]["codex"] == {
+        "earliest_at": "2026-01-02T00:00:00Z", "latest_at": "2026-01-02T00:00:00Z", "unknown_time_messages": 1
+    }
+    assert summary["message_time_ranges_by_source_system"]["hermes"]["unknown_time_messages"] == 0
+    assert sum(summary["messages_by_source_system"].values()) == g.canonical_history_summary()["messages"]
+    assert "messages_by_source_system" not in g.canonical_history_summary()
+    assert "Invented other platform" not in json.dumps(summary)
+    assert "Synthetic content" not in json.dumps(summary)
+
+
+def test_empty_summary_platform_time_ranges_are_empty_without_schema_writes(tmp_path):
+    g, _ = setup(tmp_path)
+    summary = g.canonical_history_platform_summary()
+    assert summary["messages_by_source_system"] == {}
+    assert summary["message_time_ranges_by_source_system"] == {}
+
+
+def test_platform_time_range_orders_fractional_seconds_chronologically(tmp_path):
+    g, store = setup(tmp_path)
+    source(store, time="2026-01-02T00:00:00Z")
+    source(store, suffix="fraction", time="2026-01-02T00:00:00.5Z")
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
+    span = g.canonical_history_platform_summary()["message_time_ranges_by_source_system"]["codex"]
+    assert span["earliest_at"] == "2026-01-02T00:00:00Z"
+    assert span["latest_at"] == "2026-01-02T00:00:00.500000Z"
+
+
+def test_platform_summary_native_mcp_discovery_call_and_read_denial(tmp_path):
+    g, store = setup(tmp_path)
+    source(store, time="2026-01-02T00:00:00Z")
+    g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
+
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(g)) as session:
+            names = {tool.name for tool in (await session.list_tools()).tools}
+            assert "canonical_history_platform_summary" in names
+            result = await session.call_tool("canonical_history_platform_summary", {})
+            assert result.isError is False
+            assert result.structuredContent["messages_by_source_system"] == {"codex": 1}
+        denied = Gateway(g.config, None, SQLiteHistoryBackend(store.database_path), capabilities=frozenset())
+        async with create_connected_server_and_client_session(create_mcp_server(denied)) as session:
+            assert "canonical_history_platform_summary" not in {t.name for t in (await session.list_tools()).tools}
+            result = await session.call_tool("canonical_history_platform_summary", {})
+            assert result.isError is True
+        with pytest.raises(GatewayError):
+            denied.canonical_history_platform_summary()
+
+    anyio.run(check)
+
+
 def test_malformed_source_is_durable_source_only_with_atomic_zero_messages(tmp_path):
     g,s=setup(tmp_path); sid=source(s,malformed=True)
     first=g.normalize_history_sources(g.history_normalization_snapshot()["source_set_sha256"])
