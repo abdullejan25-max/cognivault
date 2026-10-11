@@ -12,6 +12,20 @@ from demo_personal_evidence import prepare
 from cognivault.runtime import load_gateway_from_config
 
 
+def build_host_config(gateway_config, repo):
+    """Enable the isolated server and disable known inherited stdio names."""
+    transport = 'command=' + json.dumps(Path(sys.executable).as_posix())
+    transport += '\nargs=' + json.dumps([
+        "-m", "cognivault.transports.mcp_stdio", "--config", gateway_config.as_posix(),
+    ])
+    transport += '\ncwd=' + json.dumps(repo.as_posix()) + '\nstartup_timeout_sec=30\n'
+    entries = []
+    for name, enabled in (("cognivault_synthetic", True), ("cognivault", False), ("study_system", False)):
+        state = "true" if enabled else "false"
+        entries.append(f'[mcp_servers.{name}]\n{transport}enabled={state}\nrequired={state}\n')
+    return "\n".join(entries)
+
+
 def build_acceptance_prompts(goal, recent):
     """Bind every stateful Gate to one explicit identity, without cached guards."""
     target = {field: goal.get(field) for field in ("memory_id", "subject", "predicate")}
@@ -47,9 +61,7 @@ def prepare_desktop(root):
         (project / ".codex").mkdir(parents=True)
         gateway_config = project / "gateway.toml"
         gateway_config.write_text(base.replace('["read"]', capabilities), encoding="utf-8")
-        host_config = '[mcp_servers.cognivault_synthetic]\ncommand=' + json.dumps(Path(sys.executable).as_posix())
-        host_config += '\nargs=' + json.dumps(["-m", "cognivault.transports.mcp_stdio", "--config", gateway_config.as_posix()])
-        host_config += '\ncwd=' + json.dumps(repo.as_posix()) + '\nrequired=true\nstartup_timeout_sec=30\n'
+        host_config = build_host_config(gateway_config, repo)
         (project / ".codex/config.toml").write_text(host_config, encoding="utf-8")
         (project / "AGENTS.md").write_text((root / "AGENTS.md").read_text(encoding="utf-8") +
             "Never use shell or filesystem tools. All persisted access must use this project's cognivault_synthetic Gateway. Preserve complete logical IDs. A missing or truncated write target is not authorization to choose another Memory by source reference or search. Before revision, fetch the explicit ID, check subject/predicate and pass the returned target_guard unchanged. Do not infer general ability from one wrong answer. Do not claim Desktop verification without actual tool receipts.\n", encoding="utf-8")
@@ -73,6 +85,20 @@ def prepare_desktop(root):
     target, gate_prompts = build_acceptance_prompts(goal, recent)
     prompt_dir = root / "prompts"
     prompt_dir.mkdir()
+    (prompt_dir / "00-mcp-startup.txt").write_text(
+        "本轮仅做当前新本地任务的只读 MCP 启动诊断，不执行六项验收。"
+        "禁止 shell、文件工具、其他服务器、检索及任何写入。\n"
+        "先报告当前会话实际可见的 MCP 服务器名称和 cognivault_synthetic 工具名称；"
+        "不要把设置页的 runtime 列表或旧会话缓存当作本会话加载证据。\n"
+        "本轮唯一允许调用的工具是 cognivault_synthetic 的 health_report，调用一次并保留完整输入输出；"
+        "若该工具不可用，停止并明确报告未加载，不能调用 cognivault 或 study_system。\n"
+        "根据当前 Host 实际提供的工具 schema，报告 revise_memory/retire_memory 是否可见，"
+        "其 target_guard 属性及 required 列表；reader 不可见写工具时如实报告发现隔离。"
+        "若 Host 未提供可检查的 schema，明确报告 unavailable；工具元数据不是需要调用的 MCP 工具。"
+        "不得调用 fetch_memory 或写工具来探测 schema，不得猜测缺失字段。"
+        "报告任务 ID、health_report 结果与证据限制；本轮不构成六项验收 PASS。\n",
+        encoding="utf-8",
+    )
     filenames = {
         "proactive_three_domains": "01-proactive-three-domains.txt",
         "generic_zero_retrieval": "02-generic-zero-retrieval.txt",
@@ -95,7 +121,10 @@ def prepare_desktop(root):
 - writer: `{projects['writer']}`
 - reader: `{projects['reader']}`
 
-在新会话 `/mcp` 确认 cognivault_synthetic 已连接。若未连接，停止并记录界面错误；不能用 shell 或直接数据库代替。
+分别在上面的 writer 和 reader 精确文件夹中创建**新的本地任务**（Local 环境），先发送 `prompts/00-mcp-startup.txt` 的全部内容。
+它只允许调用 cognivault_synthetic 的 health_report，并记录本会话实际可见的服务器、工具及 target_guard schema；不属于下面的六项验收。
+随后在同一新任务中用 `/mcp` 检查 cognivault_synthetic。若未加载或未连接，停止并记录实际工具/界面错误；不能用 shell 或直接数据库代替。
+设置页的 runtime 列表不等于任务加载的项目配置，旧会话连接状态也可能是缓存。生成配置已禁用 cognivault 和历史 study_system 名称，但只有本次实际 Host 证据能证明生效。
 配置依据：https://learn.chatgpt.com/docs/extend/mcp?surface=cli （项目配置仅受信任项目加载）。
 
 ## 精确目标与完整复制
