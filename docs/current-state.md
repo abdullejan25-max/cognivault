@@ -1,6 +1,16 @@
 # Current State
 
-最近核对：2026-10-05。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
+最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
+
+## Memory 与三域学习协同（开发源码，未正式发布）
+
+已实现持久化 Memory、版本/失效/幂等请求、History 候选审阅、Agent 提议的语义关系，以及带原始来源的 Study/History/Memory 聚焦检索。修订和失效必须携带读取时的 `target_guard`；未审核候选不进入学习建议。用法见 [Memory](memory-mvp.md) 和 [语义审阅](memory-semantic-review.md)。
+
+2026-10-11，新版隔离数据完成真实 Codex Desktop 的六项既定验收：主动三域、普通问题零工具、注入防护、精确目标修订/原样重试、reader 发现隔离、实际应用重启后的持久性。reader 写工具不可发现，没有 Desktop 执行层拒绝回执；执行拒绝由独立 SDK 测试验证，不能混淆。修订后的学习回答实际引用当前 v2、历史消息、教材页和错题。此结果属于真实 Host 上的合成数据验收，不是生产学习效果或记忆真实性证明。
+
+代码提交 `8f8ddb4` 的精确 CI 已通过：Windows 1062 passed / 10 skipped，Ubuntu 1052 passed / 20 skipped，stdio smoke 4 passed；两平台构建、包隐私审计与干净安装通过。随后文档提交与整合结果须以各自的 GitHub 检查为准。完整边界和证据见 [Desktop 收尾检查点](checkpoints/2026-10-11-desktop-mcp-closeout.md)。正式版本与历史生产计数保持其原始范围。
+
+任意措辞的自动语义检测、独立当前事实验证仍为 PARTIAL；真实私人数据、真实 QMD 与生产备份恢复本轮 NOT RUN。来源存在、审阅确认和存储成功均不等于内容已独立验证。
 
 ## CogniVault identity transition
 
