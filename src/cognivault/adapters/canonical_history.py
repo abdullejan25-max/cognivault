@@ -1,6 +1,7 @@
 """Additive immutable derived History. This store is owned by the Gateway."""
 import base64
 from contextlib import closing
+from datetime import datetime
 import hashlib
 import json
 import re
@@ -141,6 +142,27 @@ class CanonicalHistoryStore:
                         candidates=sum(r["candidates"] for r in outcomes),ambiguous_messages=sum(r["ambiguous_messages"] for r in outcomes),
                         exact_appearances=sum(r["exact"] for r in outcomes),derived_safe_appearances=sum(r["derived_safe"] for r in outcomes),
                         message_appearances=sum(r["message_appearances"] for r in outcomes),retained_source_only=sum(r["message_appearances"]==0 for r in outcomes))
+
+    def platform_summary(self):
+        """Read-only platform counts and occurrence-time coverage; no content."""
+        with closing(self.history._connect()) as c:
+            if not self.exists(c):
+                return {"messages_by_source_system":{},"message_time_ranges_by_source_system":{},"conversations_by_source_system":{}}
+            platform_messages={}; platform_times={}
+            # Only metadata is aggregated. Original occurrence times stay
+            # distinct from normalization/import time; unknowns remain unknown.
+            for system, metadata in c.execute("SELECT c.source_system,m.metadata FROM p13_messages m JOIN p13_conversations c ON c.conversation_id=m.conversation_id"):
+                platform_messages[system]=platform_messages.get(system,0)+1
+                span=platform_times.setdefault(system,{"earliest_at":None,"latest_at":None,"unknown_time_messages":0})
+                occurred=json.loads(metadata).get("occurred_at")
+                if occurred is None:
+                    span["unknown_time_messages"]+=1
+                else:
+                    chronological=lambda value:datetime.fromisoformat(value.replace("Z","+00:00"))
+                    span["earliest_at"]=min(span["earliest_at"],occurred,key=chronological) if span["earliest_at"] else occurred
+                    span["latest_at"]=max(span["latest_at"],occurred,key=chronological) if span["latest_at"] else occurred
+            return {"messages_by_source_system":platform_messages,"message_time_ranges_by_source_system":platform_times,
+                    "conversations_by_source_system":dict(c.execute("SELECT source_system,COUNT(*) FROM p13_conversations GROUP BY source_system"))}
 
     def search(self, *, source_system=None, query="", limit=20, offset=0):
         bounds(offset,limit,100)

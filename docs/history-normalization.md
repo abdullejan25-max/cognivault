@@ -53,6 +53,12 @@ Use formal MCP tools only for persisted V2 access:
   read+ingest capabilities, durable private receipts. Source-set changes conflict.
 - `canonical_history_summary`: separates records, views, appearances, candidates,
   ambiguous messages and source-only outcomes.
+- `canonical_history_platform_summary`: reports distinct canonical conversations
+  and messages per platform, earliest/latest known occurrence times and the count
+  of messages with unknown occurrence time. It returns no message content and
+  does not substitute import time. Message variants count as distinct stored
+  records. This separate read-only report preserves the existing summary and
+  recovery proof contracts.
 - `search_canonical_conversations`: literal text/category search, bounded results.
 - `fetch_canonical_conversation`: independent view/message/node pagination. Tree
   nodes expose parent relationships and child counts; original child lists remain

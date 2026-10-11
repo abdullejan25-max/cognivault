@@ -6,6 +6,7 @@ from ..contracts import GatewayError
 from ..normalization.contracts import encoded
 
 SHAPES={"history_normalization_snapshot":(set(),set()),"canonical_history_summary":(set(),set()),
+        "canonical_history_platform_summary":(set(),set()),
         "verify_canonical_history":({"reparse"},set()),
         "normalize_history_sources":({"source_set_sha256","cursor","limit","compact"},{"source_set_sha256"}),
         "search_canonical_conversations":({"source_system","query","offset","limit"},set()),
@@ -19,6 +20,7 @@ def canonical_tools(gateway,read_only,write_only):
     definitions=[
         ("history_normalization_snapshot","Pin the immutable source set before deterministic normalization.",{}),
         ("canonical_history_summary","Count canonical conversations/messages/views and explained source-only outcomes.",{}),
+        ("canonical_history_platform_summary","Read-only per-platform canonical conversation/message counts and original occurrence-time ranges, with explicit unknown-time counts. No source content or import-time substitution.",{}),
         ("verify_canonical_history","Verify all canonical identities/provenance/evidence/counts. Optional exact-source reparse proves the deterministic transformation without returning private content. Source evidence mismatches include bounded field-level digest diagnostics; raw values are never returned.",{"reparse":{"type":"boolean"}}),
         ("search_canonical_conversations","Search shared canonical history by explicit source category or literal message text; no inference.",{"source_system":string,"query":string,"offset":offset,"limit":limit}),
         ("fetch_canonical_conversation","Read paginated source-specific sequence/tree views and nodes. Do not flatten branches. Message position is source-defined.",{"conversation_id":string,"offset":offset,"limit":limit,"view_offset":offset,"view_limit":limit,"node_offset":offset,"node_limit":limit}),
