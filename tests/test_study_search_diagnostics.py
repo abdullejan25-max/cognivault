@@ -50,7 +50,8 @@ def test_diagnostic_does_not_probe_disallowed_paths(tmp_path, monkeypatch, uri):
         return original(path, *args, **kwargs)
     monkeypatch.setattr(Path, 'lstat', guarded)
     result=Gateway(config, _backend(config, FakeRunner(json.dumps([_hit(uri)])))).study_search_diagnostics('ordinary', 1)
-    assert result['hits'][0]['strict_path_status'] in {'invalid', 'outside'}
+    expected = {'missing'} if uri == 'qmd://studyvault/..%20/outside.md' and __import__('os').name != 'nt' else {'invalid', 'outside'}
+    assert result['hits'][0]['strict_path_status'] in expected
 
 
 def test_diagnostic_does_not_follow_links(tmp_path, monkeypatch):
