@@ -369,6 +369,13 @@ def create_mcp_server(gateway: Gateway) -> Server:
                     "required": ["relative_path"], "additionalProperties": False},
                 annotations=write_only,
             ))
+        if getattr(gateway, "document_store", None) is not None:
+            tools.append(types.Tool(
+                name="wrong_answer_storage_diagnostics",
+                description="Read-only debug guard for fixed wrong-answer column contracts, migration flags and nonpositive-version counts. No repair, schema writes, content, paths or raw errors.",
+                inputSchema={"type": "object", "properties": {}, "required": [],
+                             "additionalProperties": False}, annotations=read_only,
+            ))
         from .source_tools import source_tools
         tools.extend(source_tools(gateway,read_only,write_only,reported_provenance))
         from .canonical_tools import canonical_tools
@@ -662,6 +669,10 @@ def create_mcp_server(gateway: Gateway) -> Server:
                     raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")
                 return {"ok": True, **gateway.fetch_asset(arguments["asset_uri"], arguments.get("offset", 0),
                                                           arguments.get("length", 65536))}
+            if name == "wrong_answer_storage_diagnostics":
+                if arguments:
+                    raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")
+                return {"ok": True, **gateway.wrong_answer_storage_diagnostics()}
             if name == "register_wrong_answer_source":
                 if set(arguments) - {"source_uri", "page_number", "question_text", "student_answer", "provenance"} \
                         or not {"source_uri", "question_text", "student_answer"} <= set(arguments):

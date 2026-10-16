@@ -22,6 +22,42 @@ _PROJECTION_MAX_RECORDS = 10_000
 _PROJECTION_MAX_BYTES = 32 * 1024 * 1024
 _PROJECTION_PAGE_SIZE = 20
 
+# Debug guard only: the existing column contracts, not a migration or repair plan.
+# Names/defaults read from an unexpected schema are never returned to clients.
+_DIAGNOSTIC_COLUMNS = {
+    "wrong_sources": (("source_id", "TEXT", 0, 1), ("source_uri", "TEXT", 1, 0),
+                      ("page_number", "INTEGER", 0, 0), ("question_text", "TEXT", 1, 0),
+                      ("student_answer", "TEXT", 1, 0), ("text_origin", "TEXT", 1, 0),
+                      ("created_at", "TEXT", 1, 0)),
+    "wrong_analyses": (("analysis_id", "TEXT", 0, 1), ("source_id", "TEXT", 1, 0),
+                       ("version", "INTEGER", 1, 0), ("body", "TEXT", 1, 0),
+                       ("source_refs", "TEXT", 1, 0), ("study_relations", "TEXT", 1, 0),
+                       ("generated_by_agent", "INTEGER", 1, 0), ("provenance", "TEXT", 1, 0),
+                       ("created_at", "TEXT", 1, 0)),
+    "wrong_analysis_requests": (("idempotency_key", "TEXT", 0, 1),
+                                ("payload_sha256", "TEXT", 1, 0), ("analysis_id", "TEXT", 1, 0)),
+    "operation_audit": (("audit_id", "INTEGER", 0, 1), ("operation", "TEXT", 1, 0),
+                        ("resource_type", "TEXT", 1, 0), ("resource_id", "TEXT", 1, 0),
+                        ("occurred_at", "TEXT", 1, 0), ("outcome", "TEXT", 1, 0)),
+    "write_provenance": tuple((name, kind, required, pk) for name, kind, required, pk in (
+        ("provenance_id", "TEXT", 0, 1), ("record_type", "TEXT", 1, 0),
+        ("record_id", "TEXT", 1, 0), ("version", "INTEGER", 1, 0),
+        ("data_origin", "TEXT", 1, 0), ("actor_type", "TEXT", 1, 0),
+        ("identity_trust", "TEXT", 1, 0), ("reported_agent", "TEXT", 0, 0),
+        ("reported_client", "TEXT", 0, 0), ("run_id", "TEXT", 0, 0),
+        ("source_refs", "TEXT", 1, 0), ("recorded_at", "TEXT", 1, 0),
+        ("supersedes_provenance_id", "TEXT", 0, 0), ("original_created_at", "TEXT", 0, 0),
+        ("imported_at", "TEXT", 0, 0), ("source_system", "TEXT", 0, 0),
+        ("import_batch_id", "TEXT", 0, 0), ("legacy_status", "TEXT", 1, 0))),
+    "schema_migrations": (("scope", "TEXT", 1, 1), ("version", "INTEGER", 1, 2),
+                          ("applied_at", "TEXT", 1, 0)),
+}
+_DIAGNOSTIC_BACKFILL_TABLES = {
+    "asset": "assets", "document": "documents", "document_page": "pages",
+    "wrong_answer_source": "wrong_sources", "wrong_answer_analysis": "wrong_analyses",
+    "history_source": "history_sources", "history_item": "history_items",
+}
+
 
 def _invalid() -> GatewayError:
     return GatewayError("INVALID_ARGUMENT", "Invalid wrong-answer input")
@@ -50,6 +86,58 @@ class SQLiteWrongAnswerStore:
     def _has_table(con: sqlite3.Connection, name: str) -> bool:
         return con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?",
                            (name,)).fetchone() is not None
+
+    def storage_diagnostics(self) -> dict:
+        """Bounded, content-free metadata from a read-only consistent snapshot.
+
+        This does not establish corruption or diagnose a failed write. Missing
+        tables stay missing; malformed contracts make dependent counts unknown.
+        """
+        try:
+            with closing(self.documents._connect()) as con:
+                con.execute("BEGIN")
+                tables = {}
+                columns = {}
+                for name, expected in _DIAGNOSTIC_COLUMNS.items():
+                    exists = self._has_table(con, name)
+                    actual = list(con.execute('PRAGMA table_xinfo("' + name + '")')) if exists else []
+                    columns[name] = {r[1]: r for r in actual}
+                    expected_names = {r[0] for r in expected}
+                    extras = [r for r in actual if r[1] not in expected_names]
+                    present_contract = tuple((r[1], r[2].upper(), r[3], r[5])
+                                             for r in actual if r[1] in expected_names and r[6] == 0)
+                    tables[name] = {
+                        "exists": exists,
+                        "expected_column_contract": exists and present_contract == expected,
+                        "column_count": len(actual), "extra_column_count": len(extras),
+                        "required_extra_column_count": sum(bool(r[3]) and r[4] is None and r[6] == 0
+                                                           for r in extras),
+                    }
+                scopes = {}
+                for scope in ("documents", "wrong_answers"):
+                    if not tables["schema_migrations"]["exists"]:
+                        scopes[scope] = False
+                    elif not tables["schema_migrations"]["expected_column_contract"]:
+                        scopes[scope] = None
+                    else:
+                        scopes[scope] = con.execute(
+                            "SELECT 1 FROM schema_migrations WHERE scope=? AND version=1 LIMIT 1",
+                            (scope,)).fetchone() is not None
+                version = columns["wrong_analyses"].get("version")
+                invalid_versions = con.execute(
+                    "SELECT COUNT(*) FROM wrong_analyses WHERE version <= 0"
+                ).fetchone()[0] if version is not None and version[2].upper() == "INTEGER" and version[6] == 0 else None
+                pending = None if scopes["wrong_answers"] is None else not scopes["wrong_answers"]
+                ranges = {}
+                for kind, table in _DIAGNOSTIC_BACKFILL_TABLES.items():
+                    exists = self._has_table(con, table)
+                    ranges[kind] = {"table_exists": exists,
+                                    "would_scan_if_scope_pending": False if not exists else pending}
+                return {"tables": tables, "migration_scopes": scopes,
+                        "wrong_analyses_invalid_nonpositive_version_count": invalid_versions,
+                        "backfill_ranges": ranges}
+        except sqlite3.Error:
+            raise GatewayError("STORAGE_UNAVAILABLE", "Local storage is unavailable") from None
 
     @staticmethod
     def _schema(con: sqlite3.Connection) -> None:
@@ -157,7 +245,9 @@ class SQLiteWrongAnswerStore:
                         result["write_provenance"] = get_provenance(con, "wrong_answer_source", source_id)
                         return result
                     created_at = _timestamp()
-                    con.execute("INSERT INTO wrong_sources VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    con.execute("INSERT INTO wrong_sources(source_id, source_uri, page_number, "
+                                "question_text, student_answer, text_origin, created_at) "
+                                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                                 (source_id, source_uri, page_number, question_text,
                                  student_answer, origin, created_at))
                     provenance_id = insert_provenance(
