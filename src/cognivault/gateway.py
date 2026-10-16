@@ -57,6 +57,127 @@ _ABSOLUTE_PATH_START = re.compile(
     r"(?<![\w:/\\])/(?!/))"
 )
 _PATH_TERMINATORS = frozenset("!?\r\n<>[]{}()\"'")
+_MATH_ATOM = r"(?:[0-9]+(?:\.[0-9]+)?|[A-Za-z])[₀₁₂₃₄₅₆₇₈₉ₐₑₒₓₔₕₖₗₘₙₚₛₜ⁰¹²³⁴⁵⁶⁷⁸⁹]*"
+_MATH_TOKEN = re.compile(_MATH_ATOM + r"|[+\-−×*()\[\]]")
+
+
+def _math_group_boundary(value: str, start: int, step: int) -> int | None:
+    opening = {"(": ")", "[": "]"} if step == 1 else {")": "(", "]": "["}
+    closing = set(opening.values())
+    stack = []
+    for index in range(start, min(len(value), start + 256) if step == 1 else max(-1, start - 256), step):
+        char = value[index]
+        if char in opening:
+            stack.append(opening[char])
+            if len(stack) > 2:
+                return None
+        elif char in closing:
+            if not stack or stack.pop() != char:
+                return None
+            if not stack:
+                return index
+    return None
+
+
+def _is_bounded_math_operand(value: str) -> bool:
+    """At most two grouping levels; numbers/single letters, never words or paths."""
+    if len(value) > 256:
+        return False
+    tokens = []
+    offset = 0
+    while offset < len(value):
+        if value[offset] in " \t":
+            offset += 1
+            continue
+        token = _MATH_TOKEN.match(value, offset)
+        if token is None:
+            return False
+        tokens.append(token.group())
+        offset = token.end()
+    position = 0
+
+    def atom(depth):
+        nonlocal position
+        if position < len(tokens) and tokens[position] in {"+", "-", "−"}:
+            position += 1
+        if position >= len(tokens):
+            return False
+        token = tokens[position]
+        position += 1
+        if token in {"(", "["}:
+            if depth >= 2 or not expression(depth + 1) or position >= len(tokens) \
+                    or tokens[position] != ({"(": ")", "[": "]"}[token]):
+                return False
+            position += 1
+            return True
+        return re.fullmatch(_MATH_ATOM, token) is not None
+
+    def product(depth):
+        nonlocal position
+        start = position
+        if not atom(depth):
+            return False
+        # Only a numeric coefficient can imply multiplication by a letter/group.
+        if position == start + 1 and tokens[start][0].isdigit() and position < len(tokens) \
+                and (tokens[position][0].isalpha() or tokens[position] in {"(", "["}):
+            if not atom(depth):
+                return False
+        while position < len(tokens) and tokens[position] in {"×", "*"}:
+            position += 1
+            if not atom(depth):
+                return False
+        return True
+
+    def expression(depth):
+        nonlocal position
+        if not product(depth):
+            return False
+        while position < len(tokens) and tokens[position] in {"+", "-", "−"}:
+            position += 1
+            if not product(depth):
+                return False
+        return True
+
+    return expression(0) and position == len(tokens)
+
+
+def _math_division_start(value: str, division: int) -> int | None:
+    """Recognize only a grouped arithmetic numerator and bounded denominator."""
+    left_end = division - 1
+    while left_end >= 0 and value[left_end] in " \t":
+        left_end -= 1
+    if left_end < 0 or value[left_end] not in ")]":
+        return None
+    start = _math_group_boundary(value, left_end, -1)
+    if start is None:
+        return None
+    while start > 0 and value[start - 1] in "0123456789.":
+        start -= 1
+    if start > 0 and (value[start - 1] in ":/\\_" or value[start - 1].isascii() and value[start - 1].isalnum()):
+        return None
+    right_start = division + 1
+    while right_start < len(value) and value[right_start] in " \t":
+        right_start += 1
+    if right_start >= len(value):
+        return None
+    if value[right_start] in "([":
+        right_end = _math_group_boundary(value, right_start, 1)
+        if right_end is None:
+            return None
+        end = right_end + 1
+    else:
+        scalar = re.match(r"[0-9]+(?:\.[0-9]+)?(?=[ \t]*=)", value[right_start:])
+        if scalar is None:
+            return None
+        end = right_start + scalar.end()
+    if end < len(value) and (value[end] in "./\\_" or value[end].isascii() and value[end].isalnum()):
+        return None
+    left = value[start:left_end + 1]
+    right = value[right_start:end]
+    if not any(operator in left + right for operator in "+-−×*") \
+            or not _is_bounded_math_operand(left) or not _is_bounded_math_operand(right):
+        return None
+    return start
 
 
 def _redact_local_paths(value: str) -> str:
@@ -67,7 +188,13 @@ def _redact_local_paths(value: str) -> str:
     """
     pieces = []
     position = 0
+    path_seen = False
     while match := _ABSOLUTE_PATH_START.search(value, position):
+        ratio_start = _math_division_start(value, match.start()) if match.group() == "/" else None
+        if not path_seen and match.group() == "/" and ratio_start is not None:
+            pieces.append(value[position:match.end()])
+            position = match.end()
+            continue
         pieces.append(value[position:match.start()])
         end = match.end()
         while end < len(value):
@@ -85,6 +212,9 @@ def _redact_local_paths(value: str) -> str:
             end += 1
         pieces.append("[local path redacted]")
         position = end
+        # Never reinterpret the suffix of an already detected path as math,
+        # even when parentheses/spaces/prose-looking words occur in its name.
+        path_seen = True
     pieces.append(value[position:])
     return "".join(pieces)
 
