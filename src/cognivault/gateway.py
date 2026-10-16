@@ -28,6 +28,7 @@ from .contracts import (
 )
 from .policy import safe_relative_source_path
 from .provenance import ReportedIdentity
+from .runtime_identity import startup_identity
 
 
 _PUBLIC_BACKEND_MESSAGES = {
@@ -244,6 +245,7 @@ class Gateway:
         self.qmd_discoverable = qmd_discoverable or (lambda: shutil.which("qmd") is not None)
         self.document_store = document_store
         self.memory_store = memory_store
+        self._runtime_identity = startup_identity()
         self.capabilities = capabilities
 
     def _require_capability(self, capability: str) -> None:
@@ -765,6 +767,9 @@ class Gateway:
             "study": {"configured": root is not None, "root_exists": root_exists, "readable": readable},
             "history": history_public,
             "qmd": {"discoverable": qmd_found},
+            "memory": {"configured": self.memory_store is not None,
+                       "status": "not_checked" if self.memory_store is not None else "not_configured"},
+            "runtime": dict(self._runtime_identity),
         }
 
     def _history_backend(self) -> HistoryBackend:
