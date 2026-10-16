@@ -3,8 +3,9 @@
 import json
 import math
 import os
+import stat
 from contextlib import nullcontext
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import shutil
 import subprocess
 from dataclasses import dataclass
@@ -147,6 +148,21 @@ class QmdStudyBackend:
         self.timeout_seconds = timeout_seconds
 
     def search(self, query: str, limit: int) -> list[BackendStudyHit]:
+        return [self._parse_hit(self.config.study_root, record)
+                for record in self._search_records(query, limit)]
+
+    def diagnostics(self, query: str, limit: int) -> dict:
+        """Inspect one bounded search without returning identifiers or content."""
+        try:
+            records = self._search_records(query, limit)
+        except GatewayError as exc:
+            return {"collection": _COLLECTION, "stage": "search_failed",
+                    "error_code": exc.code, "hits": []}
+        return {"collection": _COLLECTION, "stage": "validated_output", "error_code": None,
+                "hits": [_diagnostic_uri(self.config.study_root, record, index)
+                         for index, record in enumerate(records, 1)]}
+
+    def _search_records(self, query: str, limit: int) -> list:
         if (self.config.expected_qmd_version != _APPROVED_VERSION
                 or (self.runtime is None and self.runtime_provider is None
                     and self.approved_qmd_version != _APPROVED_VERSION)):
@@ -226,7 +242,7 @@ class QmdStudyBackend:
             raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results") from None
         if not isinstance(records, list) or len(records) > limit:
             raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
-        return [self._parse_hit(root, record) for record in records]
+        return records
 
     @staticmethod
     def _parse_hit(root: Path, record: object) -> BackendStudyHit:
@@ -256,6 +272,72 @@ class QmdStudyBackend:
 
 def _reject_nonfinite(_: str) -> None:
     raise ValueError("Nonfinite JSON value")
+
+
+def _diagnostic_path_status(root: Path, path: str) -> str:
+    """Only lstat lexically contained components; never follow a reparse point.
+
+    Unknown deliberately includes links, permissions and unavailable metadata.
+    This is a diagnostic classification, never authorization for a source read.
+    """
+    if not path or any(ord(c) < 32 or ord(c) == 127 for c in path):
+        return "invalid"
+    if len(path) > 4096 or path.count("/") >= 128:
+        return "unknown"
+    parts = path.split("/")
+    if path.startswith("/") or "\\" in path or ":" in path or ".." in parts:
+        return "outside"
+    if any(p in ("", ".") for p in parts):
+        return "invalid"
+    # Windows cannot address these literal names; do not interpret them as globbing.
+    if os.name == "nt":
+        if any(c in path for c in '<>"|?*') or any(
+                p.endswith((".", " ")) or PureWindowsPath(p).is_reserved() for p in parts):
+            return "invalid"
+    cursor = root
+    try:
+        for index, part in enumerate(parts):
+            cursor = cursor / part
+            metadata = cursor.lstat()
+            if stat.S_ISLNK(metadata.st_mode) or getattr(metadata, "st_file_attributes", 0) & 0x400:
+                return "unknown"
+            if index < len(parts) - 1 and not stat.S_ISDIR(metadata.st_mode):
+                return "missing"
+        return "within_file" if stat.S_ISREG(metadata.st_mode) else "invalid"
+    except (FileNotFoundError, NotADirectoryError):
+        return "missing"
+    except (OSError, ValueError, RuntimeError):
+        return "unknown"
+
+
+def _diagnostic_uri(root: Path, record: object, index: int) -> dict:
+    result = {"ordinal": index, "scheme_match": False, "collection_match": False,
+              "has_query_marker": False, "has_fragment_marker": False,
+              "has_percent_escape": False, "strict_path_status": "invalid",
+              "literal_path_status": "invalid", "decoded_path_status": "invalid"}
+    uri = record.get("file") if isinstance(record, dict) else None
+    if not isinstance(uri, str):
+        return result
+    result.update(has_query_marker="?" in uri, has_fragment_marker="#" in uri,
+                  has_percent_escape="%" in uri)
+    try:
+        parsed = urlsplit(uri)
+        result.update(scheme_match=parsed.scheme == "qmd", collection_match=parsed.netloc == _COLLECTION)
+        if not result["scheme_match"] or not result["collection_match"]:
+            return result
+        # QMD CLI 2.8.3 builds this prefix with an unescaped literal path.
+        prefix = f"qmd://{_COLLECTION}/"
+        if not uri.startswith(prefix):
+            return result
+        literal = uri[len(prefix):]
+        result["literal_path_status"] = _diagnostic_path_status(root, literal)
+        decoded = unquote(parsed.path[1:], encoding="utf-8", errors="strict")
+        result["decoded_path_status"] = _diagnostic_path_status(root, decoded)
+        if not parsed.query and not parsed.fragment and parsed.path.startswith("/"):
+            result["strict_path_status"] = result["decoded_path_status"]
+    except (UnicodeError, ValueError):
+        pass
+    return result
 
 
 def _safe_uri_path(root: Path, uri: str) -> str:

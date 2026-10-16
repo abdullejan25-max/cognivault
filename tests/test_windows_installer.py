@@ -35,7 +35,10 @@ class Program {
     }
     File.AppendAllText(Environment.GetEnvironmentVariable("FAKE_UV_TRACE"),
       String.Join("|", args) + "\\n", new UTF8Encoding(false));
-    if (args.Length == 1 && args[0] == "--version") { Console.WriteLine("uv fixture"); return 0; }
+    if (args.Length == 1 && args[0] == "--version") {
+      System.Threading.Thread.Sleep(Int32.Parse(Environment.GetEnvironmentVariable("FAKE_UV_VERSION_DELAY_MS") ?? "0"));
+      Console.WriteLine("uv fixture"); return 0;
+    }
     if (args.Length != 7 || args[0] != "sync" || args[1] != "--locked" ||
         args[2] != "--no-editable" || args[3] != "--python" || args[4] != "3.11" ||
         args[5] != "--project" || !File.Exists(Path.Combine(args[6], "uv.lock"))) return 89;
@@ -48,9 +51,11 @@ class Program {
       if (check.ExitCode != 0) return 90;
     }
     if (Environment.GetEnvironmentVariable("FAKE_UV_CHILD_MARKER") != null) {
-      System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
+      var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(
         System.Reflection.Assembly.GetExecutingAssembly().Location, "child") {
           UseShellExecute = false, CreateNoWindow = true });
+      File.AppendAllText(Environment.GetEnvironmentVariable("FAKE_UV_TRACE"),
+        "spawned-child|" + child.Id + "\\n", new UTF8Encoding(false));
       System.Threading.Thread.Sleep(5000);
     }
     if (Environment.GetEnvironmentVariable("FAKE_UV_SLEEP") == "1") System.Threading.Thread.Sleep(5000);
@@ -132,22 +137,31 @@ def test_timed_out_install_stops_before_configuration(tmp_path, fake_uv):
     assert "超时" in result.stdout
 
 
-def test_builtin_powershell_timeout_stops_descendants(tmp_path, fake_uv):
+@pytest.mark.parametrize("version_delay_ms", [0, 16000], ids=["immediate-version", "slow-allowed-version"])
+def test_builtin_powershell_timeout_stops_descendants(tmp_path, fake_uv, version_delay_ms):
     root = installer_checkout(tmp_path)
     env = installer_environment(fake_uv, tmp_path)
     marker = tmp_path / "child-still-running.txt"
     env["FAKE_UV_CHILD_MARKER"] = str(marker)
+    env["FAKE_UV_VERSION_DELAY_MS"] = str(version_delay_ms)
     # Compatibility coverage specifically requires the Windows 5.1 runtime.
     shell = Path(env["WINDIR"]) / "System32/WindowsPowerShell/v1.0/powershell.exe"
+    # This harness budget includes PS5.1 startup, the separately allowed 30s
+    # version probe and up to 10s cleanup. The sync deadline stays at 1s.
     result = subprocess.run(
         [str(shell), "-NoProfile", "-ExecutionPolicy", "Bypass", "-File",
          str(root / "scripts/install.ps1"), "-NonInteractive", "-TimeoutSeconds", "1"],
-        cwd=tmp_path, env=env, capture_output=True, encoding="utf-8", errors="replace", timeout=15,
+        cwd=tmp_path, env=env, capture_output=True, encoding="utf-8", errors="replace", timeout=60,
     )
-    assert result.returncode != 0
+    trace = (tmp_path / "uv-trace.txt").read_text(encoding="utf-8")
+    diagnostic = f"exit={result.returncode}; uv trace={trace}; stdout={result.stdout}; stderr={result.stderr}"
+    assert result.returncode != 0, diagnostic
+    assert "超时" in result.stdout, diagnostic
+    assert "sync|--locked|--no-editable|--python|3.11|--project|" in trace, diagnostic
+    assert "spawned-child|" in trace, diagnostic
     time.sleep(3)
-    assert not marker.exists()
-    assert not (root / "config.local.toml").exists()
+    assert not marker.exists(), diagnostic
+    assert not (root / "config.local.toml").exists(), diagnostic
 
 
 def test_native_bootstrap_does_not_inherit_other_powershell_module_paths(tmp_path, fake_uv):
