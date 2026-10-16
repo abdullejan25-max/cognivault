@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -244,3 +245,110 @@ def test_cli_conflicts_return_nonzero_with_sanitized_summary(tmp_path, capsys):
     output = capsys.readouterr()
     assert json.loads(output.out)["state"] == "PREPARED_WITH_ERRORS"
     assert str(source) not in output.out + output.err
+
+
+def stat_with(info, **changes):
+    values = {name: getattr(info, name) for name in dir(info) if name.startswith("st_")}
+    return SimpleNamespace(**(values | changes))
+
+
+def test_stable_source_with_distinct_path_and_handle_ctime(tmp_path, monkeypatch):
+    """Windows 3.12 path ctime can be birth time while fstat uses change time."""
+    source, inbox = setup(tmp_path)
+    original = source / "a.jsonl"
+    raw = b'{"invented":true}\n'
+    original.write_bytes(raw)
+    api = module()
+    fstat = os.fstat
+    handle_ctime = original.lstat().st_ctime_ns + 1_000_000
+    monkeypatch.setattr(api.os, "fstat", lambda fd: stat_with(fstat(fd), st_ctime_ns=handle_ctime))
+
+    result = api.prepare([f"codex={original}"], inbox)
+
+    assert result["prepared"] == 1
+    assert result["skipped"].get("source_changed", 0) == 0
+    entry = manifests(inbox, result)[0]["entries"][0]
+    assert entry["sha256"] == hashlib.sha256(raw).hexdigest()
+    assert (inbox / entry["relative_path"]).read_bytes() == raw
+
+
+@pytest.mark.parametrize("field", ["st_dev", "st_ino", "st_size", "st_mtime_ns"])
+def test_path_handle_identity_mismatch_is_still_rejected(tmp_path, monkeypatch, field):
+    source, inbox = setup(tmp_path)
+    original = source / "a.jsonl"
+    original.write_bytes(b'{}\n')
+    api = module()
+    fstat = os.fstat
+
+    def different_identity(fd):
+        info = fstat(fd)
+        return stat_with(info, **{field: getattr(info, field) + 1})
+
+    monkeypatch.setattr(api.os, "fstat", different_identity)
+    result = api.prepare([f"codex={original}"], inbox)
+    assert result["prepared"] == 0
+    assert result["skipped"]["source_changed"] == 1
+
+
+@pytest.mark.parametrize("query", ["path", "handle"])
+def test_each_api_keeps_its_own_ctime_stability_check(tmp_path, monkeypatch, query):
+    source, inbox = setup(tmp_path)
+    original = source / "a.jsonl"
+    original.write_bytes(b'{}\n')
+    api = module()
+    fstat, safe_file = os.fstat, api._safe_file
+    path_calls = handle_calls = 0
+    path_ctime = original.lstat().st_ctime_ns
+
+    def path_info(path):
+        nonlocal path_calls
+        info = safe_file(path)
+        if path == original:
+            path_calls += 1
+            # prepare's size hint and snapshot's initial path check precede copy.
+            return stat_with(info, st_ctime_ns=path_ctime + int(query == "path" and path_calls >= 3))
+        return info
+
+    def handle_info(fd):
+        nonlocal handle_calls
+        handle_calls += 1
+        return stat_with(fstat(fd), st_ctime_ns=path_ctime + 1_000_000
+                         + int(query == "handle" and handle_calls >= 2))
+
+    monkeypatch.setattr(api, "_safe_file", path_info)
+    monkeypatch.setattr(api.os, "fstat", handle_info)
+    result = api.prepare([f"codex={original}"], inbox)
+    assert result["prepared"] == 0
+    assert result["skipped"]["source_changed"] == 1
+    assert not list((inbox / "authorized-history" / "files").glob("*.jsonl"))
+
+
+def test_second_hash_rejects_rewrite_even_when_metadata_appears_unchanged(tmp_path, monkeypatch):
+    source, inbox = setup(tmp_path)
+    original = source / "a.jsonl"
+    original.write_bytes(b'{"x":1}\n')
+    api = module()
+    safe_file, hash_stream = api._safe_file, api._hash_stream
+    path_info = original.lstat()
+    with original.open("rb") as stream:
+        handle_info = os.fstat(stream.fileno())
+    hashes = 0
+
+    def change_after_first_hash(stream, output=None):
+        nonlocal hashes
+        result = hash_stream(stream, output)
+        if Path(stream.name) == original:
+            hashes += 1
+            if hashes == 1:
+                original.write_bytes(b'{"x":2}\n')
+        return result
+
+    # Model coarse or restored timestamps without weakening production checks.
+    monkeypatch.setattr(api, "_safe_file", lambda path: path_info if path == original else safe_file(path))
+    monkeypatch.setattr(api.os, "fstat", lambda fd: handle_info)
+    monkeypatch.setattr(api, "_hash_stream", change_after_first_hash)
+    result = api.prepare([f"codex={original}"], inbox)
+    assert hashes == 2
+    assert result["prepared"] == 0
+    assert result["skipped"]["source_changed"] == 1
+    assert not list((inbox / "authorized-history" / "files").glob("*.jsonl"))
