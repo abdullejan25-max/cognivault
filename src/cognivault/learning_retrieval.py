@@ -13,8 +13,8 @@ ALIASES = {
 
 def focused(query, function, result_key):
     result = function(query)
-    if result[result_key]: return result
+    if result[result_key] or result.get("partial") is True: return result
     for alias in ALIASES.get(query.strip(), ())[:2]:
         result = function(alias)
-        if result[result_key]: return result
+        if result[result_key] or result.get("partial") is True: return result
     return result

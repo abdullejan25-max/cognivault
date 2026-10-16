@@ -204,6 +204,8 @@ def test_protocol_search_preserves_sources_and_default_limit(tmp_path: Path) -> 
                 "ok": True,
                 "backend": "synthetic",
                 "truncated": False,
+                "partial": False,
+                "unavailable_source_count": 0,
                 "results": [{
                     "title": "Invented lesson", "snippet": "A simple example",
                     "source_id": "study:lesson.md", "source_path": "lesson.md",

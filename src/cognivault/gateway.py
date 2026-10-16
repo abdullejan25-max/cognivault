@@ -1029,6 +1029,10 @@ class Gateway:
                 raise GatewayError(exc.code, _PUBLIC_BACKEND_MESSAGES[exc.code], correlation_id) from None
             if not isinstance(raw_hits, (list, tuple)) or len(raw_hits) > limit:
                 raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
+            from .adapters.study_qmd import QmdSearchResults
+            unavailable = raw_hits.unavailable_source_count if isinstance(raw_hits, QmdSearchResults) else 0
+            if type(unavailable) is not int or not 0 <= unavailable <= limit - len(raw_hits):
+                raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
             backend_name = self.study_backend.name
             if not isinstance(backend_name, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,40}", backend_name):
                 raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
@@ -1044,6 +1048,8 @@ class Gateway:
         return {
             "backend": backend_name,
             "truncated": any(hit.truncated for hit in safe_hits),
+            "partial": unavailable > 0,
+            "unavailable_source_count": unavailable,
             "results": [hit.to_dict() for hit in safe_hits],
         }
 

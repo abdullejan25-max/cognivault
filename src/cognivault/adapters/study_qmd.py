@@ -116,6 +116,21 @@ def _within(path: Path, parent: Path) -> bool:
         return False
 
 
+class QmdSearchResults(list):
+    """Safe hits plus unavailable sources in this single bounded QMD response."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.unavailable_source_count = 0
+
+
+class _MissingStudySource(GatewayError):
+    """Internal classification; retains the public boundary error code."""
+
+    def __init__(self) -> None:
+        super().__init__("OUTSIDE_ALLOWLIST", "Study source is outside the allowed root")
+
+
 class QmdStudyBackend:
     """Run one fixed search and validate sources.
 
@@ -148,8 +163,13 @@ class QmdStudyBackend:
         self.timeout_seconds = timeout_seconds
 
     def search(self, query: str, limit: int) -> list[BackendStudyHit]:
-        return [self._parse_hit(self.config.study_root, record)
-                for record in self._search_records(query, limit)]
+        hits = QmdSearchResults()
+        for record in self._search_records(query, limit):
+            try:
+                hits.append(self._parse_hit(self.config.study_root, record))
+            except _MissingStudySource:
+                hits.unavailable_source_count += 1
+        return hits
 
     def diagnostics(self, query: str, limit: int) -> dict:
         """Inspect one bounded search without returning identifiers or content."""
@@ -296,6 +316,11 @@ def _diagnostic_path_status(root: Path, path: str) -> str:
             return "invalid"
     cursor = root
     try:
+        root_metadata = root.lstat()
+        if (not stat.S_ISDIR(root_metadata.st_mode)
+                or stat.S_ISLNK(root_metadata.st_mode)
+                or getattr(root_metadata, "st_file_attributes", 0) & 0x400):
+            return "unknown"
         for index, part in enumerate(parts):
             cursor = cursor / part
             metadata = cursor.lstat()
@@ -341,6 +366,23 @@ def _diagnostic_uri(root: Path, record: object, index: int) -> dict:
 
 
 def _safe_uri_path(root: Path, uri: str) -> str:
+    path = _decoded_uri_path(uri)
+    # Distinguish definite missing from containment, permission and unknown
+    # failures before policy collapses them into the same public error code.
+    try:
+        resolved_root = root.resolve(strict=True)
+        resolved = (resolved_root / path).resolve(strict=True)
+        resolved.relative_to(resolved_root)
+    except (FileNotFoundError, NotADirectoryError):
+        if _diagnostic_path_status(root, path) == "missing":
+            raise _MissingStudySource() from None
+        raise GatewayError("OUTSIDE_ALLOWLIST", "Study source is outside the allowed root") from None
+    except (OSError, ValueError, RuntimeError):
+        raise GatewayError("OUTSIDE_ALLOWLIST", "Study source is outside the allowed root") from None
+    return safe_relative_source_path(root, path)
+
+
+def _decoded_uri_path(uri: str) -> str:
     try:
         parsed = urlsplit(uri)
         if (parsed.scheme != "qmd" or parsed.netloc != _COLLECTION or parsed.query or parsed.fragment
@@ -352,6 +394,6 @@ def _safe_uri_path(root: Path, uri: str) -> str:
                 or any(part in ("", ".", "..") for part in parts)
                 or any(ord(char) < 32 or ord(char) == 127 for char in path)):
             raise ValueError("Invalid Study URI path")
-        return safe_relative_source_path(root, path)
+        return path
     except (UnicodeError, ValueError, GatewayError):
         raise GatewayError("OUTSIDE_ALLOWLIST", "Study source is outside the allowed root") from None

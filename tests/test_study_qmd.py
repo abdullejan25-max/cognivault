@@ -383,13 +383,12 @@ def test_nonfinite_or_nonnumeric_score_is_rejected(tmp_path: Path, score) -> Non
         "qmd://studyvault/C:/private/lesson.md",
         "qmd://studyvault/%5Coutside.md",
         "qmd://studyvault/%5C%5Cserver/share.md",
-        "qmd://studyvault/数学/missing.md",
         "qmd://studyvault/数学/synthetic.md?private=1",
         "C:/private/lesson.md",
         "file:///private/lesson.md",
     ],
 )
-def test_unsafe_or_missing_qmd_source_is_rejected(tmp_path: Path, uri: str) -> None:
+def test_unsafe_qmd_source_is_rejected(tmp_path: Path, uri: str) -> None:
     config, _ = _study(tmp_path)
     runner = FakeRunner(json.dumps([_hit(uri)]))
 
