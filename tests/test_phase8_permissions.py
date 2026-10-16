@@ -49,7 +49,7 @@ def test_mcp_discovery_exposes_only_enabled_write_tools(tmp_path: Path) -> None:
     expected_read = {"retrieve_evidence", "search_canonical_messages", "health_report", "search_study", "list_history_sources", "search_history",
                      "fetch_history_item", "search_documents",
                      "fetch_document", "fetch_document_page", "list_document_ocr_candidates",
-                     "fetch_asset", "get_wrong_answer_bundle", "wrong_answer_storage_diagnostics",
+                     "fetch_asset", "get_wrong_answer_bundle", "wrong_answer_storage_diagnostics", "study_search_diagnostics",
                      "search_wrong_answers", "list_legacy_sources", "search_legacy_sources",
                      "fetch_legacy_source"}
 
