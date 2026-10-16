@@ -395,6 +395,10 @@ class Gateway:
             raise GatewayError("STORAGE_UNAVAILABLE", "Wrong-answer storage is unavailable")
         return SQLiteWrongAnswerStore(self.document_store)
 
+    def wrong_answer_storage_diagnostics(self) -> dict:
+        self._require_capability("read")
+        return self._wrong_answers().storage_diagnostics()
+
     @staticmethod
     def _safe_wrong_source(source: dict) -> dict:
         source = dict(source)
