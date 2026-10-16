@@ -117,9 +117,11 @@ def _is_bounded_math_operand(value: str) -> bool:
         start = position
         if not atom(depth):
             return False
-        # Only a numeric coefficient can imply multiplication by a letter/group.
-        if position == start + 1 and tokens[start][0].isdigit() and position < len(tokens) \
-                and (tokens[position][0].isalpha() or tokens[position] in {"(", "["}):
+        # Numeric coefficients may precede a letter/group; a single ASCII
+        # letter may precede only a group, never another letter (a word).
+        if position == start + 1 and position < len(tokens) and (
+                tokens[start][0].isdigit() and (tokens[position][0].isalpha() or tokens[position] in {"(", "["})
+                or re.fullmatch(r"[A-Za-z]", tokens[start]) and tokens[position] in {"(", "["}):
             if not atom(depth):
                 return False
         while position < len(tokens) and tokens[position] in {"×", "*"}:
@@ -151,6 +153,8 @@ def _math_division_start(value: str, division: int) -> int | None:
     start = _math_group_boundary(value, left_end, -1)
     if start is None:
         return None
+    if start > 0 and value[start - 1].isascii() and value[start - 1].isalpha():
+        start -= 1
     while start > 0 and value[start - 1] in "0123456789.":
         start -= 1
     if start > 0 and (value[start - 1] in ":/\\_" or value[start - 1].isascii() and value[start - 1].isalnum()):
@@ -1016,17 +1020,7 @@ class Gateway:
 
     def search_study(self, query: str, limit: int = 5) -> dict:
         self._require_capability("read")
-        if not isinstance(query, str):
-            raise GatewayError("INVALID_ARGUMENT", "Query must be text")
-        query = query.strip()
-        if not 1 <= len(query) <= 500 or "\x00" in query:
-            raise GatewayError("INVALID_ARGUMENT", "Query length or content is invalid")
-        if type(limit) is not int or not 1 <= limit <= 20:
-            raise GatewayError("INVALID_ARGUMENT", "Limit must be an integer from 1 to 20")
-
-        root = self.config.study_root
-        if root is None or not root.is_dir() or not os.access(root, os.R_OK) or self.study_backend is None:
-            raise GatewayError("STUDY_UNAVAILABLE", "Study search is unavailable")
+        query, root = self._validated_study_search(query, limit, 20)
         try:
             try:
                 raw_hits = self.study_backend.search(query, limit)
@@ -1052,6 +1046,32 @@ class Gateway:
             "truncated": any(hit.truncated for hit in safe_hits),
             "results": [hit.to_dict() for hit in safe_hits],
         }
+
+    def _validated_study_search(self, query: str, limit: int, maximum: int) -> tuple[str, Path]:
+        if not isinstance(query, str):
+            raise GatewayError("INVALID_ARGUMENT", "Query must be text")
+        query = query.strip()
+        if not 1 <= len(query) <= 500 or "\x00" in query:
+            raise GatewayError("INVALID_ARGUMENT", "Query length or content is invalid")
+        if type(limit) is not int or not 1 <= limit <= maximum:
+            raise GatewayError("INVALID_ARGUMENT", f"Limit must be an integer from 1 to {maximum}")
+
+        root = self.config.study_root
+        if root is None or not root.is_dir() or not os.access(root, os.R_OK) or self.study_backend is None:
+            raise GatewayError("STUDY_UNAVAILABLE", "Study search is unavailable")
+        return query, root
+
+    def study_search_diagnostics(self, query: str, limit: int = 1) -> dict:
+        self._require_capability("read")
+        self._validated_study_search(query, limit, 3)
+        from .adapters.study_qmd import QmdStudyBackend
+        if not isinstance(self.study_backend, QmdStudyBackend):
+            raise GatewayError("STUDY_UNAVAILABLE", "Study diagnostics are unavailable")
+        try:
+            return self.study_backend.diagnostics(query.strip(), limit)
+        except Exception:
+            # Never export raw runtime, URI or filesystem exceptions.
+            raise GatewayError("INTERNAL_ERROR", "Study diagnostics failed", uuid4().hex) from None
 
     def _safe_hit(self, root: Path, hit: BackendStudyHit, backend_name: str) -> SafeStudyResult:
         if not isinstance(hit, BackendStudyHit):

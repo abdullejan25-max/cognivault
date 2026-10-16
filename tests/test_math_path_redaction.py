@@ -58,6 +58,7 @@ def test_math_ratio_immediately_after_chinese_prose_is_preserved():
     '(18²-6²)/(3×4)=24',
     '(wₙ²-6²)/(3×4)',
     '(18.5-6)/5=2.5',
+    'r(p-q)/(q(q+r))',
 ])
 def test_bounded_arithmetic_ratios_with_numeric_coefficients_and_scripts(expression):
     assert _redact_local_paths(expression) == expression
@@ -66,15 +67,18 @@ def test_bounded_arithmetic_ratios_with_numeric_coefficients_and_scripts(express
 @pytest.mark.parametrize('value', [
     '(private)/(p+r)', '(p+r)/(private)', '(p+r)/5/private',
     '(p+r)/(3×4)/private', '/private/notes [(r₂+r₅)-(r₁+r₄)]/(6U²)',
+    'private(p-q)/(q(q+r))', 'r(p-q)/(private(q+r))',
+    '/private/r(p-q)/(q(q+r))', r'C:\private\r(p-q)/(q(q+r))',
+    r'\\server\private\r(p-q)/(q(q+r))',
 ])
 def test_extended_arithmetic_grammar_still_rejects_paths_and_words(value):
     public = _redact_local_paths(value)
     assert public != value and '[local path redacted]' in public
 
 
-def test_math_source_and_analysis_survive_register_bundle_and_search_dtos(tmp_path):
+@pytest.mark.parametrize('expression', ['(p+r)/(q+r)', 'r(p-q)/(q(q+r))'])
+def test_math_source_and_analysis_survive_register_bundle_and_search_dtos(tmp_path, expression):
     g, _, asset_uri, _ = gateway_with_sources(tmp_path)
-    expression = '(p+r)/(q+r)'
     question = 'Invented ratio ' + expression
     registered = g.register_wrong_answer_source(asset_uri, question, expression)['source']
     assert registered['question_text'] == question and registered['student_answer'] == expression
@@ -90,9 +94,9 @@ def test_math_source_and_analysis_survive_register_bundle_and_search_dtos(tmp_pa
     assert g.search_wrong_answers('Invented ratio')['results'][0]['question_text'] == question
 
 
-def test_native_ratio_readback_preserves_math_and_still_redacts_adjacent_path(tmp_path):
+@pytest.mark.parametrize('expression', ['(p+r)/(q+r)', 'r(p-q)/(q(q+r))'])
+def test_native_ratio_readback_preserves_math_and_still_redacts_adjacent_path(tmp_path, expression):
     g, _, asset_uri, _ = gateway_with_sources(tmp_path)
-    expression = '(p+r)/(q+r)'
     async def run():
         async with create_connected_server_and_client_session(create_mcp_server(g)) as client:
             registered = (await client.call_tool('register_wrong_answer_source', {

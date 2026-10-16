@@ -159,6 +159,14 @@ def create_mcp_server(gateway: Gateway) -> Server:
                 annotations=read_only,
             ),
             types.Tool(
+                name="study_search_diagnostics",
+                description="Read-only bounded QMD path classifications. No query echo, paths, identifiers or content; does not repair or relax source boundaries.",
+                inputSchema={"type": "object", "properties": {
+                    "query": {"type": "string", "minLength": 1, "maxLength": 500},
+                    "limit": {"type": "integer", "minimum": 1, "maximum": 3, "default": 1}},
+                    "required": ["query"], "additionalProperties": False}, annotations=read_only,
+            ),
+            types.Tool(
                 name="search_study",
                 description="Read-only search of the configured Study collection; returns safe relative sources.",
                 inputSchema={
@@ -580,6 +588,9 @@ def create_mcp_server(gateway: Gateway) -> Server:
             if name == "search_study":
                 query, limit = _validated_search_arguments(arguments)
                 return {"ok": True, **gateway.search_study(query, limit)}
+            if name == "study_search_diagnostics":
+                query, limit = _validated_search_arguments({"limit": 1, **arguments})
+                return {"ok": True, **gateway.study_search_diagnostics(query, limit)}
             if name == "list_history_sources":
                 if arguments:
                     raise GatewayError("INVALID_ARGUMENT", "Invalid tool arguments")
