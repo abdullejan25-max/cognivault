@@ -187,6 +187,8 @@ def test_protocol_health_preserves_gateway_summary(tmp_path: Path) -> None:
                 "study": {"configured": True, "root_exists": True, "readable": True},
                 "history": {"backend": "not_configured", "status": "not_configured"},
                 "qmd": {"discoverable": False},
+                "memory": {"configured": False, "status": "not_configured"},
+                "runtime": gateway.health_report()["runtime"],
             }
             assert str(tmp_path) not in json.dumps(response.structuredContent)
 

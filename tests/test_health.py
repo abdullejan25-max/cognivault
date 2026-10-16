@@ -42,6 +42,8 @@ def test_health_report_is_side_effect_free_and_path_safe(tmp_path: Path, monkeyp
         "study": {"configured": True, "root_exists": True, "readable": True},
         "history": {"backend": "not_configured", "status": "not_configured"},
         "qmd": {"discoverable": True},
+        "memory": {"configured": False, "status": "not_configured"},
+        "runtime": gateway.health_report()["runtime"],
     }
     assert _snapshot(tmp_path) == before
     assert str(tmp_path) not in str(report)
