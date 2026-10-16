@@ -46,6 +46,8 @@ def test_unconfigured_study_can_start_without_touching_data_or_discovering_qmd(t
         "study": {"configured": False, "root_exists": False, "readable": False},
         "history": {"backend": "not_configured", "status": "not_configured"},
         "qmd": {"discoverable": False},
+        "memory": {"configured": False, "status": "not_configured"},
+        "runtime": gateway.health_report()["runtime"],
     }
     with pytest.raises(GatewayError) as error:
         gateway.search_study("synthetic question")
