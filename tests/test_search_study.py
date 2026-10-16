@@ -226,4 +226,7 @@ def test_rejects_invalid_or_unrepresentable_backend_score(tmp_path: Path, score)
 def test_empty_search_keeps_top_level_backend_and_truncation_contract(tmp_path: Path) -> None:
     gateway = _gateway(tmp_path, FakeStudyBackend())
 
-    assert gateway.search_study("valid") == {"backend": "synthetic", "truncated": False, "results": []}
+    assert gateway.search_study("valid") == {
+        "backend": "synthetic", "truncated": False, "partial": False,
+        "unavailable_source_count": 0, "results": [],
+    }
