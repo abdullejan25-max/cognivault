@@ -22,7 +22,7 @@ def _signature(metadata):
 def source_fingerprint(root: Path) -> str | None:
     """Hash bounded Python package sources only, never configuration or stores.
 
-    Captured at Gateway construction; it deliberately remains unchanged after
+    Captured at module initialization; it deliberately remains unchanged after
     a disk edit. This observes startup files, not every loaded Python code object.
     Unreadable, linked or oversized packages have no fingerprint.
     """
@@ -86,6 +86,11 @@ def source_fingerprint(root: Path) -> str | None:
         return None
 
 
+# Source identity belongs to the retained Python process, not a later Gateway
+# construction. In particular health/construction must not rescan disk sources.
+_STARTUP_SOURCE_SHA256 = source_fingerprint(Path(__file__).parent)
+
+
 def startup_identity() -> dict:
     return {'instance_id': uuid4().hex,
-            'startup_source_sha256': source_fingerprint(Path(__file__).parent)}
+            'startup_source_sha256': _STARTUP_SOURCE_SHA256}

@@ -9,7 +9,7 @@ search, and a retained stdio process from a newly constructed Gateway.
 | `memory.configured=false`, `status=not_configured` | No Memory store was bound to this Gateway. Retrieval is unavailable. |
 | `memory.configured=true`, `status=not_checked` | A store was bound. Health does not read it, prove schema compatibility or confirm readiness. |
 | `runtime.instance_id` | Random identifier fixed for this Gateway instance. A new instance receives another identifier. |
-| `runtime.startup_source_sha256` | SHA-256 of bounded package Python source files at construction, or `null` when unavailable. |
+| `runtime.startup_source_sha256` | SHA-256 of bounded package Python source files when the identity module initializes in the process, or `null` when unavailable. |
 
 The source digest uses sorted package-relative names and bytes. It excludes
 configuration, user stores, caches and other non-Python files. Scanning rejects
@@ -18,7 +18,9 @@ links/reparse points, hardlinked sources, unreadable subtrees and budget excess:
 8 MiB total. Diagnostics never create or migrate Memory. Fingerprint failure
 does not prevent the Gateway from starting.
 
-The digest is a startup disk observation, not authenticated build attestation or
+The digest is captured once, before subsequent Gateway construction and health
+calls; these operations never rescan package files. It is a startup disk
+observation, not authenticated build attestation or
 proof of every loaded Python code object. Editing source files does not refresh
 an existing instance. Equal digests across two Hosts do not establish equal
 private configuration, permissions or data. Verify actual native tool behavior

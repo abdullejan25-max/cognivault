@@ -54,10 +54,19 @@ def test_source_fingerprint_is_bounded_private_free_and_sensitive_to_code(tmp_pa
 
 def test_source_identity_unavailable_does_not_break_gateway(monkeypatch):
     import cognivault.runtime_identity as identity
-    monkeypatch.setattr(identity, 'source_fingerprint', lambda root: None)
+    monkeypatch.setattr(identity, '_STARTUP_SOURCE_SHA256', None)
     health = Gateway(AppConfig('0.8.0'), None).health_report()
     assert health['runtime']['startup_source_sha256'] is None
     assert health['memory']['status'] == 'not_configured'
+
+
+def test_gateway_construction_and_health_never_rescan_source(monkeypatch):
+    import cognivault.runtime_identity as identity
+    def forbidden(root):
+        raise AssertionError('Gateway attempted a source rescan')
+    monkeypatch.setattr(identity, 'source_fingerprint', forbidden)
+    gateway = Gateway(AppConfig('0.8.0'), None)
+    assert re.fullmatch('[0-9a-f]{64}', gateway.health_report()['runtime']['startup_source_sha256'])
 
 
 def test_source_fingerprint_refuses_linked_source(tmp_path):
