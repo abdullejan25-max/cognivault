@@ -71,8 +71,9 @@ def _excluded(path):
     return any(p.casefold() in EXCLUDED_DIRS for p in path.parts) or bool(EXCLUDED_NAMES.search(path.name))
 
 
-def _signature(info):
-    return info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+def _signature(info, *, include_ctime=True):
+    identity = info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns
+    return (*identity, info.st_ctime_ns) if include_ctime else identity
 
 
 def _hash_stream(stream, output=None):
@@ -145,19 +146,23 @@ def _snapshot(path, folder):
     temp = Path(temporary)
     try:
         with os.fdopen(fd, "wb") as out, path.open("rb") as stream:
-            if _signature(os.fstat(stream.fileno())) != _signature(before):
+            handle_before = os.fstat(stream.fileno())
+            # Windows Python 3.12 can report birth time via path stat and change
+            # time via fstat under the same ctime name. Compare common identity
+            # across APIs, then keep each API's own full time baseline below.
+            if _signature(handle_before, include_ctime=False) != _signature(before, include_ctime=False):
                 raise PreparationError("source_changed")
             digest, size = _hash_stream(stream, out)
             out.flush()
             os.fsync(out.fileno())
-            if _signature(os.fstat(stream.fileno())) != _signature(before):
+            if _signature(os.fstat(stream.fileno())) != _signature(handle_before):
                 raise PreparationError("source_changed")
         if _signature(_safe_file(path)) != _signature(before):
             raise PreparationError("source_changed")
         with path.open("rb") as stream:
-            if _signature(os.fstat(stream.fileno())) != _signature(before) or _hash_stream(stream) != (digest, size):
+            if _signature(os.fstat(stream.fileno())) != _signature(handle_before) or _hash_stream(stream) != (digest, size):
                 raise PreparationError("source_changed")
-            if _signature(os.fstat(stream.fileno())) != _signature(before):
+            if _signature(os.fstat(stream.fileno())) != _signature(handle_before):
                 raise PreparationError("source_changed")
         if _signature(_safe_file(path)) != _signature(before):
             raise PreparationError("source_changed")
