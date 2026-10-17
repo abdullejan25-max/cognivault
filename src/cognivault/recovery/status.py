@@ -71,7 +71,9 @@ def manifest_shape(value, snapshot_key):
     if type(value['schema_version']) is not int or value['schema_version']!=1 or value['snapshot_key']!=snapshot_key:return False
     if type(value['recorded_at']) is not str or not value['recorded_at'] or type(value['history_proof']) is not dict:return False
     components=value['components']
-    if type(components) is not dict or set(components)!={'study','objects','sidecar'} or any(type(v) is not bool for v in components.values()):return False
+    component_names={'study','objects','sidecar'}
+    if type(components) is not dict or set(components) not in (component_names,component_names|{'memory'}) \
+            or any(type(v) is not bool for v in components.values()):return False
     exclusions=value['excluded_sidecar_paths']
     if type(exclusions) is not list or any(type(v) is not str or not v.startswith('sidecar/') for v in exclusions):return False
     for name in exclusions:relative(name)
