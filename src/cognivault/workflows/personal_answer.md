@@ -31,6 +31,13 @@ facts, goals and learning questions without requiring the user to name CogniVaul
    storage time. `currency_verified=false` means the Gateway has not established
    that a claim still holds today. Old goals or preferences require confirmation.
    A single wrong answer demonstrates an observed error, not a general ability score.
+   For a learning-goal question, distinguish an approved academic goal from a
+   project or engineering goal. If Memory has no relevant approved academic
+   goal, explicitly say so in the answer, even when History contains an old
+   goal or considered choice. Pending candidates are not approved goals.
+   Do not silently assume that a historical goal or choice still holds. Label
+   any plan based on it as conditional and keep recommendations supported by
+   current task evidence separate from that condition.
 7. Answer with a targeted explanation or study recommendation tied to evidence.
    If one domain fails, use successful domains and explain the gap. If all fail,
    give a generic answer clearly labeled without personal evidence, or request

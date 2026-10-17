@@ -59,6 +59,14 @@ provenance. Old snapshots must be verified with their original matching componen
 configuration; a new Memory binding does not retroactively add it to old backups.
 Do not restore over live production or remove old source evidence.
 
+Restored Memory verification includes a complete bounded integrity check and
+whole-table SQLite logical proofs, plus bounded Gateway readback of facts,
+versions, request receipts and candidate reviews. The response reports sample
+counts and matching hashes without identifiers or contents. Preserved source
+references and provenance establish storage consistency, not source availability,
+semantic truth or present-day currency. The Gateway sample is not a claim that
+every record was individually read through every API.
+
 Withdraw maintenance `admin` after the initialization/review/recovery window.
 Normal readers cannot discover or call initialization; ordinary writers cannot
 approve candidates. Review and maintenance require a fresh Host that loaded the

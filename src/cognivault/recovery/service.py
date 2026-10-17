@@ -311,6 +311,8 @@ def domain_readback(isolated,manifest):
            'wrong_answers':{'state':default,'source_records':source_count,'analysis_records':analysis_count,
                             'source_readback_verified':False,'analysis_version_readback_verified':False,
                             'analysis_versions_read_back':0,'no_result_verified':False}}
+    from .memory_readback import readback as memory_readback
+    proof['memory']=memory_readback(isolated,manifest)
     if item is None:return proof
     document_id=asset_id=source=None
     # No content/title is inspected here. Counts already have whole-table logical
