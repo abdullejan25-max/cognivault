@@ -178,6 +178,52 @@ def test_digest_and_configuration_shape(tmp_path):
     assert 'CONFIGURATION_MISMATCH' in observe(g)['reason_codes']
 
 
+def published_memory(tmp_path):
+    from cognivault.adapters.memory import SQLiteMemoryStore
+    g=setup(tmp_path)
+    path=tmp_path/'production/memory.sqlite3'
+    g.config=replace(g.config,memory_database=path)
+    g.memory_store=SQLiteMemoryStore(path)
+    g.initialize_memory()
+    g.create_recovery_snapshot('example')
+    return replace_gateway(g)
+
+
+def test_published_memory_metadata_is_consistent_after_gateway_reopen(tmp_path,monkeypatch):
+    g=published_memory(tmp_path)
+    before=tree(g.config.recovery_root)
+    # Status observes metadata only, including with a configured native Memory
+    # snapshot. It must neither verify payload nor open a private database.
+    with monkeypatch.context() as m:
+        m.setattr(service.sqlite3,'connect',lambda *a,**k:pytest.fail('status opened SQLite'))
+        out=observe(g)
+        assert out['state']=='published_unverified' and out['metadata_consistent']
+        assert out['reason_codes']==[]
+        assert observe(g,expected_manifest_sha256=out['manifest_sha256'])['expected_manifest_match']=='matches'
+    assert tree(g.config.recovery_root)==before
+
+
+@pytest.mark.parametrize('change',[
+    lambda m:m['components'].update(unknown=True),
+    lambda m:m['components'].update(memory=1),
+    lambda m:m['components'].update(memory=False),
+    lambda m:m['components'].pop('study'),
+    lambda m:m['files'].__setitem__(slice(None),[item for item in m['files'] if item['relative']!='memory.sqlite3']),
+])
+def test_memory_status_rejects_unknown_component_invalid_boolean_or_missing_payload(tmp_path,change):
+    g=published_memory(tmp_path)
+    rewrite(g,change)
+    assert observe(g)['state']=='needs_action'
+    assert not observe(g)['metadata_consistent']
+
+
+def test_memory_metadata_still_requires_matching_current_configuration(tmp_path):
+    g=published_memory(tmp_path)
+    g.config=replace(g.config,memory_database=None)
+    out=observe(g)
+    assert out['state']=='needs_action' and out['reason_codes']==['CONFIGURATION_MISMATCH']
+
+
 def test_partial_bounds_and_unexplained(tmp_path,monkeypatch):
     from cognivault.recovery import status
     g=setup(tmp_path);parent=g.config.recovery_root/'snapshots';parent.mkdir()
