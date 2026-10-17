@@ -1134,6 +1134,19 @@ class Gateway:
         from .memory_service import execute
         return execute(self, "request", dict(idempotency_key=idempotency_key))
 
+    def initialize_memory(self):
+        """Explicit first deployment only; never adopt an existing file."""
+        self._require_capability("admin")
+        if self.memory_store is None:
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory is not configured")
+        return self.memory_store.initialize()
+
+    def verify_memory_integrity(self):
+        self._require_capability("read")
+        if self.memory_store is None:
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory is not configured")
+        return self.memory_store.verify_integrity()
+
     def fetch_memory(self, memory_id, *, version=None):
         from .memory_service import execute
         return execute(self, "fetch", dict(memory_id=memory_id, version=version))

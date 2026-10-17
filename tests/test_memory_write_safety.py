@@ -96,11 +96,16 @@ def test_unknown_request_and_bad_guard_do_not_initialize_database(tmp_path):
     g = gateway(tmp_path)
     with pytest.raises(GatewayError) as error:
         g.fetch_memory_request("unknown")
-    assert error.value.code == "RESOURCE_NOT_FOUND"
+    assert error.value.code == "STORAGE_UNAVAILABLE"
     with pytest.raises(GatewayError) as invalid:
         g.revise_memory("memory:" + "a" * 32, "value", [REF], 1, "bad", target_guard={})
     assert invalid.value.code == "INVALID_ARGUMENT"
     assert not list(tmp_path.iterdir())
+
+    g.memory_store.initialize()
+    with pytest.raises(GatewayError) as absent:
+        g.fetch_memory_request("unknown")
+    assert absent.value.code == "RESOURCE_NOT_FOUND"
 
 
 def test_mcp_discovery_and_request_query_match_permissions(tmp_path):
