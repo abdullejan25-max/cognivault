@@ -57,7 +57,9 @@ def test_atomic_rollback_after_provenance(tmp_path, monkeypatch):
 
 def test_reads_do_not_create_or_change_storage(tmp_path):
     s = store(tmp_path)
-    assert s.search("x")["total"] == 0
+    with pytest.raises(GatewayError) as caught:
+        s.search("x")
+    assert caught.value.code == "STORAGE_UNAVAILABLE"
     assert not s.database_path.exists()
     mid = s.create("self", "goal", "physics", [REF], "a")["memory"]["memory_id"]
     before = s.database_path.read_bytes(), s.database_path.stat().st_mtime_ns

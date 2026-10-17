@@ -3,6 +3,7 @@
 from contextlib import closing
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -105,6 +106,68 @@ class SQLiteMemoryStore:
             return con
         except (sqlite3.Error, OSError):
             raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable") from None
+
+    def initialize(self) -> dict:
+        """Reserve a new namespace exclusively; never adopt an existing database.
+
+        Failed creation deliberately leaves owned partial files for inspection.
+        Authorization belongs to the Gateway, not this storage adapter.
+        """
+        self._validate_path()
+        paths = [self.database_path, *(Path(str(self.database_path) + suffix)
+                                      for suffix in ("-wal", "-shm", "-journal"))]
+        descriptors = []
+        owned = {}
+        try:
+            if any(os.path.lexists(path) for path in paths):
+                raise GatewayError("CONFLICT", "Memory initialization requires an absent namespace")
+            for path in paths:
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+                descriptors.append(fd)
+                info = os.fstat(fd)
+                owned[path] = (info.st_dev, info.st_ino)
+            # Keep the database descriptor open. SQLite must be free to replace
+            # its own journal; keeping that descriptor open fails on Windows.
+            for fd in descriptors[1:]:
+                os.close(fd)
+            descriptors = descriptors[:1]
+
+            def check_owned():
+                self._validate_path()
+                for path in paths:
+                    info = path.lstat()
+                    if (info.st_dev, info.st_ino) != owned[path]:
+                        raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
+
+            check_owned()
+            with closing(self._connect(write=True)) as con:
+                check_owned()
+                self._schema(con)
+                from ..memory_candidates import schema as candidate_schema
+                candidate_schema(con)
+                con.commit()
+            info = self.database_path.lstat()
+            if (info.st_dev, info.st_ino) != owned[self.database_path]:
+                raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
+            # Retain our empty WAL/shm reservations. Path-based cleanup has a
+            # stat/unlink race that could delete a replacement owned by others.
+            for path in paths[1:]:
+                if os.path.lexists(path):
+                    info = path.lstat()
+                    if (info.st_dev, info.st_ino) != owned[path] or info.st_size:
+                        raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
+            return {"initialized": True, "deployment_kind": "first_deployment", "facts": 0, "versions": 0}
+        except FileExistsError:
+            raise GatewayError("CONFLICT", "Memory initialization requires an absent namespace") from None
+        except (sqlite3.Error, OSError):
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization failed; partial storage may remain") from None
+        finally:
+            for fd in descriptors:
+                os.close(fd)
+
+    def verify_integrity(self) -> dict:
+        from .memory_integrity import verify_integrity
+        return verify_integrity(self)
 
     @staticmethod
     def _schema(con: sqlite3.Connection) -> None:
@@ -329,7 +392,7 @@ class SQLiteMemoryStore:
             raise _invalid()
         self._validate_path()
         if not self.database_path.exists():
-            raise GatewayError("RESOURCE_NOT_FOUND", "Memory request was not found")
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
         try:
             with closing(self._connect()) as con:
                 con.execute("BEGIN")
@@ -353,7 +416,7 @@ class SQLiteMemoryStore:
             raise _invalid()
         self._validate_path()
         if not self.database_path.exists():
-            raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
         try:
             with closing(self._connect()) as con:
                 record = self._record(con, memory_id, version)
@@ -370,7 +433,7 @@ class SQLiteMemoryStore:
             raise _invalid()
         self._validate_path()
         if not self.database_path.exists():
-            return {"memories": [], "total": 0}
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
         try:
             with closing(self._connect()) as con:
                 con.execute("BEGIN")  # Pin count, matches and records to one read snapshot.
@@ -406,7 +469,8 @@ class SQLiteMemoryStore:
     def matching_slot(self, subject, predicate):
         """Bounded exact normalized slot lookup; no lexical prefilter."""
         self._validate_path()
-        if not self.database_path.exists(): return {"memories": [], "total": 0}
+        if not self.database_path.exists():
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
         try:
             with closing(self._connect()) as con:
                 con.execute("BEGIN")
@@ -422,7 +486,7 @@ class SQLiteMemoryStore:
             raise _invalid()
         self._validate_path()
         if not self.database_path.exists():
-            raise GatewayError("RESOURCE_NOT_FOUND", "Memory was not found")
+            raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
         try:
             with closing(self._connect()) as con:
                 con.execute("BEGIN")

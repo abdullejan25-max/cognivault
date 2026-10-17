@@ -28,7 +28,7 @@ ASSESSMENT = {
 def memory_tools(gateway, read_only, write_only):
     if getattr(gateway, "memory_store", None) is None:
         return []
-    return [
+    tools = [
         types.Tool(name="create_memory", description="Record an explicit versioned assertion. Verified requires reported review notes and accessible sources; existence never proves truth.",
                    inputSchema={"type": "object", "properties": {
                        "subject": {"type": "string", "minLength": 1, "maxLength": 200},
@@ -63,9 +63,21 @@ def memory_tools(gateway, read_only, write_only):
         types.Tool(name="memory_versions", description="Read bounded historical assertions; superseded versions are not current facts.", inputSchema={"type":"object", "properties":{"memory_id":{"type":"string","pattern":_ID}, "limit":{"type":"integer","minimum":1,"maximum":20}, "offset":{"type":"integer","minimum":0,"maximum":1000}}, "required":["memory_id"], "additionalProperties":False}, annotations=read_only),
         types.Tool(name="fetch_memory_request", description="Read the committed idempotency-key binding and original version receipt without replaying a write. Requires read capability; a key is not an authorization credential.", inputSchema={"type":"object", "properties":{"idempotency_key":KEY}, "required":["idempotency_key"], "additionalProperties":False}, annotations=read_only),
     ]
+    tools.append(types.Tool(name="verify_memory_integrity",
+        description="Read-only bounded Memory integrity check. Incomplete checks never report verified; no fact content or private paths returned.",
+        inputSchema={"type":"object", "properties":{}, "additionalProperties":False}, annotations=read_only))
+    if "admin" in gateway.capabilities:
+        tools.append(types.Tool(name="initialize_memory",
+            description="Admin-only explicit first deployment into the configured unused Memory file. Refuses existing database or auxiliary entries; never restores or adopts old data.",
+            inputSchema={"type":"object", "properties":{}, "additionalProperties":False}, annotations=write_only))
+    return tools
 
 
 def call_memory_tool(gateway, name, arguments):
+    if name in {"initialize_memory", "verify_memory_integrity"}:
+        if type(arguments) is not dict or arguments:
+            raise GatewayError("INVALID_ARGUMENT", "Invalid Memory operation")
+        return getattr(gateway, name)()
     if name not in {"create_memory", "revise_memory", "retire_memory", "fetch_memory", "search_memory", "memory_versions", "fetch_memory_request"}:
         return None
     if getattr(gateway, "memory_store", None) is None:
