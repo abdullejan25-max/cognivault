@@ -2,6 +2,10 @@
 
 最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
 
+## Agent A / B 编排层（2026-10-24，开发分支，未发布）
+
+新增独立、显式接线的编排 SDK，统一任务、适配器注册/能力筛选、状态机、私有元数据审计、有限重试与候选指纹恢复，通过固定 Gateway 操作接入三域。隔离合成 SDK 与 MCP 测试不等于当前 Desktop 或生产验收；当前 Host 未注册 cognivault，DeepSeek Harness 的受限执行条件尚未确认，因此整体为 **PARTIAL**。详见 [使用与限制](agent-orchestration.md) 和 [交付检查点](checkpoints/2026-10-24-agent-orchestration.md)。正式版本仍为 v0.8.0，历史验收范围不变。
+
 ## Memory 与三域学习协同（开发源码，未正式发布）
 
 已实现持久化 Memory、版本/失效/幂等请求、History 候选审阅、Agent 提议的语义关系，以及带原始来源的 Study/History/Memory 聚焦检索。修订和失效必须携带读取时的 `target_guard`；未审核候选不进入学习建议。用法见 [Memory](memory-mvp.md) 和 [语义审阅](memory-semantic-review.md)。
