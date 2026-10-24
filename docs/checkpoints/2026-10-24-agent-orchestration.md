@@ -64,6 +64,16 @@
 - `DONE`：开发过程中完整套件 **1351 passed、16 skipped，606.69 秒**。该次收集包含首批 98 个新增测试；之后审查新增测试及修复以独立最终回归和精确提交 CI 为准。
 - `DONE`：`uv lock --check`、`compileall`、`git diff --check`；wheel + sdist 构建及内容隐私审计；临时干净 Python 3.11 环境安装 wheel 后导入新模块与历史 compatibility shim。
 - `DONE`：最终新增回归 **119 passed**，覆盖协议、三域真实合成 Gateway、MCP 回路、进程间 OS 锁、图片完整性和独立审查修复。合成适配器被禁止声明 external/local scope，避免伪装真实调用。
-- `NOT_TESTED`：精确最终提交 Windows / Ubuntu CI；等待分支提交后以实际 GitHub 结果更新，不将本机 Windows 测试当 Ubuntu 证据。
+- `DONE`：实现提交 **67dd22b438add64e676456b2e18e6b5175fc3c53** 的 [push CI](https://github.com/abdullejan25-max/cognivault/actions/runs/40105139958) 和 [PR CI](https://github.com/abdullejan25-max/cognivault/actions/runs/40105168138) 全部成功。Windows **1378 passed、10 skipped，670.32 秒**；Ubuntu **1365 passed、23 skipped，50.00 秒**；另有 stdio smoke **4 passed，3.21 秒**。两平台构建、包隐私审计与干净安装均成功。最终失败数为 0；此前刻意失败的测试用于复现缺陷，均已回归通过。
+
+CI 使用 `pytest -q`，只输出 skip 总数；没有逐项跳过原因清单，不能从数字推断名单。本机使用 `-rs` 的逐项原因归类见下段。没有把可选组件或真实环境未启用的测试算作通过。
 
 本机 16 项 skip 原因：真实 Codex CLI Host smoke 未显式启用（1）；真实 QMD 参数未提供（4）；可选 PyMuPDF 未安装（1）；Windows 不支持/未授予 symlink、junction、FIFO 或 POSIX mode（10）。未启用真实数据测试，未将 skip 算作通过。
+
+## Git 与最终边界
+
+- 分支：`codex/agent-orchestration`，已推送；实现提交 `67dd22b`。本次追加仅更新交付记录和计划勾选，不改变代码与测试。
+- [PR #22](https://github.com/abdullejan25-max/cognivault/pull/22) 为草稿并已关联当前任务。实现提交在两个平台的精确 CI 均通过；后续文档提交的 Checks 以 PR 实时状态为准，不继承旧 SHA 的 CI 状态。
+- 未合并、未创建标签、未发布；仍使用 0.8.0 包元数据。生产权限与现有数据配置未更改。
+- A 调查/设计：DONE（不可用项已提供证据）；B 通用内核：DONE（SDK 合成范围）；C 三域接入：PARTIAL（已验证隔离 Gateway，当前 Desktop 生产及部分业务扩展未完成）；D 真实 Harness：BLOCKED；E 独立代码审查修复：DONE（当前代码范围）；F 真实验收/发布：PARTIAL。
+- 没有已知未修复的独立审查 P1/P2；这不等于完整安全认证。剩余事项为宿主接线、受限真实执行器、当前 Desktop 连接、获准的最小生产验收，以及上述已明确的业务范围限制。

@@ -46,4 +46,4 @@ Files: domains.py；tests/test_orchestration_domains.py。
 - [x] 完整 pytest、compileall、uv lock --check、uv build、verify_package_contents。
 - [x] 干净环境安装 wheel，验证新模块导入及 legacy shim。
 - [x] 文档记录用法、三域验收、真实接入、安全结论及 BLOCKED 续跑。
-- [ ] 检查 diff 与提交内容，提交、push、PR、查看精确提交 CI 后按条件整合。
+- [x] 检查 diff 与提交内容，提交、push、创建草稿 PR #22，实现提交 Windows / Ubuntu CI 通过；真实接入和当前 Desktop 验收未完成，保持草稿，不合并/发布。
