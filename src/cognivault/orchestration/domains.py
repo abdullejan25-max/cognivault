@@ -183,6 +183,14 @@ class StudyAnalysisHandler(_Handler):
             'provenance': {'reported_agent': result.adapter_id, 'reported_client': 'cognivault-orchestrator', 'run_id': task.task_id}})
 
     async def verify(self, task, result, receipt):
+        from ..gateway import Gateway
+        # Compare the formal Gateway's public text projection, not raw model
+        # whitespace/control characters that the Gateway deliberately normalizes.
+        # This pure formatter does not access any storage; readback stays on port.
+        expected = {key: ([Gateway._history_text(point.strip(), 200) for point in value]
+                         if key == 'knowledge_points' else
+                         Gateway._history_text(value.strip(), 200 if key == 'error_type' else 10000))
+                    for key, value in result.output['analysis'].items()}
         saved = receipt.get('analysis', {})
         bundle = await self.port.call('get_wrong_answer_bundle', {'source_id': task.inputs['source_id']})
         target_version = task.inputs.get('expected_version', 0) + 1
@@ -192,7 +200,7 @@ class StudyAnalysisHandler(_Handler):
                 return False  # Current formal Gateway cannot address older offsets.
             bundle = await self.port.call('get_wrong_answer_bundle', {
                 'source_id': task.inputs['source_id'], 'offset': offset, 'limit': 20})
-        return any(record == saved and all(record.get(k) == v for k, v in result.output['analysis'].items())
+        return any(record == saved and all(record.get(k) == v for k, v in expected.items())
                    and record.get('source_refs') == result.output['source_refs']
                    and record.get('study_relations') == result.output['study_relations']
                    and record.get('version') == target_version
@@ -202,7 +210,25 @@ class StudyAnalysisHandler(_Handler):
 class HistorySummaryHandler(_Handler):
     async def prepare(self, task):
         self._grants(task)
-        return await self.port.call('fetch_history_item', {'item_id': task.inputs['item_id']})
+        ref = task.inputs['item_id']
+        if not re.fullmatch(r'message:[0-9a-f]{64}', ref):
+            return await self.port.call('fetch_history_item', {'item_id': ref})
+        response = await self.port.call('fetch_canonical_message', {
+            'message_id': ref, 'length': 65536, 'evidence_limit': 1})
+        if response.get('has_more') is not False:
+            _invalid()
+        encoded = response.get('content_base64')
+        if type(encoded) is not str or len(encoded) > 87384:
+            _invalid()
+        try:
+            raw = base64.b64decode(encoded, validate=True)
+            content = raw.decode('utf-8')
+        except (KeyError, ValueError, TypeError, UnicodeError):
+            _invalid()
+        if len(raw) > 65536 or hashlib.sha256(raw).hexdigest() != response.get('content_sha256'):
+            _invalid()
+        return {'item': {**deepcopy(response['message']), 'item_id': ref,
+                         'content': content, 'content_sha256': response['content_sha256']}}
 
     def validate(self, task, result, prepared):
         _shape(result.output, {'summary', 'source_refs', 'content_sha256'})

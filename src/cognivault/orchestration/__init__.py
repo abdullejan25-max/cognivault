@@ -2,6 +2,8 @@
 from .adapters import Registry, SyntheticAdapter
 from .engine import Engine
 from .journal import FileJournal
-from .models import Descriptor, Result, Task
+from .models import AdapterError, Descriptor, Result, Task
+from .plans import PlanStep, run_plan
 
-__all__ = ["Descriptor", "Engine", "FileJournal", "Registry", "Result", "SyntheticAdapter", "Task"]
+__all__ = ["AdapterError", "Descriptor", "Engine", "FileJournal", "Registry", "Result",
+           "SyntheticAdapter", "Task", "PlanStep", "run_plan"]

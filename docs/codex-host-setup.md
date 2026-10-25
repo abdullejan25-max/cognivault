@@ -2,6 +2,8 @@
 
 Windows 新用户可以先双击根目录 `install.cmd`，自动准备运行环境、默认只读 profile 与本机 Codex MCP 配置，之后打开并信任项目、启动新会话。详见[安装说明](installation.md)。安装器调用本页的同一个 helper，并传入 uv 的绝对路径，以免客户端尚未继承新的 PATH。无参数 helper 的原有用法继续支持。
 
+v0.9.0 候选的实际修复记录见 [Desktop MCP 报告](v0.9.0-desktop-mcp.md)：配置存在、进程可启动、当前 Host 有工具、工具调用和业务回读是不同门槛。已运行会话若仍对已知 URI 返回 unknown MCP server，应保留该回执并在可信项目重新加载 Host；不能把 SDK/CLI 结果替代当前 Desktop。升级保留私人后端路径和能力，改配置前备份；合成验收使用独立 alias/隔离目录，不能将测试写入生产注册。
+
 Codex Desktop loads project-scoped `.codex/` configuration only after the project is trusted. The project keeps a portable template at `.codex/config.example.toml`; a one-time setup generates the machine-local `.codex/config.toml` that Desktop reads. The generated file is ignored by Git because its `cwd`, `uv --project`, `PYTHONPATH`, and Gateway config paths point to this checkout. Codex supports `env` for stdio servers; the generated `PYTHONPATH` points directly at this checkout's `src` so module discovery does not depend on the Host resolving `cwd = "."` or a locale-sensitive editable-install path.
 
 The root `config.local.toml` is separate: it configures the Gateway's private Study, QMD, History, and Asset locations. Neither setup file belongs in a public commit. The setup script never chooses a personal data directory or migrates data. The current generated registration is `[mcp_servers.cognivault]`, launching `python -m cognivault.transports.mcp_stdio`.

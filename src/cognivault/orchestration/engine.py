@@ -1,11 +1,12 @@
 """Agent A lifecycle: policy, bounded Agent B calls, validation, Gateway, readback."""
 import asyncio
+import inspect
 import re
 from copy import deepcopy
 from datetime import datetime, timezone
 
 from ..contracts import GatewayError
-from .models import Receipt, Result, TRANSITIONS, fingerprint, identifier
+from .models import AdapterError, Receipt, Result, TRANSITIONS, fingerprint, identifier
 
 
 class Engine:
@@ -24,12 +25,21 @@ class Engine:
         if agent_id is None:
             with self.journal.lock(task.task_id):
                 saved = self.journal.load(task.task_id)
-                agent_id = saved['adapter_id'] if saved else self.registry.select(task)
+                if saved and saved['adapter_id'] != 'unassigned':
+                    agent_id = saved['adapter_id']
+                else:
+                    try:
+                        agent_id = self.registry.select(task)
+                    except ValueError as error:
+                        if str(error) != 'AGENT_UNAVAILABLE':
+                            raise
+                        agent_id = 'unassigned'
         with self.journal.lock(task.task_id):
             result, response = None, None
             record = self.journal.load(task.task_id)
             if record is not None and (record.get("request_hash") != digest
-                                       or record.get("adapter_id") != agent_id):
+                                       or record.get("adapter_id") != agent_id
+                                       and not (record['state'] == 'BLOCKED' and record['adapter_id'] == 'unassigned')):
                 raise ValueError("CONFLICT")
             if record is None:
                 record = dict(schema=1, task_id=task.task_id, correlation_id=task.correlation_id,
@@ -45,7 +55,7 @@ class Engine:
                                record["verified"], tuple(record["events"]),
                                tuple(record.get("artifacts", [])),
                                deepcopy(result.output) if type(result) is Result and record['commit_intent'] else None,
-                               deepcopy(response))
+                               deepcopy(response), deepcopy(record.get('execution_evidence')))
 
             def move(state, code=None):
                 if state != record["state"]:
@@ -66,13 +76,20 @@ class Engine:
 
             try:
                 handler = self.handlers.get(task.kind)
-                if record["state"] == "RECEIVED":
+                if record["state"] in {"RECEIVED", "BLOCKED"}:
+                    record['adapter_id'] = agent_id
                     move("PLANNED")
                 if handler is None:
                     raise ValueError("UNSUPPORTED_TASK")
                 if not handler.required_grants <= task.grants:
                     raise ValueError("PERMISSION_DENIED")
+                if agent_id == 'unassigned':
+                    move('BLOCKED', 'AGENT_UNAVAILABLE')
+                    return receipt()
                 adapter = self.registry.get(agent_id)
+                if not self.registry.enabled(agent_id):
+                    move('BLOCKED', 'AGENT_DISABLED')
+                    return receipt()
                 desc = adapter.descriptor
                 if task.kind not in desc.kinds:
                     raise ValueError("CAPABILITY_UNAVAILABLE")
@@ -109,23 +126,32 @@ class Engine:
                         move("WAITING_FOR_REVIEW", "INTERRUPTED_VALIDATION")
                         return receipt()
                     if record["attempts"] >= task.max_attempts:
-                        if record["state"] == "RUNNING":
-                            move("RETRYABLE_FAILURE", "ATTEMPTS_EXHAUSTED")
+                        move("RETRYABLE_FAILURE", "ATTEMPTS_EXHAUSTED")
                         return receipt()
                     result = None
                     while record["attempts"] < task.max_attempts:
                         move("RUNNING")
                         record["attempts"] += 1
                         self.journal.save(task.task_id, record)
+                        execution_started = False
                         try:
                             if await self._bounded(adapter.healthy(), task.timeout_s, cancel) is not True:
                                 raise ConnectionError()
-                            self.registry.connected(agent_id)
+                            execution_started = True
                             result = await self._bounded(adapter.execute(deepcopy(task), deepcopy(prepared)),
                                                          task.timeout_s, cancel)
                             if type(result) is not Result:
                                 raise ValueError('INVALID_RESULT')
                             break
+                        except AdapterError as error:
+                            if error.code in AdapterError.BLOCKING:
+                                if not execution_started:
+                                    record['attempts'] -= 1  # No model execution consumed.
+                                move('BLOCKED', error.code)
+                                return receipt()
+                            if not error.retryable:
+                                raise
+                            move('RETRYABLE_FAILURE', error.code)
                         except (TimeoutError, ConnectionError, OSError):
                             move("RETRYABLE_FAILURE", "AGENT_UNAVAILABLE")
                     if result is None:
@@ -135,6 +161,10 @@ class Engine:
                         raise ValueError("INVALID_RESULT")
                     result = deepcopy(result)
                     result.validate(task, desc)
+                    self.registry.connected(agent_id)
+                    evidence = getattr(adapter, 'evidence_for', lambda *_: None)(task.task_id, task.correlation_id)
+                    if evidence is not None:
+                        record['execution_evidence'] = self._execution_evidence(evidence)
                     if (result.confidence < task.min_confidence or result.uncertainties
                             or not result.evidence and not getattr(handler, "allow_empty_evidence", False)):
                         move("WAITING_FOR_REVIEW", "EVIDENCE_REVIEW_REQUIRED")
@@ -174,9 +204,11 @@ class Engine:
                 allowed = {"UNSUPPORTED_TASK", "PERMISSION_DENIED", "AGENT_UNAVAILABLE",
                            "CAPABILITY_UNAVAILABLE", "EXTERNAL_TRANSFER_DENIED", "INVALID_RESULT",
                            "ADAPTER_VERSION_CONFLICT", "AGENT_DESCRIPTOR_CHANGED", "CANCELLATION_STALLED"}
-                code = error.code if isinstance(error, GatewayError) else (
+                code = error.code if isinstance(error, (GatewayError, AdapterError)) else (
                     str(error) if type(error) is ValueError and str(error) in allowed else
                     "TIMEOUT" if isinstance(error, TimeoutError) else "VALIDATION_FAILED")
+                # A generic handler can have multiple operations. A later denial
+                # cannot prove that an earlier write did not already succeed.
                 move("PARTIAL" if record["commit_intent"] else "FAILED", code)
                 return receipt()
 
@@ -205,6 +237,10 @@ class Engine:
         return result
 
     async def _bounded(self, awaitable, seconds, cancel):
+        if cancel is not None and cancel.is_set():
+            if inspect.iscoroutine(awaitable):
+                awaitable.close()
+            raise asyncio.CancelledError()
         operation = asyncio.ensure_future(awaitable)
         cancellation = asyncio.create_task(cancel.wait()) if cancel is not None else None
         try:
@@ -238,3 +274,22 @@ class Engine:
         self.pending_operations.discard(operation)
         if not operation.cancelled():
             operation.exception()
+
+    @staticmethod
+    def _execution_evidence(evidence):
+        """Only identifiers and cryptographic digests, never transport payloads."""
+        if type(evidence) is not dict:
+            raise ValueError('INVALID_RESULT')
+        safe = {}
+        for key in ('request_sha256', 'response_sha256'):
+            value = evidence.get(key)
+            if type(value) is not str or re.fullmatch(r'[0-9a-f]{64}', value) is None:
+                raise ValueError('INVALID_RESULT')
+            safe[key] = value
+        for key in ('adapter_id', 'adapter_version', 'requested_model', 'provider_reported_model', 'execution_scope'):
+            value = evidence.get(key)
+            if value is not None:
+                if not identifier(value):
+                    raise ValueError('INVALID_RESULT')
+                safe[key] = value
+        return safe

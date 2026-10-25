@@ -3,6 +3,7 @@
 from pathlib import Path, PurePosixPath
 import re
 import tarfile
+import tomllib
 import zipfile
 
 
@@ -15,7 +16,12 @@ def archive_names(path: Path) -> list[str]:
 
 
 def main() -> None:
-    archives = sorted(Path("dist").glob("cognivault-0.8.0*"))
+    project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+    version = project["version"]
+    archives = sorted(Path("dist").glob(f"cognivault-{version}-*.whl"))
+    source_archive = Path("dist") / f"cognivault-{version}.tar.gz"
+    if source_archive.is_file():
+        archives.append(source_archive)
     if {path.suffix for path in archives} != {".whl", ".gz"} or len(archives) != 2:
         raise SystemExit("expected one CogniVault wheel and one source archive")
     forbidden_parts = {".hermes", ".workbuddy", ".superpowers", "StudyVault", "History", "var"}
@@ -36,11 +42,14 @@ def main() -> None:
             if forbidden_names.intersection(parts) or forbidden_parts.intersection(parts) or has_forbidden_path:
                 raise SystemExit(f"private checkout file in package: {path.name}")
         if path.suffix == ".whl":
-            required = {"cognivault/__init__.py", "chatgpt_study_system/transports/mcp_stdio.py"}
+            required = {"cognivault/__init__.py", "chatgpt_study_system/transports/mcp_stdio.py",
+                        "cognivault/orchestration/harness_runtime.mjs"}
             if not required.issubset(names) or not any(name.endswith(".dist-info/METADATA") for name in names):
                 raise SystemExit("wheel is missing canonical package, compatibility shim, or metadata")
         elif not any(name.endswith("/src/cognivault/__init__.py") for name in names):
             raise SystemExit("source archive is missing the canonical package")
+        elif not any(name.endswith('/src/cognivault/orchestration/harness_runtime.mjs') for name in names):
+            raise SystemExit('source archive is missing the Harness runtime')
         print(f"{path.name}: {len(names)} entries, privacy audit passed")
 
 

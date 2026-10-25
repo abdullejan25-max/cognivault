@@ -23,6 +23,19 @@ def finite(value, minimum, maximum):
     return type(value) in (int, float) and math.isfinite(value) and minimum <= value <= maximum
 
 
+class AdapterError(Exception):
+    """Stable executor failure; arbitrary backend text never becomes audit text."""
+    CODES = frozenset({'AUTH_REQUIRED', 'EXECUTOR_BLOCKED', 'MODEL_REFUSED', 'NETWORK_ERROR',
+                       'RATE_LIMITED', 'INVALID_RESPONSE', 'EXECUTOR_TIMEOUT'})
+    BLOCKING = frozenset({'AUTH_REQUIRED', 'EXECUTOR_BLOCKED'})
+
+    def __init__(self, code, *, retryable=False):
+        if code not in self.CODES or type(retryable) is not bool:
+            raise ValueError('INVALID_ADAPTER_ERROR')
+        self.code, self.retryable = code, retryable
+        super().__init__(code)
+
+
 @dataclass(frozen=True)
 class Task:
     task_id: str
@@ -61,6 +74,8 @@ class Descriptor:
     kinds: frozenset[str]
     capabilities: frozenset[str]
     data_scope: str  # synthetic, local, external
+    relative_cost: float = 0
+    latency_ms: float = 0
 
     def validate(self):
         if (not identifier(self.agent_id) or not identifier(self.version)
@@ -68,7 +83,9 @@ class Descriptor:
                 or type(self.kinds) is not frozenset or not self.kinds
                 or not all(identifier(k) for k in self.kinds)
                 or type(self.capabilities) is not frozenset
-                or not self.capabilities <= {"text", "image", "structured"}):
+                or not self.capabilities <= {"text", "image", "structured"}
+                or not finite(self.relative_cost, 0, 1_000_000)
+                or not finite(self.latency_ms, 0, 3_600_000)):
             raise ValueError("INVALID_DESCRIPTOR")
 
 
@@ -127,18 +144,20 @@ class Receipt:
     artifacts: tuple[dict, ...] = ()
     output: dict | None = field(default=None, repr=False)
     gateway_receipt: dict | None = field(default=None, repr=False)
+    execution_evidence: dict | None = None
 
 
 TRANSITIONS = {
-    "RECEIVED": {"PLANNED", "FAILED", "CANCELLED"},
-    "PLANNED": {"AUTHORIZED", "FAILED", "CANCELLED"},
-    "AUTHORIZED": {"RUNNING", "FAILED", "CANCELLED"},
-    "RUNNING": {"VALIDATING", "RETRYABLE_FAILURE", "FAILED", "CANCELLED"},
-    "RETRYABLE_FAILURE": {"RUNNING", "FAILED", "CANCELLED"},
+    "RECEIVED": {"PLANNED", "BLOCKED", "FAILED", "CANCELLED"},
+    "PLANNED": {"AUTHORIZED", "BLOCKED", "FAILED", "CANCELLED"},
+    "AUTHORIZED": {"RUNNING", "RETRYABLE_FAILURE", "BLOCKED", "FAILED", "CANCELLED"},
+    "RUNNING": {"VALIDATING", "RETRYABLE_FAILURE", "BLOCKED", "FAILED", "CANCELLED"},
+    "RETRYABLE_FAILURE": {"RUNNING", "BLOCKED", "FAILED", "CANCELLED"},
     "VALIDATING": {"COMMITTING", "WAITING_FOR_REVIEW", "FAILED", "CANCELLED"},
-    "COMMITTING": {"VERIFYING", "PARTIAL", "WAITING_FOR_REVIEW"},
+    "COMMITTING": {"VERIFYING", "FAILED", "PARTIAL", "WAITING_FOR_REVIEW"},
     "VERIFYING": {"COMMITTING", "COMPLETED", "PARTIAL", "WAITING_FOR_REVIEW"},
     "PARTIAL": {"COMMITTING", "WAITING_FOR_REVIEW"},
     "WAITING_FOR_REVIEW": {"COMMITTING", "PARTIAL"},
     "COMPLETED": set(), "CANCELLED": set(), "FAILED": set(),
+    "BLOCKED": {'PLANNED', 'FAILED', 'CANCELLED'},
 }

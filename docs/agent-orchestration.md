@@ -1,10 +1,12 @@
 # Agent A 管理 Agent B：编排层使用与边界
 
-这是未发布的、需要宿主应用显式接线的 Python SDK。核心和三域在合成 Gateway 上验证；当前 Desktop MCP 生产验收与真实 DeepSeek 模型执行仍未通过。它不自动修改安装配置，也未新增 Desktop 可发现的编排工具。
+这是 v0.9.0 候选的、需要宿主应用显式接线的 Python SDK。核心和三域在隔离 Gateway 上验证；受限 Harness 已完成真实 DeepSeek 结构调用，当前 Desktop MCP 生产验收仍未通过。SDK 不自动加载私人运行配置，也未新增 Desktop 可发现的编排工具。最新实际链路与发布判定见 [真实执行器](v0.9.0-real-executor.md) 和 [发布门槛](v0.9.0-release-gates.md)。
 
 ## 组件与调用
 
-`orchestration.models` 定义任务、结果、描述符和回执；`adapters` 注册执行器并区分 CONFIGURED、CONNECTED、VERIFIED；`engine` 负责策略、有限调用、候选校验、Gateway 提交、独立回读；`journal` 仅保存任务元数据。`domains` 固定业务映射，`harness` 是明确阻断的接入骨架，不能调用模型。
+`orchestration.models` 定义任务、结果、描述符、结构化执行器错误和回执；`adapters` 注册执行器并区分 CONFIGURED、CONNECTED、VERIFIED；`engine` 负责策略、有限调用、候选校验、Gateway 提交、独立回读；`journal` 仅保存任务元数据。`domains` 固定业务映射；`plans` 执行可信应用提供的最多 64 个依赖节点，先验证标识/环路再运行，失败依赖阻断、独立任务继续。计划不从模型输出取得权限。
+
+旧 `harness.HarnessHeadlessAdapter` 仍是拒绝执行的兼容骨架。新增 `harness_no_tools.HarnessNoToolsAdapter` 使用独立、零工具模型组合；`executors.HttpsChatAdapter` 提供显式 HTTPS 无工具接口。两者共享 Task/Result/AdapterError，真实接入细节和本机安装版本约束见真实执行器报告。
 
 ```mermaid
 sequenceDiagram
@@ -25,7 +27,11 @@ sequenceDiagram
 
 Task 的 `grants` 是可信应用传入的任务范围，**不是身份认证**；Gateway 的 capability 检查仍是最终边界。不能把用户来源正文或模型输出反序列化成带授权的 Task。`external_allowed=True` 表示调用方已明确同意该任务材料向外部适配器传输；默认 False，准备材料、健康检查和执行均不会在拒绝之后进行。适配器代码本身是受信插件，Python SDK 无法隔离任意恶意 Python 代码。
 
-注册器记录声明能力；健康检查成功只能变为 CONNECTED，结构及 domain 校验成功才记录对应任务类型 VERIFIED。合成执行器的 scope 必须标为 synthetic，不能把测试回执解释为真实模型证据。自动路由按任务类型、required_capabilities、外传授权筛选，优先本地和已经验证的候选；恢复保持原执行器及版本。
+注册器先记录 CONFIGURED 声明；实际执行返回并通过绑定校验后记录 CONNECTED，结构及 domain 校验成功才记录对应任务类型 VERIFIED。合成执行器的 scope 必须标为 synthetic，不能把测试回执解释为真实模型证据。自动路由按任务类型、required_capabilities、外传授权筛选，优先本地和已经验证的候选；恢复保持原执行器及版本。
+
+v0.9.0 将 CONNECTED 判定推迟到实际 execute 返回且通过 Result 绑定校验，`healthy()` 的本地前置检查不再冒充连接。`relative_cost` 和 `latency_ms` 仅为可信配置的相对估计，不是实际计费或 SLA；在同等安全/验证条件下参与筛选。`Registry.set_enabled` 控制后续执行，不代替运行中任务的 cancel。
+
+执行器错误使用固定 `AdapterError`：AUTH_REQUIRED/EXECUTOR_BLOCKED 对应可解释的 BLOCKED；网络、限流和超时按有限预算重试；拒绝和无效响应不成为成功。认证前置检查未进入 execute 时不消耗执行预算；已经进入 execute 的尝试仍计入原任务预算，耗尽明确返回 ATTEMPTS_EXHAUSTED，不自动增加授权。业务提交开始后的任何拒绝/回读错误均保留 PARTIAL，因为后续拒绝不能证明早先没有副作用。
 
 ## 接线示例
 

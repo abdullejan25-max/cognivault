@@ -78,7 +78,7 @@ def test_setup_creates_loadable_read_only_config_and_absolute_host_launcher(tmp_
     assert result.returncode == 0, result.stderr
     raw = tomllib.loads((root / "config.local.toml").read_text(encoding="utf-8"))
     assert raw == {
-        "gateway": {"version": "0.8.0"},
+        "gateway": {"version": tomllib.loads((root / 'pyproject.toml').read_text(encoding='utf-8'))['project']['version']},
         "study": {"backend": "not_configured"},
         "history": {"backend": "not_configured"},
         "assets": {"backend": "not_configured"},

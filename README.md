@@ -23,7 +23,7 @@ Agent Host (Codex Desktop, WorkBuddy, Hermes, or another stdio MCP client)
 
 **Agent thinks; Gateway executes.** The current transport is local stdio MCP. CogniVault does not provide an HTTP listener or public endpoint.
 
-开发分支提供显式接线的 [Agent A / B 编排 SDK](docs/agent-orchestration.md)，共用 Study、History、Memory 的 Gateway 边界；当前为 **PARTIAL / 未发布**。DeepSeek Harness 真实模型接入及当前 Desktop 生产验收仍受阻，合成测试不代表真实接入。
+开发分支提供 [v0.9.0 Agent Orchestration 候选版本](docs/releases/v0.9.0.md)，共用 Study、History、Memory 的 Gateway 边界。已增加受限 Harness 真实模型执行器、可信依赖计划、结构化错误和合成验收入口；当前 Desktop 原生 MCP 验收仍受阻，整体 **PARTIAL / 未发布**。真实模型、隔离 SDK Gateway 与 Desktop 的证据分别记录于[发布门槛](docs/v0.9.0-release-gates.md)。
 
 ## What CogniVault manages
 

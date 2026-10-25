@@ -15,6 +15,14 @@ User
 
 **Agent thinks; Gateway executes.** Gateway 不包含第二个 LLM，不推断用户意图，也不开放任意 Shell 或 SQL 访问。
 
+## v0.9.0 候选编排层
+
+可选编排 SDK 位于 Host 应用侧：Agent A 构造可信任务/依赖计划，按能力、授权和可信成本/延迟估计选择 Agent B；B 只能返回候选，不能选择 Gateway 工具、权限或路径。Engine 校验任务/关联/版本/来源，调用固定 domain handler，经 Gateway 提交并独立回读。Memory 提议始终待审；History 模型摘要不替换原始来源或确定性规范化。
+
+受限 Harness 只组合模型与只读认证服务，独立 cwd/home，无工具、用户 profile、会话或指令加载；Windows 进程在执行前加入单进程 Job，POSIX 使用独立进程组。标准 HTTPS 接口没有文件/工具执行能力。两者均需显式外传授权，不能从材料正文取得授权。任务日志只记录标识、阶段、计数和摘要，正式数据仍使用原模型与 Gateway。
+
+真实执行器、隔离 SDK Gateway、当前 Desktop MCP 和生产验收是独立证据范围。当前候选未满足全部发布门槛，见 [真实链路结果](v0.9.0-three-domain-acceptance.md) 和 [发布清单](v0.9.0-release-gates.md)。
+
 ## Component responsibilities
 
 - **Agent Host** 理解请求并选择工具。Host memory 或 session metadata 不作为 Study、History 或 Wrong Answers 的权威存储。

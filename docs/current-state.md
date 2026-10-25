@@ -2,7 +2,13 @@
 
 最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
 
-## Agent A / B 编排层（2026-10-24，开发分支，未发布）
+## v0.9.0 Agent Orchestration 候选（2026-10-25，未发布）
+
+候选源码和包 metadata 为 `0.9.0`，正式稳定 Release 仍为 v0.8.0。在原编排 SDK 上增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立 cwd/home、仅模型/只读认证服务的组合，并已获得真实 `deepseek-flash` 结构化响应；默认 headless 的阻断骨架仍不启用。
+
+当前工作树的 MCP 注册已可恢复修复，生产路径与权限保持不变，另建隔离合成验收 alias；但当前 Desktop Host 对两个注册的已知 URI 仍返回 unknown MCP server，所以正式 Host 门槛为 BLOCKED。模型调用、隔离 SDK 的业务回读与 Desktop 验收须分别判断。详情见 [真实执行器](v0.9.0-real-executor.md)、[Desktop 修复](v0.9.0-desktop-mcp.md)、[发布门槛](v0.9.0-release-gates.md)。
+
+## Agent A / B 编排层（2026-10-24 历史检查点）
 
 新增独立、显式接线的编排 SDK，统一任务、适配器注册/能力筛选、状态机、私有元数据审计、有限重试与候选指纹恢复，通过固定 Gateway 操作接入三域。隔离合成 SDK 与 MCP 测试不等于当前 Desktop 或生产验收；当前 Host 未注册 cognivault，DeepSeek Harness 的受限执行条件尚未确认，因此整体为 **PARTIAL**。详见 [使用与限制](agent-orchestration.md) 和 [交付检查点](checkpoints/2026-10-24-agent-orchestration.md)。正式版本仍为 v0.8.0，历史验收范围不变。
 

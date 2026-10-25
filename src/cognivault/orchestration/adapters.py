@@ -10,10 +10,13 @@ class Registry:
         self._descriptors = {}
         self._connected = set()
         self._verified = {}
+        self._disabled = set()
 
     def register(self, adapter):
         adapter.descriptor.validate()
         name = adapter.descriptor.agent_id
+        if name == 'unassigned':
+            raise ValueError('RESERVED_AGENT_ID')
         if name in self._adapters:
             raise ValueError("DUPLICATE_AGENT")
         self._adapters[name] = adapter
@@ -28,17 +31,28 @@ class Registry:
             raise ValueError('AGENT_DESCRIPTOR_CHANGED')
         return adapter
 
+    def set_enabled(self, name, enabled):
+        self.get(name)
+        if type(enabled) is not bool:
+            raise ValueError('INVALID_ENABLED_FLAG')
+        self._disabled.discard(name) if enabled else self._disabled.add(name)
+
+    def enabled(self, name):
+        return name not in self._disabled
+
     def select(self, task):
         """Deterministic routing; declarations are probed before any execution."""
         task.validate()
         candidates = [a.descriptor for a in (self.get(name) for name in self._adapters)
                       if task.kind in a.descriptor.kinds
+                      and self.enabled(a.descriptor.agent_id)
                       and task.required_capabilities <= a.descriptor.capabilities
                       and (a.descriptor.data_scope != 'external' or task.external_allowed)]
         if not candidates:
             raise ValueError('AGENT_UNAVAILABLE')
         return min(candidates, key=lambda d: (d.data_scope == 'external',
-                   task.kind not in self._verified.get(d.agent_id, ()), d.agent_id)).agent_id
+                   task.kind not in self._verified.get(d.agent_id, ()),
+                   d.relative_cost, d.latency_ms, d.agent_id)).agent_id
 
     def connected(self, name):
         self._connected.add(name)
@@ -50,6 +64,8 @@ class Registry:
         desc = self.get(name).descriptor
         return {"agent_id": desc.agent_id, "version": desc.version,
                 "data_scope": desc.data_scope, "declared_kinds": sorted(desc.kinds),
+                "enabled": self.enabled(name), "relative_cost": desc.relative_cost,
+                "latency_ms": desc.latency_ms,
                 "declared_capabilities": sorted(desc.capabilities),
                 "verified_kinds": sorted(self._verified.get(name, ())),
                 "status": "VERIFIED" if self._verified.get(name) else
