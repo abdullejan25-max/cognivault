@@ -92,6 +92,8 @@ Study 处理已经正式注册的材料和错题来源；初始资产注册与�
 
 Memory 回读成功后 WAITING_FOR_REVIEW 表示**候选已保存、仍需正式审核**，不是事实已写入。低置信度、缺证据或显式不确定性在提交前停下；审核后需单独任务，不提供放宽校验的 resume 开关。写入后的取消、超时和回读不匹配保持 PARTIAL。
 
+提交前待审的 `Receipt.review` 与 journal 保留固定原因枚举（low_confidence / unresolved_uncertainty / missing_evidence）、confidence、证据与未决项数量、候选 SHA-256，不包含正文或未决问题原文。重放可直接读取该摘要，无须重新调用 B。旧日志无此字段时为 None；Memory 已保存的业务待审仍以 verified、状态和 candidate_id 判定。
+
 异步执行器必须合作取消。内核给予有界清理时间，未停止则停止重试、观察遗留异常并报告 CANCELLATION_STALLED；无法强杀进程内 Python。硬隔离和进程树回收属于真实执行器接入前置条件。同步 SDK Gateway 方法可能阻塞事件循环；网络生产接线应使用可取消的 MCP session。
 
 Study 旧版本回读按版本定位分页；若超过正式 Gateway 的 offset 上限 1000，保留 PARTIAL，不私查 store。结果结构校验和来源可用不等于模型语义正确，低置信度阈值也不是准确率承诺。

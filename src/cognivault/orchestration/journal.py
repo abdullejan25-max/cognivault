@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 import tempfile
 
-from .models import TRANSITIONS, fingerprint, identifier
+from .models import TRANSITIONS, fingerprint, identifier, finite
 
 
 class FileJournal:
@@ -84,6 +84,20 @@ class FileJournal:
         if ((record['state'] == 'COMPLETED' and not record['verified'])
                 or record['verified'] and (not record['commit_intent'] or 'VERIFYING' not in events)):
             raise ValueError('JOURNAL_CORRUPT')
+        review = record.get('review')
+        if review is not None:
+            if (type(review) is not dict or set(review) != {'reasons', 'confidence', 'evidence_count',
+                                                            'uncertainty_count', 'candidate_sha256'}
+                    or type(review['reasons']) is not list or not 1 <= len(review['reasons']) <= 3
+                    or any(type(reason) is not str or reason not in {
+                        'low_confidence', 'unresolved_uncertainty', 'missing_evidence'} for reason in review['reasons'])
+                    or len(set(review['reasons'])) != len(review['reasons'])
+                    or not finite(review['confidence'], 0, 1)
+                    or any(type(review[key]) is not int or not 0 <= review[key] <= 32
+                           for key in ('evidence_count', 'uncertainty_count'))
+                    or type(review['candidate_sha256']) is not str
+                    or re.fullmatch(r'[0-9a-f]{64}', review['candidate_sha256']) is None):
+                raise ValueError('JOURNAL_CORRUPT')
         return record
 
     def save(self, task_id, record):

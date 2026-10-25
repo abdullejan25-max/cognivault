@@ -145,6 +145,7 @@ class Receipt:
     output: dict | None = field(default=None, repr=False)
     gateway_receipt: dict | None = field(default=None, repr=False)
     execution_evidence: dict | None = None
+    review: dict | None = None
 
 
 TRANSITIONS = {

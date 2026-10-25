@@ -225,7 +225,7 @@ async def run_acceptance(*, live=False, model=None, executor=None,
                               if key in {'source_id', 'item_id', 'source_ref'}],
                 'result_sha256':record.get('result_hash'),
                 'gateway_receipt_sha256':record.get('gateway_receipt_hash'),
-                'execution_evidence':receipt.execution_evidence})
+                'execution_evidence':receipt.execution_evidence, 'review':receipt.review})
         passed = all(row['verified'] and row['state'] == ('WAITING_FOR_REVIEW' if row['kind'] == 'memory.propose' else 'COMPLETED') for row in domains)
         blocked = any(row['state'] == 'BLOCKED' for row in domains)
         invoked = live and all(row['execution_evidence'] and row['execution_evidence'].get('execution_scope') == 'external-model' for row in domains)

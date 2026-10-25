@@ -205,3 +205,20 @@ def test_plan_propagates_pending_business_review(tmp_path):
     handler.commit = pending
     report = asyncio.run(run_plan(engine, [PlanStep(task())]))
     assert handler.writes == 1 and report.state == 'WAITING_FOR_REVIEW'
+
+
+def test_review_receipt_records_safe_reason_without_model_body(tmp_path):
+    from cognivault.orchestration import Result
+    def uncertain(request, prepared):
+        return Result(request.task_id, request.correlation_id, 'synthetic', '1',
+                      {'answer':'PRIVATE_OUTPUT'}, .4, (), ('PRIVATE_UNCERTAINTY',))
+    engine, handler, _ = setup(tmp_path, callback=uncertain)
+    receipt = asyncio.run(engine.run(task(), 'synthetic'))
+    assert receipt.state == 'WAITING_FOR_REVIEW' and handler.writes == 0
+    assert receipt.review['reasons'] == ['low_confidence', 'unresolved_uncertainty', 'missing_evidence']
+    assert receipt.review['confidence'] == .4
+    assert receipt.review['evidence_count'] == 0 and receipt.review['uncertainty_count'] == 1
+    assert len(receipt.review['candidate_sha256']) == 64
+    record = engine.journal.load(task().task_id)
+    assert record['review'] == receipt.review
+    assert all(value not in json.dumps(record) for value in ('PRIVATE_OUTPUT', 'PRIVATE_UNCERTAINTY'))

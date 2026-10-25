@@ -55,7 +55,8 @@ class Engine:
                                record["verified"], tuple(record["events"]),
                                tuple(record.get("artifacts", [])),
                                deepcopy(result.output) if type(result) is Result and record['commit_intent'] else None,
-                               deepcopy(response), deepcopy(record.get('execution_evidence')))
+                               deepcopy(response), deepcopy(record.get('execution_evidence')),
+                               deepcopy(record.get('review')))
 
             def move(state, code=None):
                 if state != record["state"]:
@@ -167,6 +168,16 @@ class Engine:
                         record['execution_evidence'] = self._execution_evidence(evidence)
                     if (result.confidence < task.min_confidence or result.uncertainties
                             or not result.evidence and not getattr(handler, "allow_empty_evidence", False)):
+                        reasons = []
+                        if result.confidence < task.min_confidence:
+                            reasons.append('low_confidence')
+                        if result.uncertainties:
+                            reasons.append('unresolved_uncertainty')
+                        if not result.evidence and not getattr(handler, 'allow_empty_evidence', False):
+                            reasons.append('missing_evidence')
+                        record['review'] = dict(reasons=reasons, confidence=result.confidence,
+                            evidence_count=len(result.evidence), uncertainty_count=len(result.uncertainties),
+                            candidate_sha256=result.digest())
                         move("WAITING_FOR_REVIEW", "EVIDENCE_REVIEW_REQUIRED")
                         return receipt()
                     handler.validate(task, result, prepared)
