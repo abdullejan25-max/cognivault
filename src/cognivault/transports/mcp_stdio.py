@@ -392,13 +392,15 @@ def create_mcp_server(gateway: Gateway) -> Server:
         tools.extend(evidence_tools(read_only))
         from .memory_tools import memory_tools
         tools.extend(memory_tools(gateway,read_only,write_only))
+        from .history_init_tools import history_init_tools
+        tools.extend(history_init_tools(gateway,write_only))
         from .candidate_tools import candidate_tools
         tools.extend(candidate_tools(gateway,read_only,write_only))
         from .recovery_tools import recovery_tools
         tools.extend(recovery_tools(gateway,read_only,write_only))
         ingest_tools = {"register_asset", "ingest_documents", "ingest_document_file", "ingest_history_sources",
                         "process_document_ocr_pages", "normalize_history_sources"}
-        write_tools = {"initialize_memory", "propose_memory_candidate", "commit_memory_candidate", "review_memory_candidate", "create_memory", "revise_memory", "retire_memory", "register_wrong_answer_source", "save_wrong_answer_analysis",
+        write_tools = {"initialize_memory", "initialize_history", "propose_memory_candidate", "commit_memory_candidate", "review_memory_candidate", "create_memory", "revise_memory", "retire_memory", "register_wrong_answer_source", "save_wrong_answer_analysis",
                        "update_wrong_answer_analysis"}
         projection_tools = {"projection_snapshot"}
         read_tools = ({tool.name for tool in tools} - ingest_tools - write_tools - projection_tools) \
@@ -550,6 +552,10 @@ def create_mcp_server(gateway: Gateway) -> Server:
             if evidence_result is not None:
                 return {"ok":True, **evidence_result}
             from .memory_tools import call_memory_tool
+            from .history_init_tools import call_history_init_tool
+            history_init_result = call_history_init_tool(gateway,name,arguments)
+            if history_init_result is not None:
+                return {"ok":True,**history_init_result}
             from .candidate_tools import call_candidate_tool
             candidate_result = call_candidate_tool(gateway,name,arguments)
             if candidate_result is not None:

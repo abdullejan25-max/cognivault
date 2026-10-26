@@ -4,6 +4,8 @@
 
 ## v0.9.0 Agent Orchestration 候选（2026-10-26，未发布）
 
+最新续跑已确认收件目录重载生效，但原生导入因 History 尚未首次部署而失败。现已补 admin-only `initialize_history` 并修复 History/Memory 首次创建的 journal 竞态；新入口仍待当前 Host 加载和原生业务验收。详见[首次部署检查点](checkpoints/2026-10-26-v090-first-deployment.md)。
+
 候选源码和包 metadata 为 `0.9.0`，正式稳定 Release 仍为 v0.8.0。在原编排 SDK 上增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立 cwd/home、仅模型/只读认证服务的组合，并已获得真实 `deepseek-flash` 结构化响应；默认 headless 的阻断骨架仍不启用。
 
 当前工作树两个 MCP 服务均已通过原生 workflow/health 调用；隔离 Study 完成真实模型分析、当前 Desktop 原生工具保存 v1 与独立回读。原生验收发现并修复 MCP bundle 包装转换遗漏。隔离 History 收件目录原在 Git 工作树内，被安全拒绝；配置已备份并移到仓库外，现有进程仍需 Host 重载。Memory 真实候选及回读未完成，整体仍 PARTIAL，不能发布。模型调用、隔离 SDK、原生 Host 与生产验收分别判断。详情见 [本轮检查点](checkpoints/2026-10-26-v090-native-resume.md)、[Desktop 修复](v0.9.0-desktop-mcp.md)、[发布门槛](v0.9.0-release-gates.md)。

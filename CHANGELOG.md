@@ -4,6 +4,8 @@
 
 状态：**PARTIAL**。`pyproject.toml` 和 `uv.lock` 的 `0.9.0` 表示当前源码及候选包版本，不表示已创建 Git tag、GitHub Release 或发布到包索引。
 
+- 新增仅管理员可发现和执行的 `initialize_history` 首次部署入口；严格拒绝既有主库和辅助文件。History/Memory 首次初始化改为内存建库、仅通过独占持有的文件句柄写入，修复 journal 并发替换时外来文件可能被 SQLite 删除的竞态；不迁移已有库、不扩大生产权限。
+
 - 引入 Agent 编排内核、任务领域映射、有限重试、授权筛选、候选校验与 Gateway 回读；Agent 生成候选，Gateway 执行持久化。
 - 新增仅模型/只读认证组件的 Harness 执行器、固定 HTTPS 无工具接口、可信依赖计划与结构化错误。真实 `deepseek-flash` 已完成隔离 SDK Study/History/检索；10 月 26 日 Study 又完成当前 Desktop 原生工具保存与独立回读。修复 MCP 错题包固定包装转换并校验操作返回形状；Memory 保留原发生时间和未知状态。真实 Memory 仍未完成，原生 History 收件配置待 Host 重载，不能用 synthetic 测试替代。
 - 待审回执保留固定原因、数值、计数与候选摘要，避免重复请求仅为诊断；不保存正文、不改变门槛，兼容旧任务日志。

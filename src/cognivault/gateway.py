@@ -1141,6 +1141,14 @@ class Gateway:
             raise GatewayError("STORAGE_UNAVAILABLE", "Memory is not configured")
         return self.memory_store.initialize()
 
+    def initialize_history(self):
+        """Admin-only first deployment; never adopt existing History storage."""
+        from .adapters.history import SQLiteHistoryBackend
+        self._require_capability('admin')
+        if not isinstance(self.history_backend, SQLiteHistoryBackend):
+            raise GatewayError('HISTORY_UNAVAILABLE', 'SQLite History is not configured')
+        return self.history_backend.initialize_empty()
+
     def verify_memory_integrity(self):
         self._require_capability("read")
         if self.memory_store is None:

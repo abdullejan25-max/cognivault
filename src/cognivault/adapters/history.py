@@ -4,9 +4,11 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from contextlib import closing
 import hashlib
+import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 import unicodedata
 from uuid import uuid4
 
@@ -169,6 +171,82 @@ class SQLiteHistoryBackend:
             raise GatewayError("STORAGE_UNAVAILABLE", "Local storage is unavailable") from None
         finally:
             connection.close()
+
+    def initialize_empty(self) -> dict:
+        """Exclusive first deployment; failed reservations are never deleted.
+
+        This strict entry point does not change initialize()'s legacy setup and
+        schema-compatibility semantics. Gateway owns admin authorization.
+        """
+        path = self.database_path
+        paths = [path, *(Path(str(path)+suffix) for suffix in ('-wal', '-shm', '-journal'))]
+        descriptors, owned = [], {}
+
+        def validate_namespace():
+            if ('..' in path.parts or any(':' in part for part in path.parts[1:])
+                    or not path.parent.is_dir() or _path_has_reparse_point(path.parent)):
+                raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization path is unavailable')
+            for candidate in paths:
+                if (_path_has_reparse_point(candidate) or (candidate.exists()
+                        and (not candidate.is_file() or candidate.stat().st_nlink > 1))):
+                    raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization path is unavailable')
+
+        def check_owned(database_size=0):
+            validate_namespace()
+            for candidate, fd in zip(paths, descriptors):
+                expected_size = database_size if candidate == path else 0
+                for info in (candidate.lstat(), os.fstat(fd)):
+                    if ((info.st_dev, info.st_ino) != owned[candidate]
+                            or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                            or info.st_size != expected_size):
+                        raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization namespace changed')
+
+        try:
+            if any(os.path.lexists(candidate) for candidate in paths):
+                raise GatewayError('CONFLICT', 'History initialization requires an absent namespace')
+            validate_namespace()
+            for candidate in paths:
+                fd = os.open(candidate, os.O_CREAT | os.O_EXCL | os.O_RDWR
+                             | getattr(os, 'O_BINARY', 0), 0o600)
+                descriptors.append(fd)
+                info = os.fstat(fd)
+                owned[candidate] = (info.st_dev, info.st_ino)
+            check_owned()
+            # SQLite never opens the final namespace. Building in memory avoids
+            # consuming/deleting a foreign journal swapped after a path check.
+            # All four reservation descriptors stay open through publication.
+            with closing(sqlite3.connect(':memory:')) as connection:
+                self._create_schema(connection)
+                connection.commit()
+                serialize = getattr(connection, 'serialize', None)
+                if not callable(serialize):
+                    raise GatewayError('STORAGE_UNAVAILABLE', 'SQLite serialization is unavailable')
+                data = serialize()
+            if type(data) is not bytes or not data.startswith(b'SQLite format 3\x00'):
+                raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization serialization failed')
+            check_owned()
+            remaining = memoryview(data)
+            total_written = 0
+            while remaining:
+                check_owned(total_written)
+                written = os.write(descriptors[0], remaining)
+                if not 0 < written <= len(remaining):
+                    raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization write failed')
+                total_written += written
+                check_owned(total_written)
+                remaining = remaining[written:]
+            os.fsync(descriptors[0])
+            check_owned(len(data))
+            # Retain all empty sidecar reservations. Cleanup via path names
+            # would introduce a stat/unlink race against a replacement owner.
+            return {'initialized':True, 'deployment_kind':'first_deployment', 'sources':0, 'items':0}
+        except FileExistsError:
+            raise GatewayError('CONFLICT', 'History initialization requires an absent namespace') from None
+        except (sqlite3.Error, OSError, NotImplementedError, AttributeError):
+            raise GatewayError('STORAGE_UNAVAILABLE', 'History initialization failed; partial storage may remain') from None
+        finally:
+            for fd in descriptors:
+                os.close(fd)
 
     def import_items(self, source_id: str, items: list[HistoryImportItem], *,
                      source_system: str | None = None,
