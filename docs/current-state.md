@@ -2,11 +2,11 @@
 
 最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
 
-## v0.9.0 Agent Orchestration 候选（2026-10-25，未发布）
+## v0.9.0 Agent Orchestration 候选（2026-10-26，未发布）
 
 候选源码和包 metadata 为 `0.9.0`，正式稳定 Release 仍为 v0.8.0。在原编排 SDK 上增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立 cwd/home、仅模型/只读认证服务的组合，并已获得真实 `deepseek-flash` 结构化响应；默认 headless 的阻断骨架仍不启用。
 
-当前工作树的 MCP 注册已可恢复修复，生产路径与权限保持不变，另建隔离合成验收 alias；但当前 Desktop Host 对两个注册的已知 URI 仍返回 unknown MCP server，所以正式 Host 门槛为 BLOCKED。模型调用、隔离 SDK 的业务回读与 Desktop 验收须分别判断。详情见 [真实执行器](v0.9.0-real-executor.md)、[Desktop 修复](v0.9.0-desktop-mcp.md)、[发布门槛](v0.9.0-release-gates.md)。
+当前工作树两个 MCP 服务均已通过原生 workflow/health 调用；隔离 Study 完成真实模型分析、当前 Desktop 原生工具保存 v1 与独立回读。原生验收发现并修复 MCP bundle 包装转换遗漏。隔离 History 收件目录原在 Git 工作树内，被安全拒绝；配置已备份并移到仓库外，现有进程仍需 Host 重载。Memory 真实候选及回读未完成，整体仍 PARTIAL，不能发布。模型调用、隔离 SDK、原生 Host 与生产验收分别判断。详情见 [本轮检查点](checkpoints/2026-10-26-v090-native-resume.md)、[Desktop 修复](v0.9.0-desktop-mcp.md)、[发布门槛](v0.9.0-release-gates.md)。
 
 ## Agent A / B 编排层（2026-10-24 历史检查点）
 

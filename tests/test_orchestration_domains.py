@@ -171,6 +171,147 @@ def test_connected_mcp_port_roundtrip_and_permission_error(tmp_path):
     anyio.run(check)
 
 
+def test_every_allowed_operation_has_identical_sdk_and_real_mcp_result_shape(tmp_path, monkeypatch):
+    """Real MCP encoding/dispatch; invented SDK replies, no business writes.
+
+    This is a transport contract test, not Desktop Host acceptance evidence.
+    """
+    import anyio
+    from copy import deepcopy
+    from mcp.shared.memory import create_connected_server_and_client_session
+    from cognivault.adapters.history import SQLiteHistoryBackend
+    from cognivault.adapters.memory import SQLiteMemoryStore
+    from cognivault.config import AppConfig
+    from cognivault.gateway import Gateway
+    from cognivault.transports.mcp_stdio import create_mcp_server
+    from cognivault.orchestration.domains import (_ALLOWED, _MCP_RESULT_SHAPES,
+                                                 InProcessGatewayPort, MCPGatewayPort)
+    history_id, message_id = 'history:'+'0'*64, 'message:'+'1'*64
+    source_id, asset_uri = 'source-file:'+'2'*64, 'asset://sha256/'+'3'*64
+    document_uri, wrong_id = 'document://sha256/'+'4'*64, 'wrong-answer://sha256/'+'5'*64
+    candidate_id = 'candidate:'+'6'*32
+    cases = {
+        'get_wrong_answer_bundle': ({'source_id':wrong_id}, {'source':{'source_id':wrong_id}, 'analyses':[], 'total':0, 'has_more':False}),
+        'save_wrong_answer_analysis': ({'source_id':wrong_id, 'analysis':analysis(), 'source_refs':[document_uri], 'study_relations':[], 'idempotency_key':'synthetic-transport'}, {'analysis':{'source_id':wrong_id, 'version':1}}),
+        'fetch_history_item': ({'item_id':history_id}, {'item':{'item_id':history_id}}),
+        'fetch_canonical_message': ({'message_id':message_id}, {'message':{'message_id':message_id}, 'content_base64':'eA==', 'content_bytes':1, 'content_sha256':'7'*64, 'offset':0, 'has_more':False}),
+        'search_memory': ({'query':'synthetic'}, {'memories':[], 'total':0}),
+        'propose_memory_candidate': ({'source_ref':message_id, 'quote':'synthetic', 'subject':'self', 'predicate':'goal', 'value':'physics', 'classification':'historical_statement', 'confidence':.9, 'basis':'synthetic'}, {'candidate':{'candidate_id':candidate_id}, 'reused':False}),
+        'fetch_memory_candidate': ({'candidate_id':candidate_id}, {'candidate':{'candidate_id':candidate_id}, 'competing_memories':[], 'content_trust':'untrusted_data', 'currency_verified':False, 'snapshot_scope':'synthetic', 'review_instruction':'synthetic'}),
+        'retrieve_evidence': ({'queries':{'history':'synthetic'}}, {'status':'NO_EVIDENCE', 'evidence':[], 'domains':{}}),
+        'ingest_history_sources': ({'relative_manifest':'manifest.json', 'expected_manifest_sha256':'8'*64}, {'results':[], 'errors':0, 'has_more':False, 'manifest_sha256':'8'*64, 'canonical_messages_created':0}),
+        'fetch_history_source': ({'source_id':source_id}, {'source':{'source_id':source_id}, 'offset':0, 'content_base64':'eA==', 'has_more':False}),
+        'verify_history_source': ({'source_id':source_id}, {'verified':True, 'sha256':'9'*64, 'byte_count':1}),
+        'fetch_document_page': ({'document_uri':document_uri, 'page_number':1}, {'page':{'document_uri':document_uri, 'text':'synthetic'}}),
+        'fetch_asset': ({'asset_uri':asset_uri}, {'asset_uri':asset_uri, 'media_type':'image/png', 'size':1, 'offset':0, 'content_base64':'eA==', 'has_more':False}),
+    }
+    assert set(cases) == _ALLOWED
+    assert set(_MCP_RESULT_SHAPES) == _ALLOWED
+    gateway = Gateway(AppConfig('0.9.0', history_migration_inbox=tmp_path), None,
+                      SQLiteHistoryBackend(tmp_path/'unused-history.db'),
+                      memory_store=SQLiteMemoryStore(tmp_path/'unused-memory.db'),
+                      capabilities=frozenset({'read','write','ingest'}))
+    for name, (_, value) in cases.items():
+        monkeypatch.setattr(gateway, name, lambda *args, _value=value, **kwargs: deepcopy(_value))
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as session:
+            sdk, mcp = InProcessGatewayPort(gateway), MCPGatewayPort(session)
+            for name, (arguments, expected) in cases.items():
+                direct = await sdk.call(name, arguments)
+                wire = await mcp.call(name, arguments)
+                assert wire == direct == expected, name
+    anyio.run(check)
+
+
+def test_study_prepare_over_real_mcp_matches_gateway_sdk(tmp_path):
+    import anyio
+    from mcp.shared.memory import create_connected_server_and_client_session
+    from cognivault.transports.mcp_stdio import create_mcp_server
+    from cognivault.orchestration.domains import InProcessGatewayPort, MCPGatewayPort, StudyAnalysisHandler
+    gateway, _, _, source, _ = scenario(tmp_path)
+    request = task('study.analyze', source_id=source['source_id'], include_source=True)
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as session:
+            actual = await StudyAnalysisHandler(MCPGatewayPort(session)).prepare(request)
+            expected = await StudyAnalysisHandler(InProcessGatewayPort(gateway)).prepare(request)
+            assert actual == expected
+            assert actual['bundle']['source']['source_id'] == source['source_id']
+            assert actual['material']['page']['text']
+    anyio.run(check)
+
+
+def test_memory_search_real_gateway_and_mcp_preserve_sdk_shape(tmp_path):
+    import anyio
+    from mcp.shared.memory import create_connected_server_and_client_session
+    from cognivault.transports.mcp_stdio import create_mcp_server
+    from cognivault.orchestration.domains import MCPGatewayPort
+    gateway, *_ = scenario(tmp_path)
+    expected = gateway.search_memory('goal')
+    assert set(expected) == {'memories', 'total'}
+    assert expected['total'] == 1
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as session:
+            assert await MCPGatewayPort(session).call('search_memory', {'query':'goal'}) == expected
+    anyio.run(check)
+
+
+def test_history_ingest_reused_real_gateway_and_mcp_preserve_sdk_shape(tmp_path, monkeypatch):
+    import anyio
+    from copy import deepcopy
+    from mcp.shared.memory import create_connected_server_and_client_session
+    from cognivault.transports.mcp_stdio import create_mcp_server
+    from cognivault.orchestration.domains import MCPGatewayPort
+    from test_source_gateway import setup, manifest
+    gateway, inbox = setup(tmp_path)
+    digest = manifest(inbox)
+    first = gateway.ingest_history_sources('manifest.json', digest)
+    assert type(first['errors']) is int and first['errors'] == 0
+    original, actual_sdk_replies = gateway.ingest_history_sources, []
+    def capture_actual_reply(*args, **kwargs):
+        reply = original(*args, **kwargs)
+        actual_sdk_replies.append(deepcopy(reply))
+        return reply
+    monkeypatch.setattr(gateway, 'ingest_history_sources', capture_actual_reply)
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(gateway)) as session:
+            reply = await MCPGatewayPort(session).call('ingest_history_sources', {
+                'relative_manifest':'manifest.json', 'expected_manifest_sha256':digest})
+            assert len(actual_sdk_replies) == 1
+            assert reply == actual_sdk_replies[0]
+            assert reply['reused'] == 2 and reply['imported'] == 0
+            assert type(reply['errors']) is int and reply['errors'] == 0
+    anyio.run(check)
+
+
+def test_mcp_port_rejects_empty_success_for_every_allowed_operation():
+    from cognivault.orchestration.domains import _ALLOWED, MCPGatewayPort
+    class Session:
+        async def call_tool(self, *args):
+            return SimpleNamespace(structuredContent={'ok':True}, isError=False)
+    async def check():
+        for name in _ALLOWED:
+            with pytest.raises(GatewayError) as error:
+                await MCPGatewayPort(Session()).call(name, {})
+            assert error.value.code == 'BACKEND_BAD_OUTPUT'
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize('payload', [
+    {'ok':True}, {'ok':True, 'bundle':None}, {'ok':True, 'bundle':[]},
+    {'ok':True, 'bundle':{'source':{}, 'analyses':[], 'total':0, 'has_more':False}, 'unexpected':{}},
+    {'ok':True, 'bundle':{'source':{}, 'analyses':[], 'total':False, 'has_more':False}},
+    {'ok':True, 'bundle':{'source':{}, 'analyses':[], 'total':0, 'has_more':0}},
+])
+def test_mcp_port_rejects_missing_or_malformed_named_bundle(payload):
+    from cognivault.orchestration.domains import MCPGatewayPort
+    class Session:
+        async def call_tool(self, *args):
+            return SimpleNamespace(structuredContent=payload, isError=False)
+    with pytest.raises(GatewayError) as error:
+        asyncio.run(MCPGatewayPort(Session()).call('get_wrong_answer_bundle', {'source_id':'synthetic'}))
+    assert error.value.code == 'BACKEND_BAD_OUTPUT'
+
+
 @pytest.mark.parametrize('malformed', [None, {}, {'ok':True}, {'ok':False,'error':{'code':[]}}])
 def test_mcp_port_rejects_malformed_payload(malformed):
     from cognivault.orchestration.domains import MCPGatewayPort

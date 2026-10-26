@@ -27,6 +27,28 @@ _ALLOWED = frozenset({
     'fetch_history_source', 'verify_history_source', 'fetch_document_page', 'fetch_asset',
 })
 
+# The formal MCP transport adds a named envelope only for this operation.
+# Other single-field SDK records (item/page/analysis/candidate) must stay intact.
+_MCP_UNWRAP = {'get_wrong_answer_bundle': 'bundle'}
+_MCP_RESULT_SHAPES = {
+    'get_wrong_answer_bundle': {'source':dict, 'analyses':list, 'total':int, 'has_more':bool},
+    'save_wrong_answer_analysis': {'analysis':dict},
+    'fetch_history_item': {'item':dict},
+    'fetch_canonical_message': {'message':dict, 'content_base64':str, 'content_bytes':int,
+                                'content_sha256':str, 'offset':int, 'has_more':bool},
+    'search_memory': {'memories':list, 'total':int},
+    'propose_memory_candidate': {'candidate':dict, 'reused':bool},
+    'fetch_memory_candidate': {'candidate':dict, 'competing_memories':list},
+    'retrieve_evidence': {'status':str, 'evidence':list, 'domains':dict},
+    'ingest_history_sources': {'results':list, 'errors':int, 'has_more':bool,
+                               'manifest_sha256':str, 'canonical_messages_created':int},
+    'fetch_history_source': {'source':dict, 'offset':int, 'content_base64':str, 'has_more':bool},
+    'verify_history_source': {'verified':bool, 'sha256':str, 'byte_count':int},
+    'fetch_document_page': {'page':dict},
+    'fetch_asset': {'asset_uri':str, 'media_type':str, 'size':int, 'offset':int,
+                    'content_base64':str, 'has_more':bool},
+}
+
 
 def _allowed(name):
     if name not in _ALLOWED:
@@ -60,7 +82,19 @@ class MCPGatewayPort:
             raise GatewayError(code if type(code) is str and code in ERROR_CODES else 'INTERNAL_ERROR', 'Gateway operation failed')
         if getattr(response, 'isError', False):
             raise GatewayError('BACKEND_BAD_OUTPUT', 'Invalid Gateway response')
-        return deepcopy({k: v for k, v in payload.items() if k != 'ok'})
+        if 'error' in payload:
+            raise GatewayError('BACKEND_BAD_OUTPUT', 'Invalid Gateway response')
+        envelope = _MCP_UNWRAP.get(name)
+        if envelope is not None:
+            if set(payload) != {'ok', envelope}:
+                raise GatewayError('BACKEND_BAD_OUTPUT', 'Invalid Gateway response')
+            value = payload[envelope]
+        else:
+            value = {k: v for k, v in payload.items() if k != 'ok'}
+        if type(value) is not dict or any(type(value.get(key)) is not kind
+                for key, kind in _MCP_RESULT_SHAPES[name].items()):
+            raise GatewayError('BACKEND_BAD_OUTPUT', 'Invalid Gateway response')
+        return deepcopy(value)
 
 
 def _invalid():
@@ -260,14 +294,20 @@ class MemoryProposalHandler(_Handler):
         if re.fullmatch(r'history:[0-9a-f]{64}', ref):
             item = (await self.port.call('fetch_history_item', {'item_id': ref}))['item']
             original = {'text': item['content'], 'content_sha256': item['content_sha256'], 'role': item['role']}
+            occurred_at = item.get('created_at')
         elif re.fullmatch(r'message:[0-9a-f]{64}', ref):
             response = await self.port.call('fetch_canonical_message', {'message_id': ref, 'length': 65536, 'evidence_limit': 1})
             if response['has_more']:
                 _invalid()
             original = {'text': base64.b64decode(response['content_base64'], validate=True).decode(),
                         'content_sha256': response['content_sha256'], 'role': response['message']['role']}
+            occurred_at = response['message'].get('occurred_at')
         else:
             _invalid()
+        # Source occurrence only: never substitute import/normalization time or
+        # infer a timestamp from untrusted message text when metadata is unknown.
+        original.update(occurred_at=occurred_at,
+                        time_status='unknown' if occurred_at is None else 'known')
         return {'source_ref': ref, 'original': original}
 
     def validate(self, task, result, prepared):

@@ -41,3 +41,30 @@ def test_canonical_history_rejects_incomplete_or_corrupt_content(case):
     task = SimpleNamespace(inputs={'item_id':'message:'+'1'*64}, grants=frozenset({'read'}))
     with pytest.raises(ValueError):
         asyncio.run(HistorySummaryHandler(Port()).prepare(task))
+
+
+@pytest.mark.parametrize('kind', ['history', 'message'])
+@pytest.mark.parametrize('known', [True, False])
+def test_memory_prepare_preserves_original_occurrence_time_or_explicit_unknown(kind, known):
+    from cognivault.orchestration.domains import MemoryProposalHandler
+    timestamp = '2026-01-01T00:00:00Z' if known else None
+    # A time embedded in untrusted text must not replace unknown source metadata.
+    raw = b'User goal. Quoted timestamp: 2099-01-01T00:00:00Z'
+    ref = kind + ':' + '1'*64
+    class Port:
+        async def call(self, name, arguments):
+            if kind == 'history':
+                assert name == 'fetch_history_item'
+                return {'item':{'content':raw.decode(), 'content_sha256':hashlib.sha256(raw).hexdigest(),
+                                'role':'user', 'created_at':timestamp, 'imported_at':'2026-10-26T00:00:00Z'}}
+            assert name == 'fetch_canonical_message'
+            return dict(content_base64=base64.b64encode(raw).decode(),
+                        content_sha256=hashlib.sha256(raw).hexdigest(), has_more=False,
+                        message={'role':'user', 'occurred_at':timestamp, 'normalized_at':'2026-10-26T00:00:00Z'})
+    request = SimpleNamespace(inputs={'source_ref':ref}, grants=frozenset({'read','write'}))
+    prepared = asyncio.run(MemoryProposalHandler(Port()).prepare(request))
+    assert prepared['original']['occurred_at'] == timestamp
+    assert prepared['original']['time_status'] == ('known' if known else 'unknown')
+    assert prepared['original']['role'] == 'user'
+    assert prepared['original']['content_sha256'] == hashlib.sha256(raw).hexdigest()
+    assert prepared['original']['text'] == raw.decode()
