@@ -96,7 +96,7 @@ Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation 
 
 ## Current stable release
 
-The current stable release is **[v0.8.0 — CogniVault Identity & Reliability](docs/releases/v0.8.0.md)**. It publishes the identity transition, CI, and integrity verifier correction. The following acquired-data closure belongs to the historical v0.7.0 completion checkpoint; it is not new acquisition performed by v0.8.0:
+以 [GitHub 最新正式 Release](https://github.com/abdullejan25-max/cognivault/releases/latest) 核验当前稳定发行版；源码中的版本号与历史检查点不能替代该记录。[v0.8.0](docs/releases/v0.8.0.md) 的 identity transition、CI 和完整性修复仍保留其历史范围。下列采集闭环属于 v0.7.0 完成检查点，不是 v0.8.0 或 v0.9.0 新采集结果：
 
 | Measure | Result |
 | --- | ---: |

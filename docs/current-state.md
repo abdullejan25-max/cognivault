@@ -1,6 +1,6 @@
 # Current State
 
-最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
+最近核对：2026-10-26。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
 
 ## v0.9.0 Agent Orchestration 源码与验收（2026-10-26）
 

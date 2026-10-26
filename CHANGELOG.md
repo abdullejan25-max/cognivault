@@ -15,4 +15,4 @@
 - 声明执行器所需的直接依赖 `httpx>=0.28,<1`；保留 canonical 包、`study-migrate` 和 deprecated stdio 启动 shim。
 - 包审计从 `pyproject.toml` 读取版本，要求当前版本 wheel 与源码归档同时存在，继续检查私有路径和配置泄漏。
 
-候选说明见 [v0.9.0](docs/releases/v0.9.0.md)，发布条件见 [发布门槛](docs/v0.9.0-release-gates.md)。历史版本以各自 [release 文档](docs/releases/v0.8.0.md) 为准。
+版本说明见 [v0.9.0](docs/releases/v0.9.0.md)，发布条件见 [发布门槛](docs/v0.9.0-release-gates.md)。历史版本以各自 [release 文档](docs/releases/v0.8.0.md) 为准。
