@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import re
 import sqlite3
+import stat
 from uuid import uuid4
 
 from ..contracts import GatewayError
@@ -122,44 +123,54 @@ class SQLiteMemoryStore:
             if any(os.path.lexists(path) for path in paths):
                 raise GatewayError("CONFLICT", "Memory initialization requires an absent namespace")
             for path in paths:
-                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR, 0o600)
+                fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_RDWR
+                             | getattr(os, "O_BINARY", 0), 0o600)
                 descriptors.append(fd)
                 info = os.fstat(fd)
                 owned[path] = (info.st_dev, info.st_ino)
-            # Keep the database descriptor open. SQLite must be free to replace
-            # its own journal; keeping that descriptor open fails on Windows.
-            for fd in descriptors[1:]:
-                os.close(fd)
-            descriptors = descriptors[:1]
-
-            def check_owned():
+            def check_owned(database_size=0):
                 self._validate_path()
-                for path in paths:
-                    info = path.lstat()
-                    if (info.st_dev, info.st_ino) != owned[path]:
-                        raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
+                for path, fd in zip(paths, descriptors):
+                    expected_size = database_size if path == self.database_path else 0
+                    for info in (os.fstat(fd), path.lstat()):
+                        if ((info.st_dev, info.st_ino) != owned[path]
+                                or not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                                or info.st_size != expected_size):
+                            raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
 
             check_owned()
-            with closing(self._connect(write=True)) as con:
-                check_owned()
+            # SQLite never opens the final namespace: even its first schema
+            # statement could consume/delete a foreign journal swapped after a
+            # path check. Keep all four O_EXCL descriptors through publication.
+            with closing(sqlite3.connect(":memory:")) as con:
                 self._schema(con)
                 from ..memory_candidates import schema as candidate_schema
                 candidate_schema(con)
                 con.commit()
-            info = self.database_path.lstat()
-            if (info.st_dev, info.st_ino) != owned[self.database_path]:
-                raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
-            # Retain our empty WAL/shm reservations. Path-based cleanup has a
-            # stat/unlink race that could delete a replacement owned by others.
-            for path in paths[1:]:
-                if os.path.lexists(path):
-                    info = path.lstat()
-                    if (info.st_dev, info.st_ino) != owned[path] or info.st_size:
-                        raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization namespace changed")
+                serialize = getattr(con, "serialize", None)
+                if not callable(serialize):
+                    raise GatewayError("STORAGE_UNAVAILABLE", "SQLite serialization is unavailable")
+                data = serialize()
+            if type(data) is not bytes or not data.startswith(b"SQLite format 3\x00"):
+                raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization serialization failed")
+            check_owned()
+            remaining, published = memoryview(data), 0
+            while remaining:
+                check_owned(published)
+                written = os.write(descriptors[0], remaining)
+                if not 0 < written <= len(remaining):
+                    raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization write failed")
+                published += written
+                remaining = remaining[written:]
+                check_owned(published)
+            os.fsync(descriptors[0])
+            check_owned(len(data))
+            # Never unlink reservations or failed partials by path: a raced
+            # replacement belongs to somebody else and must remain untouched.
             return {"initialized": True, "deployment_kind": "first_deployment", "facts": 0, "versions": 0}
         except FileExistsError:
             raise GatewayError("CONFLICT", "Memory initialization requires an absent namespace") from None
-        except (sqlite3.Error, OSError):
+        except (sqlite3.Error, OSError, NotImplementedError, AttributeError):
             raise GatewayError("STORAGE_UNAVAILABLE", "Memory initialization failed; partial storage may remain") from None
         finally:
             for fd in descriptors:

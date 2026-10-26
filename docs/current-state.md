@@ -1,6 +1,18 @@
 # Current State
 
-最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
+最近核对：2026-10-26。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+
+## v0.9.0 Agent Orchestration 源码与验收（2026-10-26）
+
+最新续跑通过独立重启助手完成Host重载，并实际调用admin-only `initialize_history`，完成原生导入、规范化与reparse核验。History/Memory首次创建的journal竞态已修复。三域任务及联合检索均已有真实B与当前原生工具回执；Memory仅为pending历史候选。详见[最新三域检查点](checkpoints/2026-10-26-v090-native-three-domain-closeout.md)和[首次部署修复](checkpoints/2026-10-26-v090-first-deployment.md)。实际发行状态以最终提交Checks及GitHub Releases为准，历史PARTIAL记录不等于当前发布状态。
+
+源码和包metadata为 `0.9.0`；正式发行须核验对应Release与tag，版本号本身不能证明发布。原编排SDK增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立cwd/home、仅模型/只读认证服务组合，并有真实 `deepseek-flash` 结构化回执；默认headless阻断骨架仍不启用。
+
+两个服务均已通过原生workflow/health调用；隔离Study保存v1/回读、History原文与摘要、Memory pending历史候选均已验证。原收件目录和MCP bundle转换问题已有实际修复及回执；没有扩大生产权限。模型、隔离SDK、当前Host和生产验收继续分开判断，最终发行仍须完整Checks。历史注册调查见[Desktop修复](v0.9.0-desktop-mcp.md)，动态门槛见[发布要求](v0.9.0-release-gates.md)。
+
+## Agent A / B 编排层（2026-10-24 历史检查点）
+
+新增独立、显式接线的编排 SDK，统一任务、适配器注册/能力筛选、状态机、私有元数据审计、有限重试与候选指纹恢复，通过固定 Gateway 操作接入三域。隔离合成 SDK 与 MCP 测试不等于当前 Desktop 或生产验收；当前 Host 未注册 cognivault，DeepSeek Harness 的受限执行条件尚未确认，因此整体为 **PARTIAL**。详见 [使用与限制](agent-orchestration.md) 和 [交付检查点](checkpoints/2026-10-24-agent-orchestration.md)。正式版本仍为 v0.8.0，历史验收范围不变。
 
 ## Memory 与三域学习协同（开发源码，未正式发布）
 

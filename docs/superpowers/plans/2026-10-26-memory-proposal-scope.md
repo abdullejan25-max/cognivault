@@ -1,0 +1,19 @@
+# Memory 候选的可信解释范围
+
+## 当前证据
+
+当前原生Host已完成History首次部署、固定manifest导入、规范化和reparse=true完整性验证。真实Memory任务返回合法Result、confidence=.95，但保留两项实际不确定性：没有先前状态，不知道是否变化；source中的第一人称没有明确主体标识。未进入写入。它们不能靠提高预算、删除uncertainty或更换置信度解决，也不能归因于旧INVALID_RESPONSE。
+
+## 最小设计
+
+增加可选Task.inputs.proposal_scope，严格为subject与classification，classification只接受historical_statement。调用方明确提供一个reported主体标签并将任务限定为解释过去原话，不请求判断变化、当前事实或身份认证。非该范围默认行为保持不变。
+
+Memory handler在prepare校验可信Task输入，保留来源和原发生时间；validate/commit再次从Task检查输出subject/classification逐字匹配，不信任模型或来源覆盖。验收wrapper将这些约束放入可信task_specification及expected_output_shape，说明主体标签由调用者报告、候选待审、不声明认证身份或当前性。原文、证据、confidences、uncertainties和审批门槛不变。
+
+## 验证与边界
+
+先用临时真实Gateway测试新范围缺失先红，再实现范围形状/主体/分类不匹配拒绝、缺失范围兼容、传给B的可信shape正确与pending候选独立回读。真实验收保持一次请求预算；若仍有实际不确定性，保留并调查，不自动改写。这个范围不能产生approved Memory，也不能被用于将历史陈述升级为当前事实。
+
+## 检索结果的已知限制
+
+后续原生检索实际返回COMPLETE、两个可选引用、Memory零命中；模型两次将空查询、历史时间和错题来源放入uncertainties。现有检索output只有selected_refs，却要求把已知来源限制放入summary/analysis/basis，形成契约缺口（检索没有这些字段）。补可选notes列表保存模型报告的已知限制，长度/类型受限；旧selected_refs输出保持兼容。commit/verify同时核对原notes及独立Gateway回读。实际uncertainties仍一律触发原待审门槛，不做字符串识别、搬移或清空。新请求只验证这个有证据的契约修复，不重写前两次待审结果。

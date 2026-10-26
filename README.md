@@ -23,6 +23,8 @@ Agent Host (Codex Desktop, WorkBuddy, Hermes, or another stdio MCP client)
 
 **Agent thinks; Gateway executes.** The current transport is local stdio MCP. CogniVault does not provide an HTTP listener or public endpoint.
 
+当前源码提供 [v0.9.0 Agent Orchestration](docs/releases/v0.9.0.md)，共用 Study、History、Memory 的 Gateway 边界。受限 Harness 真实模型已分别通过当前 Desktop 原生工具完成 Study 保存回读、History 摘要回读、Memory pending历史候选保存回读及联合检索；这些是隔离自造资料验收，不是生产学习效果证明。完整证据见[原生三域检查点](docs/checkpoints/2026-10-26-v090-native-three-domain-closeout.md)，最终提交检查与实际发行状态见[发布门槛](docs/v0.9.0-release-gates.md)及[GitHub Releases](https://github.com/abdullejan25-max/cognivault/releases)。包版本号本身不证明已发布。
+
 ## What CogniVault manages
 
 - **Study** — Search a user-selected QMD collection. StudyVault remains the authoritative source; search does not replace or rewrite the original materials.
@@ -94,7 +96,7 @@ Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation 
 
 ## Current stable release
 
-The current stable release is **[v0.8.0 — CogniVault Identity & Reliability](docs/releases/v0.8.0.md)**. It publishes the identity transition, CI, and integrity verifier correction. The following acquired-data closure belongs to the historical v0.7.0 completion checkpoint; it is not new acquisition performed by v0.8.0:
+以 [GitHub 最新正式 Release](https://github.com/abdullejan25-max/cognivault/releases/latest) 核验当前稳定发行版；源码中的版本号与历史检查点不能替代该记录。[v0.8.0](docs/releases/v0.8.0.md) 的 identity transition、CI 和完整性修复仍保留其历史范围。下列采集闭环属于 v0.7.0 完成检查点，不是 v0.8.0 或 v0.9.0 新采集结果：
 
 | Measure | Result |
 | --- | ---: |

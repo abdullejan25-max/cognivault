@@ -34,9 +34,9 @@ jobs:
       - name: Install core and development dependencies
         run: uv sync --locked --extra dev
       - name: Run the synthetic test suite
-        run: uv run --locked --extra dev pytest -q
+        run: uv run --locked --extra dev pytest -q -rs
       - name: Run the synthetic stdio MCP smoke
-        run: uv run --locked --extra dev pytest -q tests/test_mcp_stdio_process.py tests/test_mcp_identity_transition.py
+        run: uv run --locked --extra dev pytest -q -rs tests/test_mcp_stdio_process.py tests/test_mcp_identity_transition.py
 
   build:
     name: Build and install package (Ubuntu)
@@ -65,7 +65,7 @@ jobs:
         run: |
           uv venv --python 3.11 "$RUNNER_TEMP/cognivault-installed"
           uv pip install --python "$RUNNER_TEMP/cognivault-installed/bin/python" dist/cognivault-*.whl
-          "$RUNNER_TEMP/cognivault-installed/bin/python" -I -c "import cognivault; from importlib.metadata import version; assert version('cognivault'); print(cognivault.__file__)"
+          "$RUNNER_TEMP/cognivault-installed/bin/python" -I -c "import cognivault; from importlib.metadata import version; from importlib.resources import files; from cognivault.orchestration.harness_no_tools import HarnessNoToolsAdapter; assert version('cognivault'); assert files('cognivault.orchestration').joinpath('harness_runtime.mjs').is_file(); print('installed orchestration runtime: PASS')"
 
   windows-compatibility:
     name: Full synthetic tests and package (Windows)
@@ -88,7 +88,7 @@ jobs:
       - name: Install core and development dependencies
         run: uv sync --locked --extra dev
       - name: Run the full synthetic test suite
-        run: uv run --locked --extra dev pytest -q
+        run: uv run --locked --extra dev pytest -q -rs
       - name: Build wheel and source distribution
         run: uv build --wheel --sdist
       - name: Audit package contents
@@ -100,4 +100,4 @@ jobs:
           uv venv $isolated --python 3.11
           $wheel = (Get-Item "dist/cognivault-*.whl").FullName
           uv pip install --python (Join-Path $isolated "Scripts/python.exe") $wheel
-          & (Join-Path $isolated "Scripts/python.exe") -I -c "import cognivault; from importlib.metadata import version; assert version('cognivault'); print(cognivault.__file__)"
+          & (Join-Path $isolated "Scripts/python.exe") -I -c "import cognivault; from importlib.metadata import version; from importlib.resources import files; from cognivault.orchestration.harness_no_tools import HarnessNoToolsAdapter; assert version('cognivault'); assert files('cognivault.orchestration').joinpath('harness_runtime.mjs').is_file(); print('installed orchestration runtime: PASS')"
