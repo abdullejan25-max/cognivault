@@ -38,13 +38,14 @@ SHAPES = {
     'memory.propose': {'quote':'exact substring of original text', 'subject':'string',
         'predicate':'string', 'value':'string',
         'classification':'fact_update|preference_change|historical_statement|inference', 'basis':'string'},
-    'evidence.retrieve': {'selected_refs':['citation from prepared evidence']},
+    'evidence.retrieve': {'selected_refs':['citation from prepared evidence'],
+                          'notes':['known provenance, historical status or empty-query limits; not unresolved blockers']},
 }
 GUIDANCE = {
     'study.analyze': 'Analyze the source exercise and learner answer as a self-contained mathematical exercise using the stated forces and mass. This source is a registered text/plain document: OCR and PDF text-layer checks are not applicable, and no experimental verification or real physical setup is requested. Copy prepared source_refs and study_relations exactly. Cite source_id or source_refs as evidence.',
     'history.summarize': 'Summarize only the single original item, preserving its role and historical context. Copy source_refs and content_sha256 constants from expected_output_shape exactly, without recomputing a hash. The evidence array must contain only the same single item_id, not its lineage source IDs.',
     'memory.propose': 'Propose one atomic candidate about the learning goal reported by this source, grounded in an exact quote of original text. Do not claim independent verification or infer a change from an unavailable earlier state. Choose classification according to supplied role and historical context. Cite only source_ref as evidence. This remains pending human review.',
-    'evidence.retrieve': 'The bounded task is keyword retrieval: select citations of physics-related records in history, memory and study (query physics in each domain). Do not synthesize a present goal or judge independent corroboration. Select only available citations in selected_refs and evidence. Retain source status as given; an unverified or historical record is still retrievable as such. Preserve uncertainty if sources needed for this selection are missing.',
+    'evidence.retrieve': 'The bounded task is keyword retrieval: select citations of physics-related records in history, memory and study (query physics in each domain). Do not synthesize a present goal or judge independent corroboration. Select only available citations in selected_refs and evidence. A hit in every domain is not required: status=ok with returned=0 is an observed empty query result, not an unavailable backend or a missing condition for selecting other available citations. It does not establish that a real-world fact is absent. Pending Memory candidates are deliberately outside approved Memory retrieval. Retain source status as given; an unverified or historical record is still retrievable as such. Preserve uncertainty if sources needed for this selection are missing or a domain actually failed.',
 }
 EPISTEMIC_GUIDANCE = (
     'Confidence measures fidelity of this bounded operation to the supplied evidence, '
@@ -54,7 +55,7 @@ EPISTEMIC_GUIDANCE = (
     'The uncertainties array is not a general provenance or caveat list: if no '
     'unresolved ambiguity affects the requested output, use an empty array. '
     'Describe known provenance limits, historical status or pending review within '
-    'the relevant summary, analysis or basis fields. These known statuses alone '
+    'the relevant summary, analysis, basis or notes fields. These known statuses alone '
     'do not prevent faithfully summarizing, proposing or selecting supplied evidence. '
     'Do not invent evidence, infer missing facts or choose confidence to satisfy a threshold.'
 )
@@ -82,6 +83,17 @@ class _GuidedHandler:
                     if key in {'document_uri', 'source_asset_uri', 'page_number', 'text',
                                'text_origin', 'truncated'}}
         shape = SHAPES[self.kind]
+        guidance = GUIDANCE[self.kind]
+        if self.kind == 'memory.propose' and 'proposal_scope' in prepared:
+            shape = {**shape, **prepared['proposal_scope']}
+            guidance += (
+                ' The caller explicitly scoped this task to a historical_statement with the '
+                'reported subject label in expected_output_shape. This label identifies the '
+                'source speaker within this task; it is not an authenticated real-world identity. '
+                'Report only what that speaker said, as a pending historical candidate. '
+                'Do not determine whether it is new, changed, or currently true: those are '
+                'outside this operation and no prior state is required for reporting the quote. '
+                'Keep any ambiguity that actually affects this historical interpretation.')
         if self.kind == 'history.summarize':
             item = prepared['item']
             prepared['item'] = {key: value for key, value in item.items()
@@ -90,7 +102,7 @@ class _GuidedHandler:
                      'content_sha256':item['content_sha256']}
         return {**prepared,
                 'expected_output_shape': shape,
-                'task_guidance': GUIDANCE[self.kind] + ' ' + EPISTEMIC_GUIDANCE}
+                'task_guidance': guidance + ' ' + EPISTEMIC_GUIDANCE}
 
     def validate(self, *args):
         return self.handler.validate(*args)

@@ -2,13 +2,13 @@
 
 最近核对：2026-10-11。本页是当前运行与发布状态的主要依据。当前正式稳定版本为 **[v0.8.0 — CogniVault Identity & Reliability](releases/v0.8.0.md)**。本次发布汇集 identity transition、CI 与 integrity verifier 修复；下列历史 acquisition 与 recovery closure 属于 v0.7.0 completion 范围，没有作为 v0.8.0 新采集结果。
 
-## v0.9.0 Agent Orchestration 候选（2026-10-26，未发布）
+## v0.9.0 Agent Orchestration 源码与验收（2026-10-26）
 
-最新续跑已确认收件目录重载生效，但原生导入因 History 尚未首次部署而失败。现已补 admin-only `initialize_history` 并修复 History/Memory 首次创建的 journal 竞态；新入口仍待当前 Host 加载和原生业务验收。详见[首次部署检查点](checkpoints/2026-10-26-v090-first-deployment.md)。
+最新续跑通过独立重启助手完成Host重载，并实际调用admin-only `initialize_history`，完成原生导入、规范化与reparse核验。History/Memory首次创建的journal竞态已修复。三域任务及联合检索均已有真实B与当前原生工具回执；Memory仅为pending历史候选。详见[最新三域检查点](checkpoints/2026-10-26-v090-native-three-domain-closeout.md)和[首次部署修复](checkpoints/2026-10-26-v090-first-deployment.md)。实际发行状态以最终提交Checks及GitHub Releases为准，历史PARTIAL记录不等于当前发布状态。
 
-候选源码和包 metadata 为 `0.9.0`，正式稳定 Release 仍为 v0.8.0。在原编排 SDK 上增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立 cwd/home、仅模型/只读认证服务的组合，并已获得真实 `deepseek-flash` 结构化响应；默认 headless 的阻断骨架仍不启用。
+源码和包metadata为 `0.9.0`；正式发行须核验对应Release与tag，版本号本身不能证明发布。原编排SDK增加可信依赖计划、成本/延迟估计筛选与停用、结构化执行器错误、认证阻塞恢复和取消边界修复。`HarnessNoToolsAdapter` 使用独立cwd/home、仅模型/只读认证服务组合，并有真实 `deepseek-flash` 结构化回执；默认headless阻断骨架仍不启用。
 
-当前工作树两个 MCP 服务均已通过原生 workflow/health 调用；隔离 Study 完成真实模型分析、当前 Desktop 原生工具保存 v1 与独立回读。原生验收发现并修复 MCP bundle 包装转换遗漏。隔离 History 收件目录原在 Git 工作树内，被安全拒绝；配置已备份并移到仓库外，现有进程仍需 Host 重载。Memory 真实候选及回读未完成，整体仍 PARTIAL，不能发布。模型调用、隔离 SDK、原生 Host 与生产验收分别判断。详情见 [本轮检查点](checkpoints/2026-10-26-v090-native-resume.md)、[Desktop 修复](v0.9.0-desktop-mcp.md)、[发布门槛](v0.9.0-release-gates.md)。
+两个服务均已通过原生workflow/health调用；隔离Study保存v1/回读、History原文与摘要、Memory pending历史候选均已验证。原收件目录和MCP bundle转换问题已有实际修复及回执；没有扩大生产权限。模型、隔离SDK、当前Host和生产验收继续分开判断，最终发行仍须完整Checks。历史注册调查见[Desktop修复](v0.9.0-desktop-mcp.md)，动态门槛见[发布要求](v0.9.0-release-gates.md)。
 
 ## Agent A / B 编排层（2026-10-24 历史检查点）
 

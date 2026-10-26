@@ -23,6 +23,68 @@ def test_domain_ports_are_explicitly_available():
     assert callable(domains.MCPGatewayPort)
 
 
+def test_retrieval_keeps_reported_notes_separate_and_verifies_them(tmp_path):
+    from cognivault.orchestration.domains import InProcessGatewayPort, ThreeDomainRetrievalHandler
+    g, *_ = scenario(tmp_path)
+    t = task('evidence.retrieve', queries={'history':'engineering'})
+    async def check():
+        h = ThreeDomainRetrievalHandler(InProcessGatewayPort(g))
+        prepared = await h.prepare(t)
+        r = result({'selected_refs':[row['citation'] for row in prepared['evidence']],
+                    'notes':['Historical source; this selection does not establish current truth.']})
+        h.validate(t, r, prepared)
+        receipt = await h.commit(t, r, 'synthetic-readonly-notes')
+        assert receipt['persisted'] is False and receipt['notes'] == r.output['notes']
+        assert await h.verify(t, r, receipt)
+        receipt['notes'] = ['tampered note']
+        assert not await h.verify(t, r, receipt)
+        for notes in ['not a list', [True], ['x'*1001], ['note']*21]:
+            with pytest.raises(ValueError):
+                h.validate(t, result({'selected_refs':[], 'notes':notes}), prepared)
+    asyncio.run(check())
+
+
+def test_memory_historical_scope_is_caller_bound_and_cannot_be_upgraded(tmp_path):
+    from cognivault.orchestration.domains import InProcessGatewayPort, MemoryProposalHandler
+    from cognivault.orchestration.acceptance import _GuidedHandler
+    g, ref, *_ = scenario(tmp_path)
+    t = task('memory.propose', source_ref=ref,
+             proposal_scope={'subject':'invented-user', 'classification':'historical_statement'})
+    output = dict(quote='engineering is my goal', subject='invented-user', predicate='reported_goal',
+                  value='engineering', classification='historical_statement', basis='Original historical quote; pending review.')
+    async def check():
+        handler = MemoryProposalHandler(InProcessGatewayPort(g))
+        prepared = await handler.prepare(t)
+        assert prepared['proposal_scope'] == t.inputs['proposal_scope']
+        guided = await _GuidedHandler(handler, 'memory.propose').prepare(t)
+        assert guided['expected_output_shape']['subject'] == 'invented-user'
+        assert guided['expected_output_shape']['classification'] == 'historical_statement'
+        for field, bad in [('subject','different-user'), ('classification','fact_update')]:
+            with pytest.raises(ValueError):
+                handler.validate(t, result({**output, field:bad}), prepared)
+        good = result(output, [ref])
+        handler.validate(t, good, prepared)
+        saved = await handler.commit(t, good, 'scoped-synthetic-memory')
+        assert saved['candidate']['state'] == 'pending'
+        assert await handler.verify(t, good, saved)
+    asyncio.run(check())
+
+
+@pytest.mark.parametrize('scope', [None, {}, {'subject':'x','classification':'fact_update'},
+    {'subject':'','classification':'historical_statement'},
+    {'subject':'x','classification':'historical_statement','admin':True}])
+def test_memory_rejects_invalid_historical_scope_before_any_gateway_call(scope):
+    from cognivault.orchestration.domains import MemoryProposalHandler
+    class NoCalls:
+        async def call(self, *_):
+            pytest.fail('Invalid scope must fail before data access')
+    t = task('memory.propose', source_ref='history:'+'a'*64, proposal_scope=scope)
+    async def check():
+        with pytest.raises(ValueError):
+            await MemoryProposalHandler(NoCalls()).prepare(t)
+    asyncio.run(check())
+
+
 def test_study_roundtrip_and_idempotent_version(tmp_path):
     from cognivault.orchestration.domains import InProcessGatewayPort, StudyAnalysisHandler
     g, _, doc, wrong, _ = scenario(tmp_path)

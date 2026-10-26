@@ -288,8 +288,20 @@ class HistorySummaryHandler(_Handler):
 class MemoryProposalHandler(_Handler):
     required_grants = frozenset({'read', 'write'})
 
+    @staticmethod
+    def _scope(task):
+        if 'proposal_scope' not in task.inputs:
+            return None
+        scope = task.inputs['proposal_scope']
+        _shape(scope, {'subject', 'classification'})
+        _text(scope['subject'], 200)
+        if scope['classification'] != 'historical_statement':
+            _invalid()
+        return deepcopy(scope)
+
     async def prepare(self, task):
         self._grants(task)
+        scope = self._scope(task)
         ref = task.inputs['source_ref']
         if re.fullmatch(r'history:[0-9a-f]{64}', ref):
             item = (await self.port.call('fetch_history_item', {'item_id': ref}))['item']
@@ -308,11 +320,17 @@ class MemoryProposalHandler(_Handler):
         # infer a timestamp from untrusted message text when metadata is unknown.
         original.update(occurred_at=occurred_at,
                         time_status='unknown' if occurred_at is None else 'known')
-        return {'source_ref': ref, 'original': original}
+        prepared = {'source_ref': ref, 'original': original}
+        if scope is not None:
+            prepared['proposal_scope'] = scope
+        return prepared
 
     def validate(self, task, result, prepared):
         output = result.output
         _shape(output, {'quote', 'subject', 'predicate', 'value', 'classification', 'basis'})
+        scope = self._scope(task)
+        if scope is not None and any(output[key] != value for key, value in scope.items()):
+            _invalid()
         for field, limit in {'quote':2000, 'subject':200, 'predicate':120, 'value':4000, 'basis':1000}.items():
             _text(output[field], limit)
         if type(output['classification']) is not str or output['classification'] not in {'fact_update', 'preference_change', 'historical_statement', 'inference'}:
@@ -405,7 +423,14 @@ class ThreeDomainRetrievalHandler(_Handler):
         return await self.port.call('retrieve_evidence', {'queries': task.inputs['queries'], 'limit': task.inputs.get('limit', 3)})
 
     def validate(self, task, result, prepared):
-        _shape(result.output, {'selected_refs'})
+        if type(result.output) is not dict or set(result.output) not in (
+                {'selected_refs'}, {'selected_refs', 'notes'}):
+            _invalid()
+        notes = result.output.get('notes', [])
+        if type(notes) is not list or len(notes) > 20:
+            _invalid()
+        for note in notes:
+            _text(note, 1000)
         refs = result.output['selected_refs']
         available = {item['citation'] for item in prepared['evidence']}
         if type(refs) is not list or not all(type(ref) is str for ref in refs) or len(refs) != len(set(refs)) or not set(refs) <= available:
@@ -415,10 +440,14 @@ class ThreeDomainRetrievalHandler(_Handler):
     async def commit(self, task, result, key):
         prepared = await self.prepare(task)
         self.validate(task, result, prepared)
-        return {**prepared, 'persisted': False, 'selected_refs': deepcopy(result.output['selected_refs']),
-                'partial': prepared['status'] in {'PARTIAL', 'UNAVAILABLE'}}
+        receipt = {**prepared, 'persisted': False, 'selected_refs': deepcopy(result.output['selected_refs']),
+                   'partial': prepared['status'] in {'PARTIAL', 'UNAVAILABLE'}}
+        if 'notes' in result.output:
+            receipt['notes'] = deepcopy(result.output['notes'])
+        return receipt
 
     async def verify(self, task, result, receipt):
         fresh = await self.prepare(task)
         return (receipt.get('persisted') is False and receipt.get('selected_refs') == result.output['selected_refs']
+                and receipt.get('notes', []) == result.output.get('notes', [])
                 and all(receipt.get(key) == value for key, value in fresh.items()))

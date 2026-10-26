@@ -71,12 +71,16 @@ async def analyze(engine, task_id, source_id):
 | study.analyze | source_id；可选 expected_version、source_refs、study_relations、include_source | analysis 的五个规范字段、source_refs、study_relations | save_wrong_answer_analysis，按保存版本回读 |
 | history.summarize | item_id | summary、source_refs、原文 content_sha256 | 原文读取与指纹回读；摘要仅在本次回执中返回 |
 | history.ingest | relative_manifest、expected_manifest_sha256；可选 cursor、limit | manifest_sha256、approved=True | Gateway 校验 manifest 并无损导入，逐来源 hash/字节数回读 |
-| memory.propose | source_ref（history 或 canonical message） | quote、subject、predicate、value、classification、basis | 原文校验、提议候选、冲突检测、回读；始终待审 |
-| evidence.retrieve | queries（三域聚焦查询）；可选 limit | selected_refs | retrieve_evidence；保留 COMPLETE/NO_EVIDENCE/PARTIAL/UNAVAILABLE |
+| memory.propose | source_ref（history 或 canonical message）；可选 proposal_scope | quote、subject、predicate、value、classification、basis | 原文校验、提议候选、冲突检测、回读；始终待审 |
+| evidence.retrieve | queries（三域聚焦查询）；可选 limit | selected_refs；可选 notes（最多20项，每项1000字符） | retrieve_evidence；保留 COMPLETE/NO_EVIDENCE/PARTIAL/UNAVAILABLE |
 
 History 的 approved 是模型结构字段，不授予导入权限；操作来自可信 Task 的 ingest 授权与固定 manifest。模型不能提供或改写原始聊天。导入单任务处理一个有界页面；`has_more` 保持 PARTIAL，调用方用新 task_id 和明确的下一 cursor 继续。没有自动递归规划。
 
 Memory 当前正式候选入口要求 History 原文作为主来源。Study-only 候选生成和任意来源记忆提取未接入；不能为统一接口绕过该规则。语义冲突检测仍以现有 Gateway 的有限匹配与审阅为准，不能证明事实当前正确。Memory 候选 API 没有 provenance 参数，任务日志保存 candidate_id 关联，不能声称业务候选内新增了 Agent 身份。
+
+调用方若只需要报告历史原话，可显式使用 `proposal_scope={"subject":"reported-self","classification":"historical_statement"}`。subject是调用者报告的标签，不是认证身份；handler从可信Task检查输出绑定，B不能改成当前fact_update。它不需要先前状态来断言“发生变化”，因为任务不请求这种判断。缺省范围保持兼容，任何实际未决不确定性仍在提交前停下。历史候选保持pending，不能据此自动产生当前事实。
+
+检索notes用于保存模型报告的已知来源限制，例如历史时间或某域零命中；这是派生说明，不是Gateway事实判断。notes与原输出一起核验，不会自动从uncertainties搬运内容。任何真实非空uncertainties仍触发原待审门槛；成功的零命中查询不等于后端不可用，更不能证明现实事实不存在。
 
 Study 处理已经正式注册的材料和错题来源；初始资产注册与题目转录继续遵循 `study-workflow://wrong-answer`。不将无法识别的原文、推断分数或长期习惯变成已确认事实。
 
