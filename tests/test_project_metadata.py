@@ -51,7 +51,7 @@ def test_sdist_excludes_local_agent_work_and_private_runtime(tmp_path: Path) -> 
 def test_cognivault_distribution_preserves_release_and_domain_cli() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["name"] == "cognivault"
-    assert project["version"] == "0.9.0"
+    assert project["version"] == "0.9.1"
     assert project["description"] == "A local-first learning and memory layer for AI agents."
     assert project["scripts"]["study-migrate"] == "cognivault.migration.cli:main"
 
