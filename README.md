@@ -2,141 +2,127 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/cognivault-icon.png">
     <source media="(prefers-color-scheme: light)" srcset="docs/assets/cognivault-logo.png">
-    <img src="docs/assets/cognivault-logo.png" alt="CogniVault brand mark" width="300">
+    <img src="docs/assets/cognivault-logo.png" alt="CogniVault" width="300">
   </picture>
 </p>
 
 <h1 align="center">CogniVault</h1>
-<p align="center">A local-first learning and memory layer for AI agents.</p>
-<p align="center"><a href="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI on main"></a></p>
+<p align="center">给 AI 助手用的本地学习资料库。</p>
+<p align="center">
+  <a href="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/abdullejan25-max/cognivault/actions/workflows/ci.yml/badge.svg?branch=main" alt="main 分支检查"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/abdullejan25-max/cognivault/releases/latest">下载</a> ·
+  <a href="docs/installation.md">安装说明</a> ·
+  <a href="docs/current-state.md">项目进展</a>
+</p>
 
-CogniVault connects AI agents to a user-configured local learning and memory layer. Agent Hosts interpret requests and choose tools; the Gateway validates typed operations, enforces configured capabilities, and records provenance. The core runtime and Gateway do not depend on Codex Desktop.
+CogniVault 让 AI 助手查阅本机的教材、错题和聊天记录，也能保存你希望长期记住的内容。不同客户端接入同一套数据后，可以共用已有资料。
 
-## Architecture
+资料放在你指定的本地目录。AI 助手负责理解问题、整理答案；CogniVault 负责检查权限、查找资料和保存记录。
 
-```text
-Agent Host (Codex Desktop, WorkBuddy, Hermes, or another stdio MCP client)
-       │ local stdio MCP
-       ▼
-    Gateway → Services and adapters → Explicitly configured local data
-```
+## 能做什么
 
-**Agent thinks; Gateway executes.** The current transport is local stdio MCP. CogniVault does not provide an HTTP listener or public endpoint.
+- **查教材和文档**：搜索接入的资料，查看 PDF 原页，需要时识别扫描页中的文字。
+- **整理错题**：保留题目与附件，单独保存 AI 分析及其修订记录。
+- **找聊天记录**：导入后搜索历史对话，回到原文核对上下文。
+- **保存长期记忆**：记录你明确要求记住的内容，保留来源和修改记录。
 
-当前源码为 [v0.9.1 Memory 并发校验修复](docs/releases/v0.9.1.md)，保留 [v0.9.0 Agent Orchestration](docs/releases/v0.9.0.md) 的 Study、History、Memory Gateway 边界。v0.9.0 的受限 Harness 真实模型曾分别通过当时 Desktop 原生工具完成 Study 保存回读、History 摘要回读、Memory pending历史候选保存回读及联合检索；这些是隔离自造资料验收，不是生产学习效果证明，也不是本次补丁的原生 Host 验收。历史证据见[原生三域检查点](docs/checkpoints/2026-10-26-v090-native-three-domain-closeout.md)，当前修复范围见 [v0.9.1 发行说明](docs/releases/v0.9.1.md)，实际发行状态见 [GitHub Releases](https://github.com/abdullejan25-max/cognivault/releases)。包版本号本身不证明已发布。
+## 先跑起来
 
-## What CogniVault manages
+### Windows
 
-- **Study** — Search a user-selected QMD collection. StudyVault remains the authoritative source; search does not replace or rewrite the original materials.
-- **Personal History** — Keep source evidence separate from deterministic canonical conversations and messages. Uncertain or unsupported input remains source-only.
-- **Wrong Answers** — Preserve the original question evidence and store Agent analysis separately as versioned records.
-- **Assets and Documents** — Explicitly register original files and keep extracted text or OCR as derived data linked to its source.
-- **Legacy source evidence** — Preserve typed historical input without guessing roles, ordering, timestamps, or conversation boundaries.
+1. 下载[最新版本](https://github.com/abdullejan25-max/cognivault/releases/latest)中的源码压缩包（`Source code (zip)`），解压到准备长期使用的目录。
+2. 双击根目录的 `install.cmd`，等待安装完成。它会准备 uv、Python 3.11 和项目依赖，无需提前安装这些工具。
+3. 用 Codex 打开这个目录，确认信任项目并新建会话，发送：
 
-## Quick start
+   ```text
+   调用 cognivault 的 health_report，检查当前配置状态。
+   ```
 
-### Windows：双击安装（推荐）
+安装器先准备运行环境和默认只读配置，首次安装不会接入个人资料。要搜索教材、导入历史或保存错题，还需要配置相应的数据目录和权限。教材搜索和扫描文字识别需要另装组件，具体步骤见[安装说明](docs/installation.md)。
 
-下载并解压仓库源码，双击根目录的 **`install.cmd`**。安装入口会自动准备 uv、Python 3.11 和锁定的项目依赖，生成默认只读的本地配置及 Codex 项目配置。无需预装 Python、uv 或 Git，也无需先手工编辑 TOML。
+WorkBuddy、Hermes 等客户端可以使用同一个本地服务，配置入口见下方。
 
-安装完成后，在 Codex 中打开该项目目录、确认信任项目并新建会话，发送：`调用 cognivault 的 health_report，检查当前配置状态。` 安装器显示的完成状态代表基础安装完成；真实客户端连接需要这一步确认。
+### 手动安装
 
-首次安装默认尚未接入个人资料，Study、History、Assets 均为 `not_configured`。资料搜索、历史查询和错题保存可以按需配置；QMD、OCR 未自动安装。重复运行会保留已有数据位置与权限。其他本机 MCP 客户端及故障重试见[安装说明](docs/installation.md)。
+需要 Python 3.11 或以上版本，以及 [uv](https://docs.astral.sh/uv/)。
 
-### 手动安装与其他平台
+首次安装时，将 `config.example.toml` 复制为 `config.local.toml`，在里面填写自己的数据位置和权限；已有安装沿用原配置。使用旧包 `chatgpt-study-system-v2` 的用户，请先按[旧包升级步骤](#upgrade-from-the-former-distribution)处理。然后在仓库根目录运行：
 
-#### Prerequisites
-
-The core runtime needs Python 3.11 or later and [`uv`](https://docs.astral.sh/uv/). It works independently of any particular Agent Host.
-
-#### Install and configure the Gateway
-
-From the repository root, create the private local configuration and install the project. For an existing installation of the former distribution, follow the [upgrade sequence](#upgrade-from-the-former-distribution) before running `uv sync`:
-
-```powershell
-Copy-Item config.example.toml config.local.toml
+```shell
 uv sync --project . --no-editable
 ```
 
-Edit `config.local.toml` outside Git to set the local data locations and capabilities you intend to enable. The example configuration is read-only by default. On Windows, keep `--no-editable`: it installs a wheel and avoids a Python 3.11 editable `.pth` decoding issue when the checkout path contains non-ASCII characters.
+更新源码或依赖后，再运行一次这条命令。
 
-An MCP Host starts the Gateway over stdio using the local configuration. The command form is:
+## 连接 AI 客户端
+
+CogniVault 通过 MCP 连接客户端。MCP 是 AI 客户端调用外部工具的协议；这里使用本机的 stdio 连接，由客户端启动 Gateway（负责权限检查和数据读写的本地服务）。
+
+| 客户端 | 配置说明 |
+| --- | --- |
+| Codex Desktop | [接入步骤](docs/codex-host-setup.md) |
+| WorkBuddy | [接入步骤](docs/workbuddy-host-setup.md) |
+| Hermes | [接入步骤](docs/hermes-host-setup.md) |
+
+其他支持 stdio MCP 的客户端，需要按各自的说明配置并验证连接。启动命令的形式如下，路径请换成自己的：
 
 ```text
 uv run --no-sync --project <repository-path> python -m cognivault.transports.mcp_stdio --config <absolute-config-path>
 ```
 
-Run `uv sync` before the first launch and after changing the checkout or dependencies; `--no-sync` does not install or update dependencies. Host-specific command, argument, environment, and path fields depend on the client.
+`--no-sync` 不会安装依赖，启动前应先完成上一节的同步。`.codex/setup_mcp.py` 只负责生成 Codex 的项目配置，其他客户端不需要运行它。
 
-#### Upgrade from the former distribution
+目前提供的是本机 stdio MCP 服务，没有 HTTP 接口。[ChatGPT 网页版 / Tunnel 接入方案](docs/chatgpt-integration.md)还没有完成整套连接测试。
 
-The current Python distribution, import package, and standard MCP registration are `cognivault`. Use a fresh Python environment, or uninstall `chatgpt-study-system-v2` **before** installing `cognivault` in the existing environment. For an existing repository environment on Windows:
+开发者可以使用[任务编排库](docs/agent-orchestration.md)，组织不同模型和执行器的任务。
+
+## 按需添加组件
+
+- **教材搜索**：另行安装 Node.js 和 QMD，在本地配置中指定资料目录、集合和索引位置。
+- **扫描件识别**：安装 Tesseract 和所需语言数据，再安装 Python 扩展：
+
+  ```shell
+  uv sync --project . --extra pdf-ocr --no-editable
+  ```
+
+- **聊天记录与长期记忆**：分别配置数据存储和权限，参见[历史导入](docs/history-source-ingestion.md)和[Memory 使用说明](docs/memory-mvp.md)。安装本身不会自动导入记录。
+
+## 资料和隐私
+
+CogniVault 只访问你配置的数据位置，不会自动扫描个人目录或上传资料。原始文件与识别出来的文字、AI 分析分开保存，保留来源，方便回到原文核对。
+
+私有配置、数据库、日志和个人资料不应提交到 Git。如果客户端使用云端模型，返回给它的检索内容也会进入相应的对话上下文。数据目录和权限的具体说明见[隐私说明](docs/privacy-boundary.md)。
+
+<a id="upgrade-from-the-former-distribution"></a>
+
+## 从旧包升级
+
+如果以前安装的是 `chatgpt-study-system-v2`，建议使用新环境。沿用原环境时，先卸载旧包，再安装 `cognivault`。以 Windows 的项目环境为例：
 
 ```powershell
 uv pip uninstall --python .venv/Scripts/python.exe chatgpt-study-system-v2
 uv sync --project . --no-editable
 ```
 
-The two distributions share the deprecated `chatgpt_study_system.transports.mcp_stdio` shim path and the `study-migrate` launcher. Installing the new distribution first and then uninstalling the old one removes both shared files; restore them in the repository environment with `uv sync --project . --no-editable --reinstall-package cognivault` if that sequence already happened. An old regular package can also shadow the new shim in an editable installation. Do not keep both distributions installed.
+两个包共用兼容入口和 `study-migrate` 命令，顺序弄反会误删新包的这些文件。如果已经发生，可运行下面的命令恢复：
 
-The old stdio module is a deprecated startup shim that delegates to the single CogniVault Gateway and writes a notice to stderr; other old Python APIs are not supported. Update current Host registrations to `cognivault` and launch `cognivault.transports.mcp_stdio`. The Codex helper migrates only exact recognized helper-generated old configs; custom Codex, Hermes, and WorkBuddy registrations need manual changes. Preserve private backend paths and capabilities. See [Codex setup](docs/codex-host-setup.md), [WorkBuddy setup](docs/workbuddy-host-setup.md), and [Hermes setup](docs/hermes-host-setup.md).
+```shell
+uv sync --project . --no-editable --reinstall-package cognivault
+```
 
-## Agent Hosts and validation
+客户端注册名和启动模块也要改为 `cognivault` 与 `cognivault.transports.mcp_stdio`，原有数据路径和权限继续保留。旧模块 `chatgpt_study_system.transports.mcp_stdio` 仅作为启动兼容入口保留，其他旧 Python API 不再支持；自定义客户端配置的修改方法见各自的接入说明。
 
-Codex Desktop, WorkBuddy, and Hermes connect to the same Gateway implementation and explicitly configured data layer. Host evidence is time-scoped: pre-rename Desktop, WorkBuddy, and Hermes checks are historical; the post-rename Codex CLI read-only checks are recorded in Current State.
+## 版本与文档
 
-| Host | Project validation record | Setup or evidence |
-| --- | --- | --- |
-| Codex | Historical Desktop native MCP read: **PASS**; post-rename fresh CLI read-only integrity checks: **PASS** | [Host setup](docs/codex-host-setup.md) · [Current State](docs/current-state.md) |
-| WorkBuddy | P12 integration: **PASS**; P13 History GUI verification: **DEFERRED** | [Host setup](docs/workbuddy-host-setup.md) · [P12 checkpoint](docs/p12-step2-workbuddy-checkpoint.md) · [Current State](docs/current-state.md) |
-| Hermes | Native MCP History read / no-result checks: **PASS** | [Host setup](docs/hermes-host-setup.md) · [Current State](docs/current-state.md) |
-| Other local stdio MCP clients | Protocol-compatible; not individually validated by this project | Follow the client’s stdio MCP configuration instructions. |
+当前正式版本是 [v0.9.1](https://github.com/abdullejan25-max/cognivault/releases/tag/v0.9.1)，修复了并发保存记忆时的偶发报错。完整变更见[发行说明](docs/releases/v0.9.1.md)。
 
-`.codex/setup_mcp.py` is only a Codex Desktop Host setup helper. It generates the Git-ignored `.codex/config.toml`; it is not part of the core installation or a requirement for other Hosts.
+- [项目进展与已知限制](docs/current-state.md)
+- [架构说明](docs/architecture.md)
+- [历史记录的整理方式](docs/history-normalization.md)
+- [备份与恢复](docs/p13-recovery.md)
 
-## Current stable release
+## 许可证
 
-以 [GitHub 最新正式 Release](https://github.com/abdullejan25-max/cognivault/releases/latest) 核验当前稳定发行版；源码中的版本号与历史检查点不能替代该记录。[v0.8.0](docs/releases/v0.8.0.md) 的 identity transition、CI 和完整性修复仍保留其历史范围。下列采集闭环属于 v0.7.0 完成检查点，不是 v0.8.0 或 v0.9.0 新采集结果：
-
-| Measure | Result |
-| --- | ---: |
-| Sources / outcomes | 1,804 |
-| Canonical conversations | 487 |
-| Distinct canonical messages | 7,334 |
-| Wholly source-only records | 1,351 |
-| Bounded V1 original inputs | 443 |
-| V1-only unknown | 0 |
-
-See [Current State](docs/current-state.md) for Host, acquisition, and recovery details.
-
-## Optional Components
-
-- **Study search:** Install Node.js and QMD separately, then configure their executable, collection, and index locations in the private config. They are not bundled with CogniVault.
-- **OCR:** Only for scanned pages or PDFs without a usable text layer. Install Tesseract and the required language data, then enable the optional Python extra with `uv sync --project . --extra pdf-ocr --no-editable`. OCR output is derived text and does not replace the source page.
-- **ChatGPT Web / Secure MCP Tunnel:** **OPTIONAL / DEFERRED BY OWNER CHOICE**. The [technical guide](docs/chatgpt-integration.md) remains available; live tunnel E2E is unverified and is not a v0.8.0 release gate.
-
-## Current Limitations
-
-- CogniVault's current transport is local stdio MCP. ChatGPT Web / Secure MCP Tunnel integration is optional and deferred by owner choice.
-- The official ChatGPT export remains `acquisition_pending`.
-- WorkBuddy P13 History GUI verification remains **DEFERRED**; this does not change its P12 integration result.
-- Caller and Agent identity is `reported / unverified`, not authenticated identity.
-
-## Local data and privacy
-
-StudyVault is the sole authoritative source for Study. Private configuration, databases, logs, exports, and personal learning materials stay outside Git. CogniVault does not automatically scan personal directories, import chat history, or upload StudyVault data. Agent-facing reads and writes pass through the configured Gateway and its capability checks; original evidence remains distinct from derived History, document text, and versioned analysis. Installing dependencies downloads software packages from the configured package source, not personal study data. `.gitignore` helps prevent accidental commits but is not a security boundary.
-
-See the [Privacy Boundary](docs/privacy-boundary.md) for data and capability details.
-
-## License
-
-CogniVault is licensed under [Apache-2.0](LICENSE). The optional `pdf-ocr` extra includes PyMuPDF, which has separate AGPL or commercial licensing terms; see the [license audit](docs/license-audit.md) before enabling it.
-
-## Documentation
-
-- [Current State](docs/current-state.md) — Current release, Host, acquisition, and recovery status.
-- [Architecture](docs/architecture.md) — Stable components, data boundaries, and extension points.
-- [History source ingestion](docs/history-source-ingestion.md) and [canonical normalization](docs/history-normalization.md).
-- [Recovery](docs/p13-recovery.md).
-- Historical checkpoints: [P11](docs/p11-real-migration-completion.md), [P12](docs/p12-step4-cross-agent-checkpoint.md), and [P13](docs/p13-history-completion-checkpoint.md). Their original project names, commands, Host aliases, and figures are time-scoped evidence; current setup instructions are above.
-- Current repository: [abdullejan25-max/cognivault](https://github.com/abdullejan25-max/cognivault).
+项目使用 [Apache-2.0](LICENSE) 许可证。可选的文字识别组件有单独的许可要求，启用前请阅读[依赖许可说明](docs/license-audit.md)。
