@@ -513,7 +513,16 @@ class SQLiteMemoryStore:
         path = self.database_path
         try:
             for candidate in (path, *(Path(str(path) + suffix) for suffix in ("-wal", "-shm", "-journal"))):
-                if _path_has_reparse_point(candidate) or (candidate.exists() and (not candidate.is_file() or candidate.stat().st_nlink > 1)):
+                if _path_has_reparse_point(candidate.parent):
+                    raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
+                try:
+                    info = candidate.lstat()
+                except FileNotFoundError:
+                    continue
+                # DELETE journals may disappear while another connection commits.
+                # Judge the leaf from one no-follow snapshot, not exists/is_file/stat.
+                if not stat.S_ISREG(info.st_mode) or info.st_nlink > 1 \
+                        or getattr(info, "st_file_attributes", 0) & 0x400:
                     raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")
             if not path.parent.is_dir():
                 raise GatewayError("STORAGE_UNAVAILABLE", "Memory storage is unavailable")

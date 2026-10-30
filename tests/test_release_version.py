@@ -46,7 +46,7 @@ def audit(root: Path) -> subprocess.CompletedProcess[str]:
     )
 
 
-@pytest.mark.parametrize("version", ["0.9.0", "0.10.0"])
+@pytest.mark.parametrize("version", ["0.9.0", "0.9.1", "0.10.0"])
 def test_package_audit_uses_declared_version(tmp_path: Path, version: str) -> None:
     prepare_archives(tmp_path, version)
     result = audit(tmp_path)
@@ -91,5 +91,5 @@ def test_lockfile_matches_source_candidate_version() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     lock = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
     package = next(item for item in lock["package"] if item["name"] == project["name"])
-    assert project["version"] == "0.9.0"
+    assert project["version"] == "0.9.1"
     assert package["version"] == project["version"]
