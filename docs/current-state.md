@@ -1,6 +1,10 @@
 # Current State
 
-最近核对：2026-10-26。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+最近核对：2026-10-31。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+
+## v0.9.1 Memory 并发修复（2026-10-31）
+
+当前源码修复 Memory 对 SQLite 临时日志文件多次读取元数据产生的竞态，保留硬链接、符号链接、Windows reparse、父路径和访问错误保护。不涉及 schema、真实数据迁移或权限扩展。首次失败记录见[项目测试](checkpoints/2026-10-31-project-test.md)，修复与发行边界见 [v0.9.1](releases/v0.9.1.md)。本次代码与隔离测试不代表当前 Desktop 原生或生产验收通过。
 
 ## v0.9.0 Agent Orchestration 源码与验收（2026-10-26）
 
