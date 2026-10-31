@@ -13,7 +13,8 @@
 - `DONE`：执行计划与[本机宿主合同调查](../research/2026-10-31-automatic-recall-host-contracts.md)。
 - `DONE`：当前聊天原生 `read_mcp_resource(cognivault, study-workflow://personal-answer)` 成功；`health_report` 返回 `ok=true`。该响应自报 `gateway_version=0.8.0`，不据此推断运行包与本树源码版本一致。
 - `DONE`：初始完整隔离回归 `uv run --extra dev pytest -q`：**1555 passed, 17 skipped，565.28 秒**。首次系统 Python 因缺 `anyio` / `pypdf` 无法收集；通过本树 `uv sync --extra dev` 建立 `.venv` 后重跑完成，未修改生产环境。
-- `PARTIAL`：Recall Core 实现与聚焦验证；提交和独立审查尚待收口。
+- `DONE`（软件层）：Recall Core、64 项新行为测试及既有 10 项 bundle 回归，共 **74 passed**；两轮独立审查修复误跳过个人翻译及超大元数据突破 deadline，Task 1 的 spec/code quality 均通过。
+- `PARTIAL`：正式只读连接、command hook、Codex 持久宿主适配、DSH 原生桥接及 Hermes 通用接口正在实现/验证；不代表实际宿主加载。
 - `NOT RUN`：四端真实自动回忆回调、正式隔离命中、模型答案使用、真实进程重启及生产启用。
 
 ## 设计修正与尚存限制
@@ -24,6 +25,24 @@
 4. DSH `0.2.1-rc.3` 原生 `agent/pre-step` 的 turn 为数值，应用真实用户消息 ID 去重；同一 turn 可有新用户 steer 消息。PTC 模式不能通过伪造 parent 或跳过工具 registry 来调用 MCP。
 5. WorkBuddy `5.7.3` 的脚本 stdin 没有已证明的 turn 字段；程序原生环境 `CODEBUDDY_CONVERSATION_REQUEST_ID` 可用于身份，实际回调仍待验证。
 6. Host 可能将注入证据保存为普通会话内容，且会发送到其模型；插件诊断不存正文不代表 Host 不保存。
+7. 本聊天 `list_artifacts` 返回空；尝试附加指定既有工作树时，应用返回 `This worktree is owned by another task.`。没有绕过所有权或创建另一个工作树；文件开发始终显式指定 `5faf` 路径。此聊天原生 MCP 成功不证明该工作树的项目 hook 已加载。
+8. Codex 官方文档要求对新/变更 hook 的精确 hash 单独 review/trust。不会写信任状态或使用 hook-trust bypass 参数；真实 Desktop 门槛保持未通过。
+
+## 已实际运行的额外隔离探针
+
+在 Git 外新的 `automatic-recall-acceptance/20261031-dfc133a6` 目录使用既有人工合成准备脚本创建独立资料与显式只读配置。没有加载生产配置；诊断只保存 case 标识、状态、域、耗时、条目/字符和后端次数。
+
+| SDK 用例 | 联合调用 / 真实后端调用 | 实测结果 | 解释 |
+| --- | --- | --- | --- |
+| 过去选择物理 | 1 / 7 | Memory、History 命中，`COMPLETE`，约 93 ms | Gateway 内部字面别名会增加后端次数 |
+| 今天复习什么 | 1 / 10 | Memory、History 命中，Study 0，`COMPLETE`，约 141 ms | Study 查询漏掉英文 physics 教材；业务召回质量仍 `PARTIAL`，协议 COMPLETE 不代表全库完整 |
+| 独立算式、完整引号翻译 | 0 / 0 | `NOT_NEEDED` | 无资料读取 |
+| 依赖历史原文的翻译 | 2 / 6 | `NO_EVIDENCE` | 确实尝试，不猜不存在的原文 |
+| 本夹具未保存的复习偏好 | 3 / 15 | `NO_EVIDENCE` | 不把无命中改成记忆 |
+
+早期 command 进程探针：冷启动约 **4453 ms** 后 `UNAVAILABLE`；当时独立算式也因先连接后规划而失败。原始失败保存在该独立目录的 `sdk-command-results-development-failure-1.json`，不能覆盖或拼成 PASS。普通问题先规划再连接的修复与最终回归另行记录。
+
+由于固定只读 MCP 连接初始化本身约 3.7 秒，新增 Codex 持久宿主适配服务，在会话启动时保持连接，每个提问仍用共用 Core 的默认三秒。不会调高默认预算来掩盖 command 冷启动失败，也不会把标准 MCP SDK 调用写成真实 Desktop 回调。
 
 ## 逐端状态（实施中）
 
