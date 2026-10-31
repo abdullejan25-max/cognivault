@@ -173,7 +173,9 @@ def _bridge(ctx, config, request, deadline, is_interrupted, set_interrupt):
         threading.Thread(target=read_lines, daemon=True).start()
 
         def send(value):
-            raw = json.dumps(value, ensure_ascii=True, separators=(",", ":"), allow_nan=False).encode() + b"\n"
+            # UTF-8 preserves the Core's original input/window. ASCII escaping
+            # would inflate valid 50k-char CJK prompts beyond the wire byte cap.
+            raw = json.dumps(value, ensure_ascii=False, separators=(",", ":"), allow_nan=False).encode("utf-8") + b"\n"
             if len(raw) > 262144:
                 raise ValueError("INVALID_RESPONSE")
             # Even a bridge which stalls before reading stdin must remain

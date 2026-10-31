@@ -129,6 +129,8 @@ plugins:
 
 前两项必须为绝对路径，`core_source_root` 指向包含 `cognivault` 包的目录；子进程固定使用该 Python 的 `-X utf8 -m cognivault.recall.bridge`，通过 `PYTHONPATH` 加载 Core。`gateway_server` 只接受受限短标识，域只能从 `memory/history/study` 选择。正式 MCP server 必须已在该 Hermes profile 连接并使用精确只读 Gateway 配置；上例不构成 server 注册，也不自行发现/复制私有配置。`context_delivery_acknowledged` 明确确认本页的外部模型及 Host 日志披露。所有值来自可信插件设置，问题、历史和来源不能更换解释器、连接或工具。
 
+Hermes 0.22.5 的 manifest `config_schema` 是逐设置键声明 `{type, required, description}` 的映射；官方解析器仅对必填与类型给出提示，不会阻止插件加载。绝对路径、域选择、server 格式和确认必须为 `true` 等安全限制由插件回调再次严格拒绝，不能把 manifest 提示当成权限校验。
+
 插件只注册 `pre_llm_call`。当前真实 `user_message` 的文字部分交给共用 Core，不把 `conversation_history` 中混有 hook、tool 或来源的文本当作真实用户授权。真实 `session_id/turn_id` 必须存在，`task_id` 纳入身份范围；缺失时返回 `MISSING_HOST_IDENTITY`。本实现不跨轮保存用户正文，因此不使用近期历史窗口。身份去重仅保留 1024 个配置/会话/任务/轮次摘要，不保存问题或证据；同轮重复不注入，新轮重新查询，重启或超出 last-N 窗口后不承诺永久去重。
 
 每次回调的三秒总截止包含 Core 子进程、管道读写与原生工具等待。桥只能申请固定 `retrieve_evidence`、配置允许的域、每后端 `limit=3`、最多三次联合检索；未知操作、序号错误、越权域、错误或截断的原生 envelope 均拒绝。请求经 `ctx.call_mcp(server, "retrieve_evidence", arguments, timeout=remaining)` 发送，保留 Hermes `plugins.entries.<id>.mcp_allowlist` 默认拒绝、profile scope、原生信任与工具策略；没有绕过权限的私有 client API。Hermes 会将 timeout 至少钳制到一秒，因此插件自身另外按同一总截止停止等待并中断当前 RPC。
@@ -140,6 +142,8 @@ plugins:
 ```text
 uv run --extra dev pytest tests/test_hermes_native_recall.py -q
 ```
+
+另有官方 manifest 解析器合同用例：显式提供 `HERMES_NATIVE_TEST_PYTHON`（官方独立运行时 Python）与 `HERMES_NATIVE_TEST_SOURCE`（锁定官方源码目录）后运行同一命令。未提供时该单项明确 skip，不把普通测试环境冒充官方 Host；其子进程使用临时 home，仅解析本仓库 manifest，不读取用户配置或资料。
 
 ## 验证与尚需完成的验收
 

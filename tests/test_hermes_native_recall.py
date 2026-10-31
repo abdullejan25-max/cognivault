@@ -6,7 +6,9 @@ from concurrent.futures import ThreadPoolExecutor
 import contextvars
 import importlib.util
 import json
+import os
 from pathlib import Path
+import subprocess
 import sys
 import threading
 import time
@@ -178,6 +180,15 @@ def test_user_multimodal_text_only_ignores_untrusted_conversation_history(interr
     assert ctx.calls == []
 
 
+def test_long_cjk_message_reaches_core_window_without_ascii_expansion_failure(interrupts):
+    ctx = NativeContext()
+    message = "我的目标是什么" * 7000  # 49,000 chars, inside the accepted 60,000-char Host input.
+    result = packet(hook(ctx)(**event(user_message=message)))
+    assert result["status"] == "COMPLETE"
+    assert len(ctx.calls) == 1
+    assert ctx.calls[0][2] == {"queries": {"memory": "目标", "history": "目标"}, "limit": 3}
+
+
 @pytest.mark.parametrize("status", ["PARTIAL", "UNAVAILABLE"])
 def test_native_structured_missing_status_is_delivered(interrupts, status):
     ctx = NativeContext()
@@ -333,3 +344,43 @@ def test_content_free_identity_window_evicts_oldest_after_1024(interrupts, monke
     callback(**event(turn_id="turn-1024"))
     callback(**event(turn_id="turn-0"))
     assert len(calls) == 1026
+
+
+def test_official_manifest_parser_recognizes_settings_and_warns_on_missing_or_wrong_types(tmp_path):
+    """Optional pinned-Host contract; an installed native runtime is explicit.
+
+    Catches a manifest written as JSON Schema: Hermes would drop the required
+    setting names and silently lose all five required/type diagnostics.
+    """
+    python = os.environ.get("HERMES_NATIVE_TEST_PYTHON")
+    source = os.environ.get("HERMES_NATIVE_TEST_SOURCE")
+    if not python or not source:
+        pytest.skip("official Hermes runtime not supplied for manifest contract")
+    script = '''
+import json, sys
+from pathlib import Path
+from hermes_cli.plugins_manifest import parse_manifest_file, validate_config_schema
+manifest = parse_manifest_file(Path(sys.argv[1]), Path(sys.argv[1]).parent, "user", "")
+assert manifest is not None
+settings = {"python_executable": "C:/synthetic/python.exe", "core_source_root": "C:/synthetic/src",
+            "gateway_server": "cognivault_synthetic", "allowed_domains": ["memory"],
+            "context_delivery_acknowledged": True}
+print(json.dumps({"keys": sorted(manifest.config_schema),
+    "valid": validate_config_schema(manifest.name, manifest.config_schema, settings),
+    "missing": validate_config_schema(manifest.name, manifest.config_schema, {}),
+    "wrong": validate_config_schema(manifest.name, manifest.config_schema,
+                                   settings | {"context_delivery_acknowledged": "yes"})}))
+'''
+    result = subprocess.run([python, "-X", "utf8", "-c", script, str(ROOT / "hosts/hermes-plugin.yaml")],
+        env=os.environ | {"PYTHONPATH": source, "HERMES_HOME": str(tmp_path / "home"),
+                          "HERMES_RUNTIME_DIR": str(tmp_path / "runtime")},
+        capture_output=True, text=True, encoding="utf-8", timeout=15)
+    assert result.returncode == 0, result.stderr
+    output = json.loads(result.stdout)
+    assert output["keys"] == ["allowed_domains", "context_delivery_acknowledged", "core_source_root",
+                              "gateway_server", "python_executable"]
+    assert output["valid"] == []
+    assert len(output["missing"]) == 5
+    assert len(output["wrong"]) == 1
+    assert "context_delivery_acknowledged should be bool" in output["wrong"][0]
+    assert result.stderr == ""
