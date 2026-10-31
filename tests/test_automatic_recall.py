@@ -185,7 +185,7 @@ def test_same_round_deduplicates_without_caching_evidence_between_rounds():
     run(scenario())
 
 
-@pytest.mark.parametrize("message", ["翻译：Hello world", "翻译：我喜欢苹果", "翻译Hello world", "请帮我计算 12 * 8", "Translate 'good morning' to Chinese"])
+@pytest.mark.parametrize("message", ["翻译：Hello world", "翻译：“我喜欢苹果”", "翻译Hello world", "请帮我计算 12 * 8", "Translate 'good morning' to Chinese"])
 def test_explicit_independent_tasks_do_not_disclose_personal_context(message):
     async def retrieve(*args):
         pytest.fail("independent translation/calculation must not retrieve")
@@ -427,6 +427,7 @@ def test_host_plan_does_not_bypass_user_message_shape_validation():
 @pytest.mark.parametrize("message", [
     "翻译我昨天写的日记", "翻译我上周发的邮件", "翻译我写的那段话", "翻译当时讨论的内容",
     "翻译我们刚谈过的内容", "翻译此前保存的信件",
+    "翻译：我们刚谈过的内容", "翻译：此前保存的信件",
 ])
 def test_personal_source_translation_is_not_misclassified_as_independent(message):
     calls = []

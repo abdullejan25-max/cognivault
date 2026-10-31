@@ -82,11 +82,13 @@ def local_plan(request: RecallRequest, policy: RecallPolicy) -> RecallPlan:
     independent_math = re.fullmatch(r"[\d\s.+*/×÷()=%^−-]+[?？。]?", expression)
     translation = re.match(r"^(?:请帮我|帮我|请)?\s*(?:翻译|translate\b)\s*(.*)$", current, re.I)
     payload = translation.group(1).strip() if translation else ""
+    if payload.startswith((":", "：")):
+        payload = payload[1:].strip()
     # Absence of a known reference word does not prove that text is supplied.
-    # Only explicit payload markers (or a short ASCII literal) justify skipping.
-    marked_payload = (payload.startswith((":", "：")) and bool(payload[1:].strip())) or (
-        payload[:1] in ('"', "'", "“", "「") and len(payload) > 2
-        and any(c in payload[1:] for c in ('"', "'", "”", "」")))
+    # A colon is only a separator. Require a fully quoted literal or short ASCII
+    # text; ambiguous Chinese payloads conservatively retain personal recall.
+    quote_pairs = {'"': '"', "'": "'", "“": "”", "「": "」"}
+    marked_payload = len(payload) > 2 and quote_pairs.get(payload[:1]) == payload[-1:]
     ascii_literal = (0 < len(payload) <= 100
                      and re.fullmatch(r"[A-Za-z0-9\s'\".,!?;-]+", payload)
                      and not re.search(r"\b(?:what|my|our|we|the|this|that|it|last|earlier|previous|saved|wrote|discussed|messages)\b", payload, re.I))
