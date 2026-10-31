@@ -1,6 +1,6 @@
 # 通用只读自动回忆接入
 
-此实现把宿主的真实用户事件交给同一个 `RecallCore`：本地规划查询，经正式 Gateway 的 `retrieve_evidence` 取证，再把受限证据交回作答前入口。没有自动写 Memory、会话采集、provider 同步或后台人格功能。本文的配置均为待人工审阅的示例，本次没有安装插件、启用生产或改写任何现有记忆插件。
+此实现把宿主的真实用户事件交给同一个 `RecallCore`：本地规划查询，经正式 Gateway 的 `retrieve_evidence` 取证，再把受限证据交回作答前入口。没有自动写 Memory、会话采集、provider 同步或后台人格功能。本文配置示例不代表生产已启用；本次仅在新建的隔离 Hermes home 安装插件并连接人工合成的只读 Gateway，未改写现有记忆插件或生产配置。
 
 ## 当前完成范围
 
@@ -9,7 +9,7 @@
 | Codex 持久 Host companion + `mcp_tool` hook | 标准 MCP SDK 启动、正式只读 Gateway 连接、连续轮次、去重与取消协议通过 | 未配置/未信任 exact hook；真实 Desktop 回调与模型使用 NOT RUN，不能标 AUTO |
 | Codex / WorkBuddy command hook | stdin/env 身份、正式配置、跨进程去重、缺失状态、总截止测试通过 | 本机一次 MCP 冷启动约 3.734 秒，超过默认 3 秒，可能 `DEADLINE_EXCEEDED`；真实端 NOT RUN |
 | DSH native | 原生 registry 薄适配器 + Python JSON bridge、合成行为及本机程序函数协议测试通过 | 完整插件装载/真实会话 NOT RUN；PTC 明确 UNSUPPORTED |
-| Hermes 通用 `pre_llm_call` | 默认未接线与显式 callback 合同；不注册 memory provider | 本机有效安装未定位，BLOCKED；默认 `HERMES_NATIVE_BINDING_UNSUPPORTED`，真实端 NOT RUN |
+| Hermes 原生 `pre_llm_call` | 独立官方 v0.22.5、真实 loader/native MCP/lifecycle 组件交付；不注册 memory provider | 组件 PARTIAL；完整 CLI 实际返回 AUTH_REQUIRED，模型使用/重启/取消未通过，不能标 AUTO；旧 callback scaffold 默认仍 UNSUPPORTED |
 
 SDK、程序函数协议、真实模型、每端原生会话与生产验收是独立层级。配置文件存在不代表回调运行，回调运行不代表模型已使用或正确引用证据。其他客户端仍须核实其真实用户身份、正式工具入口、取消和作答前交付，不能凭通用 callback 自称 AUTO。
 

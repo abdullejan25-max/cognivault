@@ -14,15 +14,15 @@
 - `DONE`：当前聊天原生 `read_mcp_resource(cognivault, study-workflow://personal-answer)` 成功；`health_report` 返回 `ok=true`。该响应自报 `gateway_version=0.8.0`，不据此推断运行包与本树源码版本一致。
 - `DONE`：初始完整隔离回归 `uv run --extra dev pytest -q`：**1555 passed, 17 skipped，565.28 秒**。首次系统 Python 因缺 `anyio` / `pypdf` 无法收集；通过本树 `uv sync --extra dev` 建立 `.venv` 后重跑完成，未修改生产环境。
 - `DONE`（软件层）：Recall Core、64 项新行为测试及既有 10 项 bundle 回归，共 **74 passed**；两轮独立审查修复误跳过个人翻译及超大元数据突破 deadline，Task 1 的 spec/code quality 均通过。
-- `PARTIAL`：正式只读连接、command hook、Codex 持久宿主适配、DSH 原生桥接及 Hermes 通用接口正在实现/验证；不代表实际宿主加载。
+- `DONE`（软件层）：正式只读连接、command hook、Codex 持久宿主适配、DSH 原生桥接、Hermes 兼容接口及独立原生插件均已实现；不代表四端实际宿主加载或模型使用。
 - `DONE`（`7e701de` 软件基线）：宿主接入已提交，独立审查修复 DSH 绕过下游消息过滤及 metadata 误删边界；spec PASS、code quality APPROVED。聚焦 **98 passed, 1 skipped**；修复后完整回归 **1643 passed, 18 skipped，501.04 秒**。Windows symlink 权限不足的 skip 不算实测通过。
-- `NOT RUN`：四端真实自动回忆回调、正式隔离命中、模型答案使用、真实进程重启及生产启用。
+- `PARTIAL`：Hermes 真实插件装载、原生只读 MCP 与生命周期组件已有隔离命中及上下文交付回执；没有模型答案使用。其他三端真实自动回调、客户端进程重启及生产启用仍 `NOT RUN`。
 
 ## 设计修正与尚存限制
 
 1. 多词空格拼接和追加“相关记录”与 Gateway 字面匹配不适配；已要求每域单个短主题/谓词，用真实隔离 Gateway 用例验证命中，而非只有总能返回结果的 callback。
 2. command hook 不自动持有宿主原生 MCP 句柄；独立连接必须事先正式只读配置，不能在原生不可用时偷偷 fallback。
-3. Hermes 优先使用通用 `pre_llm_call`，不抢占唯一外部 memory provider，也不启用同步/提炼/镜像写入。有限位置未找到有效本机入口，当前版本 `UNKNOWN`；失效快捷方式不算安装成功。
+3. Hermes 使用通用 `pre_llm_call`，不抢占唯一外部 memory provider，也不启用同步/提炼/镜像写入。旧入口无效后已独立恢复官方 `v0.22.5`；本次恢复不是旧安装迁移。
 4. DSH `0.2.1-rc.3` 原生 `agent/pre-step` 的 turn 为数值，应用真实用户消息 ID 去重；同一 turn 可有新用户 steer 消息。PTC 模式不能通过伪造 parent 或跳过工具 registry 来调用 MCP。
 5. WorkBuddy `5.7.3` 的脚本 stdin 没有已证明的 turn 字段；程序原生环境 `CODEBUDDY_CONVERSATION_REQUEST_ID` 可用于身份，实际回调仍待验证。
 6. Host 可能将注入证据保存为普通会话内容，且会发送到其模型；插件诊断不存正文不代表 Host 不保存。
@@ -57,13 +57,40 @@
 
 新版本程序已明确提供 `PluginContext.call_mcp`、每插件服务器 allowlist、`pre_llm_call` 的真实 turn_id，以及线程级中断 API。因此继续实现原生插件：共用 Core 在指定 CogniVault Python bridge 子进程内运行，Hermes 原生调用正式 Gateway，不把两套 MCP Python 依赖混装。此节点及真实 CLI/模型验收仍在进行，不能将已有 scaffold 标为原生成功。
 
+### 恢复后的真实回执
+
+官方 PM 环境已安装完成，真实 `hermes --version` / `--help` 成功：`v0.22.5`、源码 `bf0203a794a0`、Python 3.14.9、MCP 2.3.0。单独 home 内安装本次插件，内建 Memory、用户画像、curator 关闭，不加载既有个人规则；只注册新的人工合成只读 Gateway，模型交付披露已显式确认。既有 Codex 登录不借用，`auth.adopt_external_logins=false`，避免上游说明的刷新令牌轮换竞争。
+
+`hermes mcp test cognivault_synthetic` 实际连接成功，约 9768 ms；它展示原始发现的 38 个只读工具，不证明插件可以调用全部工具。真实 `discover_mcp_tools` 过滤后仅注册 `mcp__cognivault_synthetic__retrieve_evidence`。真实 PluginManager 加载插件，使用正式 native MCP 和实际 `_collect_pre_llm_call_context` 的独立组件探针得到：
+
+| 生命周期组件用例 | 耗时 | 交付 |
+| --- | --- | --- |
+| 我当时为什么选择物理 | 912 ms | 1902 字符、2 条证据 |
+| 同一原生事件重放 | 4 ms | 空上下文 |
+| 计算 12 * 8 | 398 ms | 空上下文 |
+| 今天复习什么 | 677 ms | 1878 字符、2 条证据；Study 漏召回仍存在 |
+
+该探针真实使用 vendor loader/client/lifecycle，但由测试程序调用生命周期入口，没有模型与完整 CLI Agent，不能计作自动触发或答案使用 PASS。初次运行的 manifest 警告与原始回执保存在 `hermes-lifecycle-run1.json/.txt`，不覆盖；独立审查还发现长中文 JSON 转义突破桥的行预算，修复及复核另记。
+
+完整原生 CLI 以普通问题启动，实际退出 1，返回 `No Codex credentials stored`；原始 `hermes-native-cli-run1.txt` 保留。已经准备独立官方设备登录流程，需要用户本人完成认证。未手工读取、复制或刷新现有 Codex 凭据。登录不等于模型或自动回忆通过。
+
+### Task 4 修复后复核
+
+原生插件提交 `f16d556`，修复提交 `0f3bcb4`。独立审查明确复现并关闭两项 Important：官方 manifest 使用逐 setting 声明，不能用 JSON Schema 外框；长中文桥接改为 UTF-8 JSON，保留原始 Core 窗口及 262144 字节边界。新增真实官方 parser 与 49000 字符中文真实 bridge 回归，原失败报告保留；最终 scoped spec `PASS`、code quality `APPROVED`，无剩余 scoped finding。
+
+主代理独立重跑相关回归：**125 passed, 1 skipped，46.50 秒**，显式配置官方 Hermes Python/source，manifest 测试实际执行；skip 是 Windows symlink 权限不足。全套回归在修复前已启动、共收集原 35 项 Hermes 测试，最终 **1678 passed, 18 skipped，551.89 秒**；不把它描述为补充两项新测试也已被该次全套收集，新增路径由上述修复后聚焦回归验证。
+
+安装前后插件与 manifest SHA-256 一致，旧安装备份单列。修复后启动新的组件进程，`hermes-lifecycle-run2.json/.txt` 无 manifest 警告：启动 5558 ms；选科问题 779 ms、两条证据；重复 5 ms 空；算式 430 ms 空；学习建议 656 ms、两条证据。只是组件进程重跑，不是 Hermes 客户端重启验收。
+
+已另备仅用于该人工合成 home 的原生 `pre_api_request` / `post_llm_call` 观察插件，真实 loader 已核实三个 hook 均注册。只观察实际请求消息中的 recall 证据块与答案，不记录请求 headers/auth；模型尚未运行，因此没有这些观察回执，不能把已安装的观察器当作实际交付。另备独立登录/普通提问 PowerShell 启动器，代码不含凭据。设备登录网络轮询有重试，当前认证仍未完成。
+
 ## 逐端状态（实施中）
 
 | 客户端 | 已核实版本/连接 | 触发/计划/命中/交付/答案 | 当前真实状态 |
 | --- | --- | --- | --- |
 | Codex | CLI `0.166.0-alpha.5.1`、hooks stable/true；当前聊天原生 workflow/health 成功 | 自动提问 hook 均未运行；MCP 连通不是自动触发 | `AGENT_DIRECTED`；Desktop 自动验收 `NOT RUN` |
 | WorkBuddy | 安装程序 `5.7.3` 与 bundled CLI 合同 | 静态回调/环境身份已核实；实际桌面链路未运行 | `AGENT_DIRECTED` 兼容路径；自动验收 `NOT RUN` |
-| Hermes | 有效入口未定位，版本 `UNKNOWN` | 官方通用插件合同；本机生命周期与 native MCP 未核实 | 自动接入 `UNSUPPORTED`，原生验收 `BLOCKED` |
+| Hermes | 独立官方 `v0.22.5` / `bf0203a794a0`，原生只读 MCP 已连接 | 真实 loader/client/lifecycle 组件交付命中证据；普通提问 CLI 返回认证缺失 | 组件 `PARTIAL`，模型验收 `AUTH_REQUIRED`；不是 `AUTO` |
 | DSH | EXE/包 `0.2.1-rc.3`，原生工具 registry 合同 | native-mode 路径可实现；PTC 无已验证调用方案；根 CLI 版本启动超时 | 自动验收 `NOT RUN`，PTC `UNSUPPORTED` |
 
 ## 数据与发布边界

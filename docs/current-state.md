@@ -6,7 +6,7 @@
 
 已增加宿主侧共用 Recall Core、显式只读 MCP 连接、Codex 持久宿主适配、WorkBuddy command hook、DSH native JSON 桥及 Hermes 通用接口；没有把规则规划放入 Gateway，也没有增加自动写入。`7e701de` 基线完整隔离回归 **1643 passed, 18 skipped**，Core 与宿主边界的独立审查问题均已修复。合成 SDK 已验证持久连接、新版本/失效、请求去重与适配服务进程重启，不代表客户端重启或真实模型使用。
 
-整体仍为 **PARTIAL**：四端均未判为 `AUTO`；WorkBuddy command 冷启动超过默认三秒，DSH PTC 未支持，Codex exact hook 信任及完整交付未实测。用户要求自行处理 Hermes 入口后，正在独立环境恢复官方 `v0.22.5` 并实现其原生插件；旧接口脚手架不是原生接线。未来客户端沿用同一合同，不是四端白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
+整体仍为 **PARTIAL**：四端均未判为 `AUTO`；WorkBuddy command 冷启动超过默认三秒，DSH PTC 未支持，Codex exact hook 信任及完整交付未实测。用户要求自行处理 Hermes 入口后，已恢复独立官方 `v0.22.5`、安装原生插件并实际跑通 loader/client/lifecycle 组件及只读 Gateway 命中；完整 CLI 模型验收实际返回认证缺失。独立审查的 manifest 和长中文输入问题已修复并复核通过，相关回归 **125 passed, 1 skipped**（显式官方 manifest 解析器参与）；此前启动的全套回归 **1678 passed, 18 skipped**。组件交付证据不等于真实模型自动使用。未来客户端沿用同一合同，不是四端白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
 
 ## v0.9.1 Memory 并发修复（2026-10-31）
 
