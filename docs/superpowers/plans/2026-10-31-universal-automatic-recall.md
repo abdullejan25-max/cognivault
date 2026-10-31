@@ -28,6 +28,7 @@
 - `src/cognivault/recall/core.py`：取消、deadline、每请求去重、原生回调、证据预算与安全外框。
 - `src/cognivault/recall/__init__.py`：公开宿主合同。
 - `src/cognivault/recall/hosts.py` 及必要的独立插件文件：按核实后的宿主合同转换事件及交付；不得猜测 API。
+- `src/cognivault/recall/server.py`：Codex 的持久宿主适配服务，启动阶段建立正式只读 MCP 连接，每次 hook 调用共用 Core；不修改 Gateway、不引入模型或第二个 Agent。
 - `tests/test_automatic_recall.py`：独立人工合成的规则、调度、证据安全和新鲜度行为。
 - `tests/test_recall_hosts.py`：按实际协议转换和隔离 Gateway 集成。
 - `docs/automatic-recall.md`：配置、外部模型说明、能力边界和新增客户端合同。
@@ -65,6 +66,7 @@
 - [ ] 保存接口证据（版本、模块和行号/官方链接）。Codex 官方 `mcp_tool` hook 可调用已有连接，但模板展开不等于本地查询规划；command hook 不自动获得原生 MCP。必须在报告中处理这个差异。
 - [ ] 对有已核实 API 的宿主先写失败测试，再实现薄适配器；保留已有插件。Hermes provider 禁止 sync/extraction/mirror 写入，不抢占用户既有 provider。
 - [ ] 若需要独立只读 MCP 连接，提供正式持久配置合同：显式标识/域/外部模型内容交付确认、固定 Gateway 操作白名单、不接受 prompt 中的连接参数、不从 Host 缺失原生连接时自动启用。当前缺少正式配置即保持不可用；隔离合成配置与生产配置分开。
+- [ ] 根据实际冷启动超三秒的证据，增加最小 Codex 持久宿主 MCP 适配器：启动时连接一次，原生 `mcp_tool` 提问 hook 调用 `recall_for_prompt`，只向既有 Gateway 请求 `retrieve_evidence`；逐轮仍按默认三秒。单列原 command 冷启动失败与新持久连接 SDK 回执，不能合并成默认路径 PASS；不写 hook trust、不使用 bypass 参数。
 - [ ] 测试实际事件形状、同轮多 step、新轮次、正式连接缺失、取消、来源不能修改配置、无写工具；运行真实安装模块的协议特征测试，准确标为 SDK/协议测试。
 - [ ] 运行 `uv run --extra dev pytest tests/test_automatic_recall.py tests/test_recall_hosts.py tests/test_evidence_bundle.py -q`；提交 `feat: add automatic recall host integration contracts`。
 
@@ -83,3 +85,5 @@
 ## 计划自审
 
 设计每项要求均映射到三个任务：核心功能与预算在 Task 1，宿主正式连接/现有插件保护在 Task 2，逐端真实证据及不同验收层在 Task 3。规则语义召回局限和原生入口不足必须如实报告，不能以完成核心宣称四端完成。
+
+实施中补充：正式 MCP 冷启动约 3.7 秒，主代理早期 command 探针约 4.45 秒返回 `UNAVAILABLE`。因此 Task 2 增加会话启动时保持只读连接的宿主适配服务；这是延迟证据驱动的必要修正，不改变查询次数/注入预算或真实 Host 验收门槛。普通问题必须先经共用规则判定跳过，再决定是否建立资料连接。
