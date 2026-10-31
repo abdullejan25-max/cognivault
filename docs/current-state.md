@@ -1,12 +1,12 @@
 # Current State
 
-最近核对：2026-10-31。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+最近核对：2026-11-01（自动回忆续验）。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
 
 ## 通用自动回忆（开发分支，2026-10-31）
 
 已增加宿主侧共用 Recall Core、显式只读 MCP 连接、Codex 持久宿主适配、WorkBuddy command hook、DSH native JSON 桥及 Hermes 通用接口；没有把规则规划放入 Gateway，也没有增加自动写入。`7e701de` 基线完整隔离回归 **1643 passed, 18 skipped**，Core 与宿主边界的独立审查问题均已修复。合成 SDK 已验证持久连接、新版本/失效、请求去重与适配服务进程重启，不代表客户端重启或真实模型使用。
 
-整体仍为 **PARTIAL**：四端均未判为 `AUTO`；WorkBuddy command 冷启动超过默认三秒，DSH PTC 未支持，Codex exact hook 信任及完整交付未实测。用户要求自行处理 Hermes 入口后，已恢复独立官方 `v0.22.5`、安装原生插件并实际跑通 loader/client/lifecycle 组件及只读 Gateway 命中；完整 CLI 模型验收实际返回认证缺失。独立审查的 manifest 和长中文输入问题已修复并复核通过，相关回归 **125 passed, 1 skipped**（显式官方 manifest 解析器参与）；此前启动的全套回归 **1678 passed, 18 skipped**。组件交付证据不等于真实模型自动使用。未来客户端沿用同一合同，不是四端白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
+整体仍为 **PARTIAL**，四端均未判完整 `AUTO`。Hermes 已完成独立登录、Windows 长路径修复、真实 CLI/模型首请求自动交付、引源/时序及实际进程重启；DSH 已在独立 profile 通过正式装载、原生 registry 与账号模型自动取证/引源，PTC 实测不支持。WorkBuddy 的真实提问 hook 已触发，但个人召回未完成连接且隔离认证受阻；Codex 用户授信后项目 companion 配置已加载，当前 CLI `/hooks` 仍为 Installed 1 / Active 0 / Review 1，精确定义未激活，未代写 trust。f026eb7 根据真实模型反例补齐引用/时序/信任合同，修复时聚焦回归 **136 passed, 1 skipped**、独立审查通过；此前全套 **1678 passed, 18 skipped** 不包含此轮新增用例。2026-11-01 续验修复测试时序不稳定和 DSH Unicode 计数不一致，`0707e2c` 后独立聚焦回归 **137 passed, 1 skipped**，最终分支审查 APPROVED。Hermes 额外主动调用成本、DSH 学习用例的传输/引用 ID 问题与剩余原生矩阵均如实保留。首批四端不是支持白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
 
 ## v0.9.1 Memory 并发修复（2026-10-31）
 

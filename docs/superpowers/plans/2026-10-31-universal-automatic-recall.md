@@ -102,4 +102,19 @@
 - [x] 读取桥的固定 `retrieve_evidence` 请求，通过 `ctx.call_mcp(gateway_server, "retrieve_evidence", arguments, timeout=...)` 执行。拒绝未知操作、超量请求、越权域、错误或截断 envelope。Core 与整个回调仍默认三秒，最多三次联合请求。
 - [x] 使用 daemon worker 承接同步 Host MCP；只取消自己 worker 的原生线程中断位（已核实 `tools.interrupt.set_interrupt(active, thread_id)`），finally 清理该位；不设置原 Agent/其他会话线程的中断，不关闭共享 MCP。检查原回调的 `is_interrupted()`，实际 Host 未能传达取消的部分保留真实限制，不伪造取消通过。保持 contextvars 的 profile scope，不扩权/绕过 allowlist。
 - [x] 测试普通问题零资料调用、真实身份缺失、正常命中、三次无命中、截断/拒绝、重复和新轮、并发取消隔离、原生 API 参数及预算；实际执行 Python bridge 子进程。软件测试不当作真实 Hermes 会话 PASS。
-- [x] 在新隔离 home 通过官方插件装载和正式只读 MCP 验证生命周期，再尝试原生 CLI 正常提问。真实模型认证、登录或信任阻塞保留回执；不读取私人凭据或临时直连替代。独立审查本任务后再更新四端矩阵；没有真实答案使用则不标 `AUTO`。本次实际为 `AUTH_REQUIRED`，后续模型验收仍属 Task 3 待办。
+- [x] 在新隔离 home 通过官方插件装载和正式只读 MCP 验证生命周期，再尝试原生 CLI 正常提问。真实模型认证、登录或信任阻塞保留回执；不读取私人凭据或临时直连替代。独立审查本任务后再更新四端矩阵；没有真实答案使用则不标 `AUTO`。初次实际为 `AUTH_REQUIRED`；后续已完成独立认证与部分真实模型验收，详见 Task 5，不覆盖初始失败。
+
+### Task 5: 真实模型反例驱动的作答合同修正
+
+- [x] 保留真实run6的缺出处/时序问题，以及SDK路径和不支持模型的原失败。
+- [x] 先写来源不能覆盖引用/时序/信任要求的RED回归，再补齐Core固定外框；3秒/8000字符/工具权限保持原合同。
+- [x] 136 passed、1 skipped；独立spec PASS、code quality APPROVED；本地提交f026eb7。
+- [x] 新原生会话复测引用/时序，完成普通算式/翻译/无结果/学习/来源攻击观察及真实Gateway/CLI重启。
+- [ ] 完成剩余原生矩阵、整轮额外调用成本与Study覆盖评估；不能用上述普通用例宣称AUTO。
+
+### Task 6/7/8: 其他宿主的真实原生核验
+
+- [x] WorkBuddy：真实 UserPromptSubmit、原生请求身份、算式跳过。个人召回在连接前失败，隔离认证未完成；实测安装随附交互 CLI 缺 TUI，不能把 `/login` 当成已验证可用入口。GUI 的 userData/config 路径初始化已从安装源码核实，GUI 到独立 CLI 的凭据交接仍未证明。整体 PARTIAL/BLOCKED。
+- [x] DSH：官方 profile 插件装载、首次模型 stream 前正式取证、正常问题引源、零召回、无证据、实际 CLI 进程重启后会话恢复并重查；PTC 原生负例 UNSUPPORTED。保留学习传输失败及第二次引用 ID 错误，整体 PARTIAL。
+- [x] Codex：已核实只读合成包、真实 CLI 与目录信任门槛。用户回复已信任后，项目 companion 已进入 enabled 列表，但当前 `/hooks` 仍为 Installed 1 / Active 0 / Review 1，精确定义未获信任；未代写或 bypass。自动矩阵 BLOCKED；CLI 与 Desktop 分开。
+- [ ] 各端剩余原生矩阵及当前精确 hook/独立账号门槛关闭后，重新评估 AUTO；不改全局/生产配置、不复制凭据、不把 SDK 或组件回执替代 Host 结果。

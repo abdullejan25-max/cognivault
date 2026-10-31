@@ -16,7 +16,7 @@
 - `DONE`（软件层）：Recall Core、64 项新行为测试及既有 10 项 bundle 回归，共 **74 passed**；两轮独立审查修复误跳过个人翻译及超大元数据突破 deadline，Task 1 的 spec/code quality 均通过。
 - `DONE`（软件层）：正式只读连接、command hook、Codex 持久宿主适配、DSH 原生桥接、Hermes 兼容接口及独立原生插件均已实现；不代表四端实际宿主加载或模型使用。
 - `DONE`（`7e701de` 软件基线）：宿主接入已提交，独立审查修复 DSH 绕过下游消息过滤及 metadata 误删边界；spec PASS、code quality APPROVED。聚焦 **98 passed, 1 skipped**；修复后完整回归 **1643 passed, 18 skipped，501.04 秒**。Windows symlink 权限不足的 skip 不算实测通过。
-- `PARTIAL`：Hermes 真实插件装载、原生只读 MCP 与生命周期组件已有隔离命中及上下文交付回执；没有模型答案使用。其他三端真实自动回调、客户端进程重启及生产启用仍 `NOT RUN`。
+- `PARTIAL`：Hermes 完整原生 CLI 的首次模型请求已自动注入证据，实际在线模型引源及原生 Gateway/CLI 进程重启已验证；完整矩阵与生产启用未完成。WorkBuddy、DSH、Codex 的逐端原生证据在继续核验。
 
 ## 设计修正与尚存限制
 
@@ -88,10 +88,10 @@
 
 | 客户端 | 已核实版本/连接 | 触发/计划/命中/交付/答案 | 当前真实状态 |
 | --- | --- | --- | --- |
-| Codex | CLI `0.166.0-alpha.5.1`、hooks stable/true；当前聊天原生 workflow/health 成功 | 自动提问 hook 均未运行；MCP 连通不是自动触发 | `AGENT_DIRECTED`；Desktop 自动验收 `NOT RUN` |
-| WorkBuddy | 安装程序 `5.7.3` 与 bundled CLI 合同 | 静态回调/环境身份已核实；实际桌面链路未运行 | `AGENT_DIRECTED` 兼容路径；自动验收 `NOT RUN` |
-| Hermes | 独立官方 `v0.22.5` / `bf0203a794a0`，原生只读 MCP 已连接 | 真实 loader/client/lifecycle 组件交付命中证据；普通提问 CLI 返回认证缺失 | 组件 `PARTIAL`，模型验收 `AUTH_REQUIRED`；不是 `AUTO` |
-| DSH | EXE/包 `0.2.1-rc.3`，原生工具 registry 合同 | native-mode 路径可实现；PTC 无已验证调用方案；根 CLI 版本启动超时 | 自动验收 `NOT RUN`，PTC `UNSUPPORTED` |
+| Codex | CLI `0.166.0-alpha.5.1`、hooks stable/true；当前聊天原生 workflow/health 成功 | 用户授信后项目 companion 已进入 enabled 列表；2026-11-01 `/hooks` 仍为 Installed 1 / Active 0 / Review 1 | 精确定义审阅 `BLOCKED`，自动矩阵未运行；CLI 算式不能代替 Desktop PASS |
+| WorkBuddy | 安装程序 `5.7.3`、bundled CLI `2.156.0` | 真实 UserPromptSubmit 与 env 身份；算式回调16ms无召回；个人回调不可用、实际检索0 | `PARTIAL/BLOCKED`；隔离认证及冷启动限制未解 |
+| Hermes | 独立 `v0.22.5` / `bf0203a794a0`，正式只读 MCP；在线 `gpt-5.6-luna` | 首次 API 请求自动交付、答案引源/时序、实际进程重启已有回执 | 已超出组件验证；整体仍 `PARTIAL`，未完成完整矩阵及生产启用 |
+| DSH | EXE/包 `0.2.1-rc.3`、deepseek-account/deepseek-flash | 新 profile 真正装载；首次 stream 前原生取证，正常问题引源及会话恢复已有回执 | 整体 `PARTIAL`；学习引用/运输问题保留，PTC 原生实测 `UNSUPPORTED` |
 
 ## 数据与发布边界
 
@@ -104,3 +104,43 @@
 ### 回调拒绝的实证与恢复
 
 用户完成浏览器授权后显示 localhost:1455 ERR_CONNECTION_REFUSED。本机原授权进程的实际结束信息为 Authorization timed out waiting for the local callback；同时端口无监听，确认上次300秒等待已过期，不能据截图推断 token exchange 成功。使用同一官方 --browser 流程、仅将 --timeout 改为1800，新的原生进程已实际监听127.0.0.1:1455。内置浏览器对该监听根路径 / 的独立探针返回上游预期404/Not found，证明本次浏览器到原生回调服务可达；根路径不填写任何callback结果，探针页已关闭。不重放旧code/state，不输出或保存用户回调地址中的授权码，不更改绑定地址/防火墙/安全设置。新的授权页已打开，独立启动器同步延长等待。认证完成与模型验收仍待真实回执。
+
+## 真实 Hermes 模型验收与作答合同修正
+
+用户完成独立浏览器授权后，原生进程确实完成 token exchange 并新增自己的 OAuth credential；不是仅浏览器回调页面成功。首次完整 CLI 失败于本地 SDK 导入：Windows 普通路径存在性检查为false、同一文件扩展路径为true，缺失模块路径长度260，LongPathsEnabled=0。官方PM repair虽成功重建依赖，普通路径导入仍失败；主进程扩展路径导入通过，但后台启动会还原路径，真实run3/run4仍失败，均保留。没有通过修改系统安全/长路径注册表或依赖pin解决。
+
+已先停本次隔离Gateway，将本轮新建home整体移到更短的专用目录；旧长路径依赖环境单列保留，在短home使用官方PM原pin重新安装。没有解析/复制凭据内容；原生auth status仍logged_in=true，普通路径SDK Responses导入通过。既有用户安装不在此迁移范围。正式模型API另对gpt-6-sol返回HTTP400不支持；通过Hermes在线目录选择gpt-5.6-luna，实际调用成功。失败、环境检查与选择模型分层记录，不能把本地导入异常说成账号额度不足。
+
+run6首次真实作答已经证明首次pre_api_request自动携带2条证据、模型主动工具调用0，但答案缺少出处且用较晚目标解释较早动机，保持该质量失败。f026eb7补齐固定可信外框：引用精确citation/版本，相关时间的证据才可证明过去动机，reported不升格为独立核实；来源同名字段仍在untrusted_data内不能覆盖外框。新增单元先KeyError RED，修复后包含Core/Host/Hermes/既有bundle的聚焦回归136 passed、1 skipped（47.24秒，真实官方manifest解析器执行）。独立scoped spec PASS、code quality APPROVED；字符串约束与单元测试本身不是模型效果证明。
+
+run7新的真实CLI/会话通过该普通问题：首次模型请求已有2条证据、2445字符；答案引用原始History与Memory version=1，并区分后来佐证与当时动机，主动工具调用0。随后独立正常问题得到：算式96、纯翻译正确，均无recall上下文/主动工具调用；无结果首请求NO_EVIDENCE，答案未捏造课程；复习建议首请求已有2条证据并给出引源建议；来源攻击被当作引文识别，没有主动工具调用。无结果和复习建议随后分别另有6/8次主Agent工具调用，不能把这些调用隐去，也不能把最终答案完全归因于最初的自动证据块；两例在成本/归因与Study漏召回层仍PARTIAL。自动Core的最多三次联合请求/三秒约束与主Agent进一步经Gateway查原文是批准设计中不同范围；这些回执已反证Host整turn永远不超过三次调用的说法。本次没有通过no_mcp等手段绕过会话策略凑通过，没有独立测得原生后端搜索计数，不能代用早先SDK计数。
+
+实际退出原Hermes Gateway PID16496，确认进程已不存在；新CLI自动启动正式profile的Gateway PID22632。重启后新会话首次模型请求重新携带2条证据、答案正确引源，主动工具调用0。原始证据包含hermes-native-cli-run2..run7.txt、五个普通用例的独立回执、hermes-model-observer.jsonl及gateway before/stop/after restart回执。派生hermes-native-assessment-run2.json修正run1初稿没有考虑额外工具调用的两个判定；原稿保留，run2为当前派生评估。
+
+Hermes仍不标AUTO：真实取消并发、原生重复事件、原生版本更新/失效、候选/冲突矩阵、8000字符宿主完整交付边界尚未完成；生产未启用。首请求自动触发与普通案例已成立的事实也不倒退成单纯AGENT_DIRECTED。其他三个客户端分别继续其独立正式入口与信任/认证核验，不拼接多客户端回执形成统一PASS。
+
+
+## 2026-11-01 续验：WorkBuddy、DSH 与 Codex
+
+WorkBuddy 5.7.3 随附 CLI 2.156.0 的真实 UserPromptSubmit 已进入共享适配器，获得原生 request env；最初直接 PowerShell native 调用超时6000ms，显式转发 `$input` 后个人问题仍返回 CONNECTION_UNAVAILABLE（observer3531ms、metadata3468ms、attempts0），两份失败都保留。普通算式的原生回调16ms、不召回，但模型层返回 Authentication required，exit0不算成功。真实TTY三个isTTY均为true；安装自带交互bin却缺少dist/codebuddy，lite入口执行/login也不给授权URL，因此不能再要求用户对该缺TUI入口登录。仅此专用profile认证受阻，不推断原桌面账号已退出。
+
+主代理继续核对安装公开源码：双config env、userData/sessionData/log路径覆盖及初始化先于单实例锁均有明确实现；GUI启动CLI同时显式禁用extended plugin hooks。GUI认证文件实际经FilePathService.sharedDataPath定位，默认实现基于用户home，尚未证明运行时绑定是否完全重定向到该专用profile。未据一个环境变量猜安全隔离、打开可能碰到全局认证的GUI或复制token。程序合同、入口失败和GUI路径追踪分开存放，整体PARTIAL/BLOCKED；原生证据命中、交付模型、取消/版本/重启等未通过。
+
+DSH 0.2.1-rc.3 已实际通过官方CLI装载独立profile，deepseek-account/deepseek-flash收到首次stream前的COMPLETE两条证据；普通选科问题正确引源并区分较晚目标与过去动机。算式与明确引号翻译的原生retrieve均为0，无结果不捏造。真正新CLI进程恢复旧session时，turn2重新执行自动retrieve=1并交付，未把Host保留历史当作Core证据缓存。PTC首请求实际返回DSH_PTC_UNSUPPORTED、自动retrieve0，后续认证失败另记，不宣称PTC作答通过。学习run1传输失败、run2 Memory引用ID多出字符，都保留；后者另有一次模型主动limit5调用，不冒充自动hook改变limit3。原生取消/并发、steer、版本/候选/冲突仍NOT RUN。组件单元与这些原生案例不合并成AUTO。
+
+Codex CLI 0.166.0-alpha.5.1 最初真实停在Trust this folder，未代选。用户回复“Codex 已信任”后重新只读核验：精确路径trust_level=trusted，六项包SHA未变，项目cognivault_recall_host已进入enabled列表。继续实际/hooks，仍显示Installed1 / Active0 / Review1；详情正是本包UserPromptSubmit、server=cognivault_recall_host、tool=recall_for_prompt、timeout4s，状态New hook - review required。未按Trust，也没有把项目配置可见说成连接健康/自动触发；自动矩阵继续BLOCKED/NOT RUN。未猜测用户先前在何处信任，Desktop仍需自身证据，不从CLI结果提升。
+
+原始报告和回执分别为task-6-workbuddy-native-report.md、task-7-dsh-native-report.md、task-8-codex-native-report.md；均在本计划Git忽略审查目录，合成Host stdout/observer位于各自Git外profile。本轮Codex续验另存run2-after-user-trust-20261101，不覆盖原目录信任失败。
+
+### 全分支复审发现与修复
+
+独立最终审查发现DSH使用JS UTF-16 units检查8000字符，而Core按Unicode码点预算。真实Python bridge的四条1000 emoji证据块为5349码点/9349UTF-16 units，原实现INVALID_RESULT错误丢弃；新增回归先复现RED，再将宿主结果检查改成同一8000码点，不扩大预算。相关Node回归保留四条完整excerpt，不只检查字符串存在。
+
+主代理本轮首次重跑为135 passed、1 skipped、1 failed（58.84秒）；失败是30ms测试假设同步配置/文件准备已结束，但预算实际可能在进入connect之前已耗尽。独立审查另一次初跑为122 passed、2 skipped、3 failed，三个失败单独重跑均通过，原结果保留而非抹去。两个异步测试只固定hosts.monotonic的准备计时，仍由真实asyncio执行30ms取消；另加受控准备耗尽断言，必须完全不打开连接、attempts0、elapsed1000。DSH取消改为nativeexecute安装监听后取消，另加真正三秒deadline取消当前工具且父signal未取消。没有调大生产预算、跳过失败或改成宽松状态断言。
+
+独立scoped re-review APPROVED，无其他新实质finding；其四项聚焦pytest（含完整Node wrapper）4 passed，10.45秒。主代理单独Node协议套件10 passed，含真实bridge Unicode、取消和三秒deadline；这些仍是协议层，未被写成DSH原生重验完成。
+
+修复提交 `0707e2c` 后，主代理使用官方 Hermes runtime/parser 独立重跑 Core、Host、Hermes 与既有 evidence bundle：**137 passed, 1 skipped，49.10秒**。唯一skip为Windows symlink权限；不是跳过manifest。全套1678/18仍明确属于较早收集范围，没有将这次新增测试追记到旧全套结果。
+
+
+`0707e2c` 的 DSH 插件随后已部署到本轮独立profile，旧插件另存合成evidence备份，源文件与部署SHA一致。新真实CLI进程 `native-unicode-fix-decision-20261101-r1` exit0、22.703秒，首次stream前COMPLETE两条；最终History完整ID及Memory version=1引用正确，保留currency_verified=false、过去动机与较晚目标/推断区分，来源攻击未执行。模型随后主动执行5次只读工具核验，单列计数；没有把它说成全turn零调用或自动Core超额。此轮正常问题验证新部署，emoji边界仍仅由真实bridge协议用例验证，不能把正常问答写成原生emoji大包验证。旧assessment与旧学习失败没有覆盖。

@@ -1,15 +1,15 @@
 # 通用只读自动回忆接入
 
-此实现把宿主的真实用户事件交给同一个 `RecallCore`：本地规划查询，经正式 Gateway 的 `retrieve_evidence` 取证，再把受限证据交回作答前入口。没有自动写 Memory、会话采集、provider 同步或后台人格功能。本文配置示例不代表生产已启用；本次仅在新建的隔离 Hermes home 安装插件并连接人工合成的只读 Gateway，未改写现有记忆插件或生产配置。
+此实现把宿主的真实用户事件交给同一个 `RecallCore`：本地规划查询，经正式 Gateway 的 `retrieve_evidence` 取证，再把受限证据交回作答前入口。没有自动写 Memory、会话采集、provider 同步或后台人格功能。本文配置示例不代表生产已启用；本次仅在新建的各端隔离 profile 中准备或运行人工合成验收，未改写现有记忆插件或生产配置。
 
 ## 当前完成范围
 
 | 接入 | 可运行代码与验证 | 当前原生状态 |
 | --- | --- | --- |
-| Codex 持久 Host companion + `mcp_tool` hook | 标准 MCP SDK 启动、正式只读 Gateway 连接、连续轮次、去重与取消协议通过 | 未配置/未信任 exact hook；真实 Desktop 回调与模型使用 NOT RUN，不能标 AUTO |
-| Codex / WorkBuddy command hook | stdin/env 身份、正式配置、跨进程去重、缺失状态、总截止测试通过 | 本机一次 MCP 冷启动约 3.734 秒，超过默认 3 秒，可能 `DEADLINE_EXCEEDED`；真实端 NOT RUN |
-| DSH native | 原生 registry 薄适配器 + Python JSON bridge、合成行为及本机程序函数协议测试通过 | 完整插件装载/真实会话 NOT RUN；PTC 明确 UNSUPPORTED |
-| Hermes 原生 `pre_llm_call` | 独立官方 v0.22.5、真实 loader/native MCP/lifecycle 组件交付；不注册 memory provider | 组件 PARTIAL；完整 CLI 实际返回 AUTH_REQUIRED，模型使用/重启/取消未通过，不能标 AUTO；旧 callback scaffold 默认仍 UNSUPPORTED |
+| Codex 持久 Host companion + `mcp_tool` hook | 标准 MCP SDK、只读合同与隔离包通过；用户授信后项目 companion 已进入 enabled 列表 | 2026-11-01 真实 CLI `/hooks` 仍为 Installed 1 / Active 0 / Review 1，当前精确定义尚待审阅；自动验收 BLOCKED，Desktop 另验 |
+| Codex / WorkBuddy command hook | 软件合同通过；WorkBuddy 真实 UserPromptSubmit、原生 env 身份及算式跳过已验证 | WorkBuddy 个人召回 3531 ms 返回 CONNECTION_UNAVAILABLE、attempts=0；隔离认证受阻，模型使用未通过；冷启动限制仍存在 |
+| DSH native | 独立 profile 通过官方装载、原生 registry 取证与 deepseek-account 模型引源；首 stream 前已交付 | 具体用例通过，整体 PARTIAL；学习用例有传输失败及引用 ID 拼写错误；PTC 原生实测 UNSUPPORTED |
+| Hermes 原生 `pre_llm_call` | 独立 v0.22.5、真实 CLI/原生 Gateway/在线模型首请求自动交付，正常问题引源与实际进程重启已验证 | 整体 PARTIAL；取消/原生重复/版本更新/大包完整交付等未完成，不能标 AUTO；额外模型主动检索另计 |
 
 SDK、程序函数协议、真实模型、每端原生会话与生产验收是独立层级。配置文件存在不代表回调运行，回调运行不代表模型已使用或正确引用证据。其他客户端仍须核实其真实用户身份、正式工具入口、取消和作答前交付，不能凭通用 callback 自称 AUTO。
 
@@ -48,8 +48,6 @@ runtime 必须在 Git 外。Windows 限制在用户 `LOCALAPPDATA` 下并继承�
 ## Codex：优先使用持久 Host companion
 
 该 companion 是宿主侧适配器，不是 Gateway 新增的领域检索工具。它启动时建立一次正式只读 Gateway 连接，只暴露 `recall_for_prompt(session_id, request_id, prompt)`，内部复用 Core。MCP 启动耗时与每轮 3 秒检索预算分开；无法启动就保持不可用，没有 command fallback。
-
-标准 MCP 工具本身不能认证调用来自 hook 还是模型；它授予显式选择域的只读能力，调用参数不是已经认证的真实用户事件证据。只有原生 hook trace 才能支持 AUTO 验收。这里没有用静态 secret、隐藏工具猜测或提示语冒充来源认证；检索到的 source 仍只作为不可信证据，不回传成真实用户陈述或操作授权。
 
 标准 MCP 不能认证这次调用来自 hook 还是模型主动调用；传入的 session/request 身份不是认证凭据。工具描述和参数 schema 也不是权限边界。连接的实际权限由精确只读 Gateway profile、允许域和固定 `retrieve_evidence` 操作限制，不提供写入、配置变更或任意文件读取能力。只有宿主的真实提问事件与作答前 hook trace 能证明自动触发，模型直接调用此工具不能作为 `AUTO` 证据；本实现不使用静态 secret 或软提示规则伪装宿主身份认证。
 
@@ -105,7 +103,9 @@ Codex 使用 stdin `session_id`、`turn_id`、`prompt`。WorkBuddy 5.7.3 使用 
 
 `gatewayServer` 是可信配置中的安全短标识，默认 `cognivault`；raw 操作固定 `retrieve_evidence`，来源和 prompt 不能换工具。必须由 agent 可见 registry 找到 schema，执行 `ctx.tools.execute({callId,name,arguments,agent,signal})`。保留 `next()` 的 reject，检测 native 模式，不伪造 parent、不绕过 registry、不省略 agent。PTC 返回 `DSH_PTC_UNSUPPORTED`。
 
-等待 `next()` 后，只取最终 `decision.messages` 仍获准保留、`source.kind==='user'` 且原生 ID 也存在于原用户事件中的消息；下游删除的消息或插件新伪造的 user 消息不触发召回。同批最新真实用户消息作为当前问题，最多前两条作为上下文，按获准批次 ID 确定性组合去重；同 turn 的新 steer 消息会重查。使用 Host 的 `createUserMessage` 工厂注入。Python bridge 只发送固定 retrieve 请求，由 Host 原生工具执行后回传 DTO；没有独立 MCP 连接。abort/deadline 向当前工具和子进程传播，绝不停止共用 Gateway。去重在 agent 生命周期内保留 1024 个批次标记；DSH 重启恢复尚未原生验收。
+DSH `0.2.1-rc.3` 的外部插件还需准备运行时包依赖：在新隔离 `DSH_HOME` 下，通过官方 `dsh plugin --profile recall-native add @deepseek-ai/dsh-llm@0.2.1-rc.3` 安装，并将适配器放到该 profile 的 `plugins/`，使动态 import 从 profile 的 `node_modules` 解析。仅复制到任意外部目录会实际出现 `ERR_MODULE_NOT_FOUND`。依赖、插件和 `cordis.patch.yml` 的改动只作用于新 home；保留现有用户配置。安装回执本身也不等于原生自动回忆通过。
+
+等待 `next()` 后，只取最终 `decision.messages` 仍获准保留、`source.kind==='user'` 且原生 ID 也存在于原用户事件中的消息；下游删除的消息或插件新伪造的 user 消息不触发召回。同批最新真实用户消息作为当前问题，最多前两条作为上下文，按获准批次 ID 确定性组合去重；同 turn 的新 steer 消息会重查。使用 Host 的 `createUserMessage` 工厂注入。Python bridge 只发送固定 retrieve 请求，由 Host 原生工具执行后回传 DTO；没有独立 MCP 连接。abort/deadline 向当前工具和子进程传播，绝不停止共用 Gateway。去重在 agent 生命周期内保留 1024 个批次标记；真正新 CLI 进程恢复 session 后重新检索已观察，精确重复/steer/并发取消仍待原生验收。结果预算与 Core 一致按 8000 个 Unicode 码点计算，不把 emoji 的 UTF-16 长度误当字符数。
 
 `hosts/hermes_automatic_recall.py` 保留原显式 callback 兼容合同，默认明确未支持；它不代表下节的新原生插件。没有 memory provider、post-response、session-end、sync/extraction/mirror 注册。接口调查见 [宿主合同调查](research/2026-10-31-automatic-recall-host-contracts.md)。
 
@@ -155,4 +155,4 @@ uv run --extra dev pytest tests/test_automatic_recall.py tests/test_recall_hosts
 
 自动测试只使用合成数据；DSH 程序协议特征测试执行已安装版本中确切函数，依赖为窄 shim，不等于完整原生包/应用已启动。Windows 没有创建符号链接权限时，对应文件系统用例明确 skip。
 
-仍需各端新独立真实 Host 会话：正式隔离配置、首次答案前回调、模型拿到并引用证据、无结果披露、重复回调/新轮次/steer、只取消当前请求、恶意来源、重启与配置恢复。真实模型和生产均 NOT RUN。部分域非空时 Core 不盲目改写其他空域；字面检索仍可能因中英文或措辞差异漏命中，应在答案披露缺口。
+Hermes 和 DSH 已有部分新独立真实 Host/模型会话，覆盖正式隔离配置、首次答案前交付、引用、无结果与重启重查；失败和缺口见顶部矩阵与实施检查点。各端仍须补齐其未完成的精确重复/新轮次/steer、并发取消、版本/候选/冲突、大包交付边界等，Codex/WorkBuddy 的实际门槛单列，不能拼接其他端回执。生产仍 NOT RUN。部分域非空时 Core 不盲目改写其他空域；字面检索仍可能因中英文或措辞差异漏命中，应在答案披露缺口。
