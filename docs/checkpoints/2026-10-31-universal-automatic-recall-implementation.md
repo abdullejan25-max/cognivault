@@ -100,3 +100,7 @@
 ### 用户截图后调整认证入口
 
 用户截图与当前授权页明确显示账号未启用设备代码登录，继续按钮被禁用；不能把用户已打开网页误判为登录成功。旧 device flow 最终实际超时 15 分钟，原码不再使用。核实官方认证文档以及本次锁定 Hermes 的 browser 参数后，改用独立浏览器 OAuth/PKCE、localhost callback，不更改账号设备代码安全设置、不复制既有凭据。新内置浏览器页面已实际到达“欢迎回来”登录表单，仍需用户本人完成账号认证；回调成功前保持 AUTH_REQUIRED。独立启动器的 Login 入口同步改为 --browser。来源：[OpenAI 官方认证说明](https://learn.chatgpt.com/docs/auth?surface=cli)。
+
+### 回调拒绝的实证与恢复
+
+用户完成浏览器授权后显示 localhost:1455 ERR_CONNECTION_REFUSED。本机原授权进程的实际结束信息为 Authorization timed out waiting for the local callback；同时端口无监听，确认上次300秒等待已过期，不能据截图推断 token exchange 成功。使用同一官方 --browser 流程、仅将 --timeout 改为1800，新的原生进程已实际监听127.0.0.1:1455。内置浏览器对该监听根路径 / 的独立探针返回上游预期404/Not found，证明本次浏览器到原生回调服务可达；根路径不填写任何callback结果，探针页已关闭。不重放旧code/state，不输出或保存用户回调地址中的授权码，不更改绑定地址/防火墙/安全设置。新的授权页已打开，独立启动器同步延长等待。认证完成与模型验收仍待真实回执。
