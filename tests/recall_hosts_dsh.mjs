@@ -97,11 +97,32 @@ test('abort reaches pending Host execution and stops bridge', async()=>{
   const s=setup();let observed=false;
   s.calls.length=0;
   const tools={modeFor:()=> 'native',get:()=>({parameters:{properties:{queries:{type:'object'},limit:{type:'integer'}},required:['queries']}}),
-    execute: async ({signal})=>new Promise((resolve,reject)=>signal.addEventListener('abort',()=>{observed=true;reject(new Error('aborted'));},{once:true}))};
+    execute: async ({signal})=>new Promise((resolve,reject)=>{
+      signal.addEventListener('abort',()=>{observed=true;reject(new Error('aborted'));},{once:true});
+      // Cancel after native dispatch actually starts, rather than guessing
+      // Python startup completes within a fixed 600ms on the current machine.
+      queueMicrotask(()=>s.controller.abort());
+    })};
   const handler=createHandler({tools},{pythonExecutable:process.env.RECALL_TEST_PYTHON,allowed_domains:['memory'],context_delivery_acknowledged:true},factory);
   const messages=[user('cancel')];const task=handler(s.payload(messages),s.next(messages));
-  setTimeout(()=>s.controller.abort(),600);
   const result=await task;assert.ok(observed);assert.equal(result.messages.length,1);
+});
+
+test('the callback deadline aborts the native tool without a user cancellation', async()=>{
+  const s=setup();let observed=false;
+  const tools={modeFor:()=> 'native',get:()=>({parameters:{properties:{queries:{},limit:{}},required:['queries']}}),
+    execute: async ({signal})=>new Promise((resolve,reject)=>{
+      signal.addEventListener('abort',()=>{observed=true;reject(new Error('aborted'));},{once:true});
+    })};
+  const handler=createHandler({tools},{pythonExecutable:process.env.RECALL_TEST_PYTHON,
+    allowed_domains:['memory'],context_delivery_acknowledged:true},factory);
+  const messages=[user('deadline')];
+  const result=await handler(s.payload(messages),s.next(messages));
+  assert.equal(s.controller.signal.aborted,false);
+  assert.ok(observed);
+  const packet=JSON.parse(result.messages.at(-1).content[0].text);
+  assert.equal(packet.status,'UNAVAILABLE');
+  assert.equal(packet.error_code,'DEADLINE_EXCEEDED');
 });
 test('Python bridge emits only the fixed retrieval operation and bounded final result', async()=>{
   const calls=[];
@@ -111,6 +132,21 @@ test('Python bridge emits only the fixed retrieval operation and bounded final r
   assert.equal(result.delivery_status,'READY');assert.equal(calls.length,1);
   assert.equal(calls[0].tool,'retrieve_evidence');assert.deepEqual(Object.keys(calls[0].arguments).sort(),['limit','queries']);
   assert.ok(result.injection.length<=8000);
+});
+
+test('Python bridge preserves complete Unicode evidence within the Core character budget', async()=>{
+  const unicodeEvidence={...evidence,evidence:Array.from({length:4},(_,index)=>({
+    ...evidence.evidence[0],citation:`memory:unicode-${index}#version=1`,excerpt:'😀'.repeat(1000)
+  }))};
+  const result=await runBridge({session_id:'unicode-session',request_id:'unicode-turn',message:'我的学习目标'},
+    {pythonExecutable:process.env.RECALL_TEST_PYTHON,allowed_domains:['memory'],context_delivery_acknowledged:true},
+    async()=>unicodeEvidence,new AbortController().signal);
+  const packet=JSON.parse(result.injection);
+  assert.equal(packet.status,'COMPLETE');
+  assert.equal(packet.untrusted_data.evidence.length,4);
+  assert.ok(result.injection.length>8000,'fixture must distinguish UTF-16 units from characters');
+  assert.ok([...result.injection].length<=8000);
+  assert.deepEqual(packet.untrusted_data.evidence.map(item=>item.excerpt),Array(4).fill('😀'.repeat(1000)));
 });
 test('trusted isolated server alias keeps raw operation fixed; source cannot select write tools', async()=>{
   const s=setup();const called=[];

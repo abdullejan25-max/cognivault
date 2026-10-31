@@ -157,10 +157,31 @@ def test_deadline_includes_connection_startup(tmp_path, monkeypatch):
         finally:
             cancelled.append(True)
     monkeypatch.setattr(h, "connect_readonly", slow)
+    # Isolate asynchronous connection cancellation from filesystem setup cost.
+    # asyncio still enforces the real 30ms timer; preparation exhaustion is
+    # covered separately below with a controlled elapsed-time boundary.
+    monkeypatch.setattr(h, "monotonic", lambda: 0.0)
     result = asyncio.run(h.run_command("codex", event(), {}, cfg, deadline_seconds=.03))
     packet = json.loads(result["hookSpecificOutput"]["additionalContext"])
     assert packet["status"] == "UNAVAILABLE" and cancelled
     assert packet["error_code"] == "DEADLINE_EXCEEDED"
+
+
+def test_deadline_exhausted_during_preparation_never_opens_connection(tmp_path, monkeypatch):
+    h = hosts()
+    cfg, raw, _ = config(tmp_path)
+    ticks = iter((0.0, 1.0))
+    monkeypatch.setattr(h, "monotonic", lambda: next(ticks, 1.0))
+    def forbidden(*args):
+        pytest.fail("expired callback opened a connection")
+    monkeypatch.setattr(h, "connect_readonly", forbidden)
+    result = asyncio.run(h.run_command("codex", event(), {}, cfg, deadline_seconds=.03))
+    packet = json.loads(result["hookSpecificOutput"]["additionalContext"])
+    assert packet["status"] == "UNAVAILABLE"
+    assert packet["error_code"] == "DEADLINE_EXCEEDED"
+    metadata = json.loads(next(Path(raw["runtime_dir"]).glob("*.json")).read_text())
+    assert metadata["attempts"] == 0
+    assert metadata["elapsed_ms"] == 1000
 
 
 def test_deadline_metadata_counts_started_retrieval(tmp_path, monkeypatch):
@@ -172,6 +193,7 @@ def test_deadline_metadata_counts_started_retrieval(tmp_path, monkeypatch):
         async def retrieve(queries, limit): await asyncio.sleep(10)
         yield retrieve
     monkeypatch.setattr(h, "connect_readonly", connected)
+    monkeypatch.setattr(h, "monotonic", lambda: 0.0)
     result = asyncio.run(h.run_command("codex", event(), {}, cfg, deadline_seconds=.03))
     assert json.loads(result["hookSpecificOutput"]["additionalContext"])["status"] == "UNAVAILABLE"
     metadata = json.loads(next(Path(raw["runtime_dir"]).glob("*.json")).read_text())

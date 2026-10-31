@@ -60,7 +60,8 @@ export function runBridge(request, config, retrieve, signal) {
         let msg;
         try {msg=JSON.parse(line);} catch {finish(new Error('INVALID_BRIDGE_MESSAGE'));return;}
         if(msg.type==='result'){
-          if(pending || typeof msg.injection!=='string' || msg.injection.length>8000){finish(new Error('INVALID_RESULT'));return;}
+          // Match Python Core's Unicode code-point budget, not UTF-16 units.
+          if(pending || typeof msg.injection!=='string' || [...msg.injection].length>8000){finish(new Error('INVALID_RESULT'));return;}
           finish(null,msg);return;
         }
         if(msg.type!=='retrieve'||pending||msg.tool!=='retrieve_evidence'||msg.id!==sequence+1
