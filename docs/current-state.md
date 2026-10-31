@@ -2,6 +2,12 @@
 
 最近核对：2026-10-31。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
 
+## 通用自动回忆（开发分支，2026-10-31）
+
+已增加宿主侧共用 Recall Core、显式只读 MCP 连接、Codex 持久宿主适配、WorkBuddy command hook、DSH native JSON 桥及 Hermes 通用接口；没有把规则规划放入 Gateway，也没有增加自动写入。`7e701de` 基线完整隔离回归 **1643 passed, 18 skipped**，Core 与宿主边界的独立审查问题均已修复。合成 SDK 已验证持久连接、新版本/失效、请求去重与适配服务进程重启，不代表客户端重启或真实模型使用。
+
+整体仍为 **PARTIAL**：四端均未判为 `AUTO`；WorkBuddy command 冷启动超过默认三秒，DSH PTC 未支持，Codex exact hook 信任及完整交付未实测。用户要求自行处理 Hermes 入口后，正在独立环境恢复官方 `v0.22.5` 并实现其原生插件；旧接口脚手架不是原生接线。未来客户端沿用同一合同，不是四端白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
+
 ## v0.9.1 Memory 并发修复（2026-10-31）
 
 当前源码修复 Memory 对 SQLite 临时日志文件多次读取元数据产生的竞态，保留硬链接、符号链接、Windows reparse、父路径和访问错误保护。不涉及 schema、真实数据迁移或权限扩展。首次失败记录见[项目测试](checkpoints/2026-10-31-project-test.md)，修复与发行边界见 [v0.9.1](releases/v0.9.1.md)。本次代码与隔离测试不代表当前 Desktop 原生或生产验收通过。

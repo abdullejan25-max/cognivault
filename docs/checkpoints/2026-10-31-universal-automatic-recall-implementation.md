@@ -15,6 +15,7 @@
 - `DONE`：初始完整隔离回归 `uv run --extra dev pytest -q`：**1555 passed, 17 skipped，565.28 秒**。首次系统 Python 因缺 `anyio` / `pypdf` 无法收集；通过本树 `uv sync --extra dev` 建立 `.venv` 后重跑完成，未修改生产环境。
 - `DONE`（软件层）：Recall Core、64 项新行为测试及既有 10 项 bundle 回归，共 **74 passed**；两轮独立审查修复误跳过个人翻译及超大元数据突破 deadline，Task 1 的 spec/code quality 均通过。
 - `PARTIAL`：正式只读连接、command hook、Codex 持久宿主适配、DSH 原生桥接及 Hermes 通用接口正在实现/验证；不代表实际宿主加载。
+- `DONE`（`7e701de` 软件基线）：宿主接入已提交，独立审查修复 DSH 绕过下游消息过滤及 metadata 误删边界；spec PASS、code quality APPROVED。聚焦 **98 passed, 1 skipped**；修复后完整回归 **1643 passed, 18 skipped，501.04 秒**。Windows symlink 权限不足的 skip 不算实测通过。
 - `NOT RUN`：四端真实自动回忆回调、正式隔离命中、模型答案使用、真实进程重启及生产启用。
 
 ## 设计修正与尚存限制
@@ -43,6 +44,18 @@
 早期 command 进程探针：冷启动约 **4453 ms** 后 `UNAVAILABLE`；当时独立算式也因先连接后规划而失败。原始失败保存在该独立目录的 `sdk-command-results-development-failure-1.json`，不能覆盖或拼成 PASS。普通问题先规划再连接的修复与最终回归另行记录。
 
 由于固定只读 MCP 连接初始化本身约 3.7 秒，新增 Codex 持久宿主适配服务，在会话启动时保持连接，每个提问仍用共用 Core 的默认三秒。不会调高默认预算来掩盖 command 冷启动失败，也不会把标准 MCP SDK 调用写成真实 Desktop 回调。
+
+持久宿主适配额外 SDK 实测：初始化约 3469/4000 ms（独立于逐轮预算），正常逐轮 78–110 ms。同 ID 不重复交付、独立算式不查询、另一个合成 SDK Gateway writer 将 Memory 改为 v2 后新轮看到 v2、失效后不再注入旧 Memory；实际重启的是本次 SDK companion 进程，新请求重新取证、旧请求重放被抑制。`sdk-companion-results-run1.json` 保留在该 Git 外目录；不是 Desktop 重启、独立真实客户端交接或模型效果证据。写入仅为单列的合成准备/更新步骤，召回连接始终只读。
+
+已另外准备新的合成来源与 `codex-native-review` 精确项目（只作用于该项目的 MCP/hook 配置、正常问题、全 `NOT RUN` 的结果模板），未写 Host 信任或启动模型。静态结构及只读路径已检查；下载官方完整配置 schema 遇到 TLS EOF，未把该下载失败算作完整 schema 验证通过。官方网页实际核实的字段合同与当前 Desktop 行为继续分开。
+
+## Hermes 自主恢复（用户补充后继续进行）
+
+用户对寻找 Hermes 入口回复“你自己来”；不再要求用户提供路径。已核实官方最新稳定标签 `v0.22.5` 对应 `bf0203a794a07aac3ff764972ab9087baa4e4f4e`，在单独目录恢复源码；没有更改任何现有 Hermes 配置或记忆。长路径导致首次 checkout 不完整，移到已检查的短路径并恢复后 vendor 工作区干净。
+
+按官方 PM 清单准备锁定的 Python 3.14/MCP extra，不降级其 MCP 2.3 来安装 CogniVault MCP 1.x。CLI 及插件使用独立 `HERMES_HOME` / `HERMES_RUNTIME_DIR`；浏览器/计算机控制可选工具不安装。本次安装的一次路径错误已立即中断，只在默认 Hermes 根下新增 cache/tools 下载状态，未触及配置、会话或记忆；后续均使用显式绝对路径和终止式校验。默认 cache 的使用也属于上游 PM 下载器行为，不能宣称所有派生缓存均在隔离 home 内。
+
+新版本程序已明确提供 `PluginContext.call_mcp`、每插件服务器 allowlist、`pre_llm_call` 的真实 turn_id，以及线程级中断 API。因此继续实现原生插件：共用 Core 在指定 CogniVault Python bridge 子进程内运行，Hermes 原生调用正式 Gateway，不把两套 MCP Python 依赖混装。此节点及真实 CLI/模型验收仍在进行，不能将已有 scaffold 标为原生成功。
 
 ## 逐端状态（实施中）
 
