@@ -28,6 +28,12 @@ ERROR_CODES = {"INVALID_CONFIGURATION", "READ_ONLY_REQUIRED", "RUNTIME_MUST_BE_O
                "MISSING_HOST_IDENTITY", "INVALID_EVENT", "READ_ONLY_TOOL_UNAVAILABLE", "DOMAIN_NOT_ALLOWED",
                "RETRIEVE_FAILED", "INVALID_RESPONSE"}
 _rpc_identity = ContextVar("recall_rpc_identity", default=None)
+METADATA_OWNER = "cognivault.recall.metadata.v1"
+METADATA_STATUSES = {"CLAIMED", "COMPLETE", "PARTIAL", "NO_EVIDENCE", "UNAVAILABLE",
+                     "NOT_NEEDED", "INVALID_PLAN", "CANCELLED"}
+METADATA_ERRORS = ERROR_CODES | {"CANCELLED", "DEADLINE_EXCEEDED", "HOST_ADAPTER_UNAVAILABLE",
+                               "RUNTIME_UNAVAILABLE", "RETRIEVE_CANCELLED", "INVALID_REQUEST",
+                               "INVALID_PLAN", "CONFIGURATION_MISSING", "CONNECTION_UNAVAILABLE"}
 
 
 @dataclass(frozen=True)
@@ -109,6 +115,27 @@ def hook_output(context):
     return {"hookSpecificOutput": {"hookEventName": "UserPromptSubmit", "additionalContext": context}} if context else {}
 
 
+def _read_metadata(path):
+    try:
+        with path.open("rb") as stream:
+            raw = stream.read(1025)
+        return json.loads(raw) if len(raw) <= 1024 else None
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+
+def _valid_metadata(data, scope):
+    return (type(data) is dict
+            and set(data) == {"owner", "scope", "status", "count", "attempts", "elapsed_ms", "error_code"}
+            and data["owner"] == METADATA_OWNER and data["scope"] == scope
+            and type(scope) is str and re.fullmatch(r"[0-9a-f]{64}", scope) is not None
+            and type(data["status"]) is str and data["status"] in METADATA_STATUSES
+            and type(data["count"]) is int and 0 <= data["count"] <= 6
+            and (data["attempts"] is None or type(data["attempts"]) is int and 0 <= data["attempts"] <= 3)
+            and type(data["elapsed_ms"]) is int and 0 <= data["elapsed_ms"] <= 86_400_000
+            and (data["error_code"] is None or type(data["error_code"]) is str and data["error_code"] in METADATA_ERRORS))
+
+
 def _claim(connection, host, request):
     root = connection.runtime_dir
     root.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -122,6 +149,7 @@ def _claim(connection, host, request):
         raise ValueError("UNSAFE_RUNTIME")
     key = hashlib.sha256(json.dumps([connection.configuration_id, connection.profile, host,
                                     request.session_id, request.request_id]).encode()).hexdigest()
+    scope = hashlib.sha256(json.dumps([connection.configuration_id, connection.profile, host]).encode()).hexdigest()
     target = root / (key + ".json")
     if target.exists():
         return None
@@ -142,19 +170,17 @@ def _claim(connection, host, request):
                 raise ValueError("RUNTIME_CAPACITY")
             if not re.fullmatch(r"[0-9a-f]{64}\.json", item.name):
                 continue
-            owned.append(item)
             info = item.lstat()
             if not stat.S_ISREG(info.st_mode) or item.is_symlink() or getattr(info, "st_file_attributes", 0) & 0x400:
                 continue
-            try:
-                if info.st_size > 1024:
-                    continue
-                data = json.loads(item.read_text(encoding="utf-8"))
-                if (isinstance(data, dict) and set(data) == {"status", "count", "attempts", "elapsed_ms", "error_code"}
-                        and data["status"] in {"COMPLETE", "PARTIAL", "NO_EVIDENCE", "UNAVAILABLE", "NOT_NEEDED", "INVALID_PLAN", "CANCELLED"}):
-                    completed.append((info.st_mtime_ns, item))
-            except (ValueError, OSError):
+            if info.st_size > 1024:
                 continue
+            data = _read_metadata(item)
+            if type(data) is not dict or data.get("owner") != METADATA_OWNER or data.get("scope") != scope:
+                continue
+            owned.append(item)
+            if _valid_metadata(data, scope) and data["status"] != "CLAIMED":
+                completed.append((info.st_mtime_ns, item))
         for _, item in sorted(completed, key=lambda pair: pair[0]):
             if len(owned) < MAX_TOMBSTONES:
                 break
@@ -166,7 +192,8 @@ def _claim(connection, host, request):
     finally:
         lock.unlink()
     with os.fdopen(fd, "w", encoding="utf-8") as stream:
-        json.dump({"status": "CLAIMED", "count": 0, "attempts": 0, "elapsed_ms": 0, "error_code": None}, stream)
+        json.dump({"owner": METADATA_OWNER, "scope": scope, "status": "CLAIMED", "count": 0,
+                   "attempts": 0, "elapsed_ms": 0, "error_code": None}, stream)
     return target
 
 
@@ -175,11 +202,17 @@ def _finish(target, status, count, attempts=0, elapsed_ms=0, error_code=None):
     # from a still-CLAIMED entry without reading half a JSON record.
     temporary = None
     try:
+        previous = _read_metadata(target)
+        if type(previous) is not dict or not _valid_metadata(previous, previous.get("scope")):
+            return False
+        metadata = {"owner": METADATA_OWNER, "scope": previous["scope"], "status": status,
+                    "count": count, "attempts": attempts, "elapsed_ms": elapsed_ms, "error_code": error_code}
+        if not _valid_metadata(metadata, previous["scope"]):
+            return False
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=target.parent,
                                          prefix=".recall-", delete=False) as stream:
             temporary = Path(stream.name)
-            json.dump({"status": status, "count": count, "attempts": attempts,
-                       "elapsed_ms": elapsed_ms, "error_code": error_code}, stream)
+            json.dump(metadata, stream)
         os.replace(temporary, target)
         return True
     except OSError:

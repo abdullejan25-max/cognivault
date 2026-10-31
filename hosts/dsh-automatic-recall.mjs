@@ -89,7 +89,10 @@ export function createHandler(ctx, config, createUserMessage) {
     const decision=await next();
     const {agent,signal}=payload;
     if(decision.kind==='reject'||signal.aborted)return decision;
-    const messages=(payload.messages??[]).filter(m=>m?.source?.kind==='user'&&typeof m.id==='string'&&textOf(m));
+    const originalUserIds=new Set((payload.messages??[])
+      .filter(m=>m?.source?.kind==='user'&&typeof m.id==='string').map(m=>m.id));
+    const messages=(decision.messages??[]).filter(m=>m?.source?.kind==='user'
+      &&originalUserIds.has(m.id)&&textOf(m));
     if(!messages.length)return decision;
     const injectContext=context=>({...decision,messages:[...decision.messages,createUserMessage({
       content:[{type:'text',text:context}],source:{kind:name}})]});

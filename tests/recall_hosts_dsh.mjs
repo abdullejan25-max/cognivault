@@ -80,6 +80,19 @@ test('next reject, aborted signal, PTC and missing configuration never dispatch'
   const bad=createHandler({tools:{execute(){assert.fail('must not dispatch');}}},{},factory);
   await bad(s.payload(messages),s.next(messages));
 });
+test('downstream-approved user messages control retrieval and deduplication', async()=>{
+  const s=setup(), original=[user('removed')];
+  const empty={kind:'enter',messages:[]};
+  assert.equal(await s.handler(s.payload(original),async()=>empty),empty);
+  assert.equal(s.count(),0);
+  const injectedUser=user('not-an-original-user','my goal');
+  const filtered={kind:'enter',messages:[injectedUser]};
+  assert.equal(await s.handler(s.payload(original),async()=>filtered),filtered);
+  assert.equal(s.count(),0);
+  const accepted=await s.handler(s.payload(original),s.next(original));
+  assert.equal(s.count(),1);
+  assert.equal(accepted.messages.length,2);
+});
 test('abort reaches pending Host execution and stops bridge', async()=>{
   const s=setup();let observed=false;
   s.calls.length=0;

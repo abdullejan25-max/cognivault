@@ -43,7 +43,7 @@ capabilities = ["read"]
 
 runtime 必须在 Git 外。Windows 限制在用户 `LOCALAPPDATA` 下并继承该用户状态目录 ACL；POSIX 强制目录 0700、文件 0600。运行目录不能经符号链接/reparse point。应使用专用用户私有目录，不与其他插件混放。存储仅含身份 SHA-256 文件名、状态、证据条数、联合检索次数 `attempts`、耗时 `elapsed_ms`、固定错误码；没有原始身份、问题、来源、路径或凭据。`attempts` 不是 Gateway 内部实际 backend 调用次数。
 
-最多保留 2048 个重放标记；容量到达时只删除本模块精确命名、已完成的旧 metadata，保留活动 `CLAIMED`、损坏条目与其他文件。去重保证是有界 last-N 窗口，不能宣称永久 exactly-once。进程崩溃的 `CLAIMED` 或 `.claim-lock` 不自动猜测接管；资源均被活动/损坏记录占满时返回 `RUNTIME_CAPACITY`，锁占用返回 `RUNTIME_BUSY`，由操作者在回调停止后审查恢复。证据正文从不跨轮缓存。
+每个配置/隔离类型/宿主组成的 namespace 最多保留 2048 个重放标记。metadata 还包含固定模块 owner/version 与此 namespace 的 SHA-256；容量到达时只删除归属匹配、各字段类型/范围和固定错误码完整合法、已经完成的旧条目。活动 `CLAIMED`、损坏条目、其他 namespace、没有归属标记的旧格式与其他插件文件全部保留；不会仅因文件名是 hash 或 status=COMPLETE 就删除。去重保证是有界 last-N 窗口，不能宣称永久 exactly-once。进程崩溃的 `CLAIMED` 或 `.claim-lock` 不自动猜测接管；资源均被活动/损坏记录占满时返回 `RUNTIME_CAPACITY`，锁占用返回 `RUNTIME_BUSY`，由操作者在回调停止后审查恢复。证据正文从不跨轮缓存。
 
 ## Codex：优先使用持久 Host companion
 
@@ -103,7 +103,7 @@ Codex 使用 stdin `session_id`、`turn_id`、`prompt`。WorkBuddy 5.7.3 使用 
 
 `gatewayServer` 是可信配置中的安全短标识，默认 `cognivault`；raw 操作固定 `retrieve_evidence`，来源和 prompt 不能换工具。必须由 agent 可见 registry 找到 schema，执行 `ctx.tools.execute({callId,name,arguments,agent,signal})`。保留 `next()` 的 reject，检测 native 模式，不伪造 parent、不绕过 registry、不省略 agent。PTC 返回 `DSH_PTC_UNSUPPORTED`。
 
-只取 `source.kind==='user'` 的文本与原生消息 ID。同批最新真实用户消息作为当前问题，最多前两条作为上下文，按批次 ID 确定性组合去重；同 turn 的新 steer 消息会重查。使用 Host 的 `createUserMessage` 工厂注入。Python bridge 只发送固定 retrieve 请求，由 Host 原生工具执行后回传 DTO；没有独立 MCP 连接。abort/deadline 向当前工具和子进程传播，绝不停止共用 Gateway。去重在 agent 生命周期内保留 1024 个批次标记；DSH 重启恢复尚未原生验收。
+等待 `next()` 后，只取最终 `decision.messages` 仍获准保留、`source.kind==='user'` 且原生 ID 也存在于原用户事件中的消息；下游删除的消息或插件新伪造的 user 消息不触发召回。同批最新真实用户消息作为当前问题，最多前两条作为上下文，按获准批次 ID 确定性组合去重；同 turn 的新 steer 消息会重查。使用 Host 的 `createUserMessage` 工厂注入。Python bridge 只发送固定 retrieve 请求，由 Host 原生工具执行后回传 DTO；没有独立 MCP 连接。abort/deadline 向当前工具和子进程传播，绝不停止共用 Gateway。去重在 agent 生命周期内保留 1024 个批次标记；DSH 重启恢复尚未原生验收。
 
 `hosts/hermes_automatic_recall.py` 仅注册 `pre_llm_call`，默认明确未支持。经审计的 Host loader 才能显式传入已配置的 async `retrieve`、允许域与披露确认；该脚手架不是已验证的 Hermes native MCP 接线。没有 memory provider、post-response、session-end、sync/extraction/mirror 注册。实际 Hermes 插件清单/加载与取消信号仍需有效安装后核对，不能猜 API 或自动安装升级。接口证据见 [宿主合同调查](research/2026-10-31-automatic-recall-host-contracts.md)。
 

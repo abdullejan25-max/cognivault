@@ -212,6 +212,42 @@ def test_replay_window_evicts_only_owned_completed_metadata(tmp_path, monkeypatc
     assert len(list(connection.runtime_dir.glob("*.json"))) == 2
 
 
+@pytest.mark.parametrize("record", [
+    {"status": "COMPLETE", "count": "FOREIGN_KEEP", "attempts": {}, "elapsed_ms": [], "error_code": 1},
+    {"status": "COMPLETE", "count": 1, "attempts": 1, "elapsed_ms": 10, "error_code": None},
+])
+def test_hash_named_foreign_metadata_is_not_owned_or_deleted(tmp_path, monkeypatch, record):
+    h = hosts()
+    cfg, _, _ = config(tmp_path)
+    monkeypatch.setattr(h, "MAX_TOMBSTONES", 1)
+    connection = h.load_connection(cfg)
+    connection.runtime_dir.mkdir()
+    foreign = connection.runtime_dir / ("a" * 64 + ".json")
+    encoded = json.dumps(record)
+    foreign.write_text(encoded)
+    claimed = h._claim(connection, "codex", h.command_request("codex", event("new"), {}))
+    assert claimed.exists()
+    assert foreign.exists() and foreign.read_text() == encoded
+
+
+def test_other_config_and_damaged_owned_metadata_survive_rotation(tmp_path, monkeypatch):
+    h = hosts()
+    cfg, _, _ = config(tmp_path)
+    connection = h.load_connection(cfg)
+    other = h._claim(connection, "other-host", h.command_request("codex", event("other"), {}))
+    h._finish(other, "COMPLETE", 1)
+    original = other.read_bytes()
+    monkeypatch.setattr(h, "MAX_TOMBSTONES", 1)
+    current = h._claim(connection, "codex", h.command_request("codex", event("current"), {}))
+    assert current.exists() and other.read_bytes() == original
+    damaged = json.loads(current.read_text())
+    damaged["count"] = "DAMAGED_KEEP"
+    current.write_text(json.dumps(damaged))
+    with pytest.raises(ValueError, match="RUNTIME_CAPACITY"):
+        h._claim(connection, "codex", h.command_request("codex", event("next"), {}))
+    assert current.exists() and json.loads(current.read_text())["count"] == "DAMAGED_KEEP"
+
+
 def test_runtime_symlink_is_rejected_before_resolving(tmp_path):
     cfg, raw, _ = config(tmp_path)
     actual = tmp_path / "actual"
