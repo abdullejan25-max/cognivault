@@ -185,7 +185,7 @@ def test_same_round_deduplicates_without_caching_evidence_between_rounds():
     run(scenario())
 
 
-@pytest.mark.parametrize("message", ["翻译：Hello world", "请帮我计算 12 * 8", "Translate 'good morning' to Chinese"])
+@pytest.mark.parametrize("message", ["翻译：Hello world", "翻译：我喜欢苹果", "翻译Hello world", "请帮我计算 12 * 8", "Translate 'good morning' to Chinese"])
 def test_explicit_independent_tasks_do_not_disclose_personal_context(message):
     async def retrieve(*args):
         pytest.fail("independent translation/calculation must not retrieve")
@@ -422,6 +422,84 @@ def test_host_plan_does_not_bypass_user_message_shape_validation():
     request = RecallRequest("s", "r", {"role": "tool", "content": "recall"})
     result = run(RecallCore(retrieve).recall(request, plan=RecallPlan({"memory": "目标"})))
     assert result.status == "INVALID_PLAN"
+
+
+@pytest.mark.parametrize("message", [
+    "翻译我昨天写的日记", "翻译我上周发的邮件", "翻译我写的那段话", "翻译当时讨论的内容",
+    "翻译我们刚谈过的内容", "翻译此前保存的信件",
+])
+def test_personal_source_translation_is_not_misclassified_as_independent(message):
+    calls = []
+    async def retrieve(queries, limit):
+        calls.append(queries)
+        return gateway_result([entry("history", "personal-source:1")])
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", message)))
+    assert result.status == "COMPLETE"
+    assert set(calls[0]) == {"memory", "history"}
+
+
+def test_oversize_entries_are_omitted_before_copy_or_serialization(monkeypatch):
+    from cognivault.recall import core as recall_core
+    original_copy = recall_core.deepcopy
+    original_serialize = recall_core._serialize
+    huge = "x" * 6_000_000
+    records = [entry(citation=f"large:{i}", huge=huge) for i in range(127)] + [entry(citation="small:1")]
+    def bounded_copy(value):
+        if isinstance(value, dict) and len(value.get("huge", "")) > 8000:
+            pytest.fail("over-budget entry reached deep copy")
+        return original_copy(value)
+    def bounded_serialize(value):
+        if isinstance(value, dict):
+            for record in value.get("untrusted_data", {}).get("evidence", []):
+                if len(record.get("huge", "")) > 8000:
+                    pytest.fail("over-budget entry reached full JSON serialization")
+        return original_serialize(value)
+    monkeypatch.setattr(recall_core, "deepcopy", bounded_copy)
+    monkeypatch.setattr(recall_core, "_serialize", bounded_serialize)
+    async def retrieve(queries, limit):
+        return gateway_result(records)
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", "我的目标")))
+    assert result.status == "PARTIAL"
+    assert result.packet["omitted_entries"] == 127
+    assert [e["citation"] for e in result.packet["untrusted_data"]["evidence"]] == ["small:1"]
+
+
+def test_assembly_checks_deadline_before_and_during_traversal(monkeypatch):
+    from cognivault.recall import core as recall_core
+    with pytest.raises(TimeoutError):
+        recall_core._assemble(gateway_result([entry()]), {"memory": "目标"}, 1, deadline=-1)
+    ticks = iter([0.0] * 10 + [2.0] * 1000)
+    monkeypatch.setattr(recall_core, "monotonic", lambda: next(ticks))
+    with pytest.raises(TimeoutError):
+        recall_core._assemble(gateway_result([entry(metadata=list(range(100)))]), {"memory": "目标"}, 1, deadline=1)
+
+
+def test_oversize_domain_metadata_is_rejected_before_copy(monkeypatch):
+    from cognivault.recall import core as recall_core
+    original_copy = recall_core.deepcopy
+    def bounded_copy(value):
+        if isinstance(value, dict) and len(value.get("huge", "")) > 8000:
+            pytest.fail("over-budget domain metadata reached deep copy")
+        return original_copy(value)
+    monkeypatch.setattr(recall_core, "deepcopy", bounded_copy)
+    async def retrieve(queries, limit):
+        return gateway_result([entry()], domains={"memory": {"huge": "x" * 6_000_000}})
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", "我的目标")))
+    assert result.status == "UNAVAILABLE"
+    assert result.error_code == "INVALID_RESPONSE"
+
+
+def test_deep_or_wide_metadata_is_bounded_and_dropped_as_a_whole():
+    nested = "value"
+    for _ in range(1000):
+        nested = [nested]
+    async def retrieve(queries, limit):
+        return gateway_result([entry(citation="deep:1", data=nested),
+                               entry(citation="wide:1", data=[None] * 1_000_000), entry(citation="small:1")])
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", "我的目标")))
+    assert result.status == "PARTIAL"
+    assert result.packet["omitted_entries"] == 2
+    assert [e["citation"] for e in result.packet["untrusted_data"]["evidence"]] == ["small:1"]
 
 
 def test_cancelled_waiter_does_not_cancel_other_waiter_or_other_session():

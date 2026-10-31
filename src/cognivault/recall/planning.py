@@ -72,10 +72,25 @@ def local_plan(request: RecallRequest, policy: RecallPolicy) -> RecallPlan:
     recent_budget = min(400, sum(min(len(m), 200) for m in recent))
     current = _window(request.message, 2000 - recent_budget - len(recent))
     context = " ".join([current, *(_window(m, 200) for m in recent)])[:2000]
-    reference = re.search(r"之前|上次|曾经|记得|历史|偏好|目标|决定|选择|我的|那个|那句|my\b|our\b|previous|last time|remember", current, re.I)
+    reference = re.search(
+        r"之前|上次|曾经|记得|历史|偏好|目标|决定|选择|我的|那个|那句|那段|当时|昨天|前天|上周|上个月|去年|"
+        r"我.{0,12}(?:写|发|说|提到|记录|保存|做)的|"
+        r"my\b|our\b|previous|last time|remember|yesterday|last week",
+        current, re.I,
+    )
     expression = re.sub(r"^(?:请帮我|帮我|请)?\s*(?:计算|算一下|calculate)?\s*", "", current, flags=re.I)
     independent_math = re.fullmatch(r"[\d\s.+*/×÷()=%^−-]+[?？。]?", expression)
-    independent_translation = len(current) <= 300 and re.match(r"^(?:请|请帮我|帮我)?\s*(?:翻译|translate\b)", current, re.I)
+    translation = re.match(r"^(?:请帮我|帮我|请)?\s*(?:翻译|translate\b)\s*(.*)$", current, re.I)
+    payload = translation.group(1).strip() if translation else ""
+    # Absence of a known reference word does not prove that text is supplied.
+    # Only explicit payload markers (or a short ASCII literal) justify skipping.
+    marked_payload = (payload.startswith((":", "：")) and bool(payload[1:].strip())) or (
+        payload[:1] in ('"', "'", "“", "「") and len(payload) > 2
+        and any(c in payload[1:] for c in ('"', "'", "”", "」")))
+    ascii_literal = (0 < len(payload) <= 100
+                     and re.fullmatch(r"[A-Za-z0-9\s'\".,!?;-]+", payload)
+                     and not re.search(r"\b(?:what|my|our|we|the|this|that|it|last|earlier|previous|saved|wrote|discussed|messages)\b", payload, re.I))
+    independent_translation = len(current) <= 300 and translation and (marked_payload or ascii_literal)
     if not reference and (independent_math or independent_translation):
         return RecallPlan({})
     learning = re.search(r"复习|学习|错题|考试|成绩|试卷|作业|study|review|exam", current, re.I)

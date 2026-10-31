@@ -9,6 +9,7 @@ from collections import OrderedDict, deque
 from copy import deepcopy
 from dataclasses import dataclass
 import json
+from time import monotonic
 from typing import Awaitable, Callable
 
 from .planning import DOMAINS, RecallPlan, RecallPolicy, RecallRequest, local_plan, validate_plan
@@ -58,18 +59,75 @@ def _empty(status, attempts=0, error_code=None):
     return RecallResult(status, delivery, packet, _serialize(packet), attempts, error_code)
 
 
-def _assemble(raw, queries, attempts):
+def _check_deadline(deadline):
+    if deadline is not None and monotonic() >= deadline:
+        raise TimeoutError("Recall assembly deadline")
+
+
+def _fits_structure(value, deadline):
+    """Bound work before copying/encoding JSON; string lengths are O(1).
+
+    A lower bound on compact JSON length rejects obviously oversized strings and
+    containers without scanning their content. Nodes and depth are bounded too;
+    the final escaped JSON serialization remains the authoritative size check.
+    """
+    remaining, nodes = 8000, 8000
+    stack = [(value, 0)]
+    while stack:
+        _check_deadline(deadline)
+        item, depth = stack.pop()
+        nodes -= 1
+        if nodes < 0 or depth > 64:
+            return False
+        if type(item) is str:
+            remaining -= len(item) + 2
+        elif type(item) is dict:
+            size = len(item)
+            remaining -= 2 + max(0, size - 1) + size
+            if 2 * size > nodes or remaining < 0:
+                return False
+            for key, child in item.items():
+                if type(key) is not str:
+                    return False
+                stack.append((key, depth + 1))
+                stack.append((child, depth + 1))
+        elif type(item) is list:
+            size = len(item)
+            remaining -= 2 + max(0, size - 1)
+            if size > nodes or remaining < 0:
+                return False
+            stack.extend((child, depth + 1) for child in item)
+        elif item is None:
+            remaining -= 4
+        elif type(item) is bool:
+            remaining -= 4 if item else 5
+        elif type(item) in (int, float):
+            remaining -= 1
+        else:
+            return False
+        if remaining < 0:
+            return False
+    return True
+
+
+def _assemble(raw, queries, attempts, *, deadline=None):
+    _check_deadline(deadline)
     if not isinstance(raw, dict) or ("ok" in raw and raw["ok"] is not True) or raw.get("status") not in {
             "COMPLETE", "PARTIAL", "NO_EVIDENCE", "UNAVAILABLE", "NOT_NEEDED"}:
         raise ValueError("Invalid Gateway result")
     records, domains = raw.get("evidence"), raw.get("domains")
-    if not isinstance(records, list) or len(records) > 128 or not isinstance(domains, dict):
+    if (not isinstance(records, list) or len(records) > 128 or not isinstance(domains, dict)
+            or len(domains) > 3 or any(d not in DOMAINS for d in domains)):
         raise ValueError("Invalid Gateway shape")
-    domains = {d: deepcopy(v) for d, v in domains.items() if d in queries}
+    domains = {d: v for d, v in domains.items() if d in queries}
+    if not _fits_structure(domains, deadline):
+        raise ValueError("Domain metadata exceeds structural budget")
+    domains = deepcopy(domains)
     queues = {d: deque() for d in DOMAINS if d in queries}
     seen = set()
     excluded = 0
     for original in records:
+        _check_deadline(deadline)
         if (not isinstance(original, dict) or original.get("domain") not in queues
                 or type(original.get("citation")) is not str
                 or not original["citation"] or type(original.get("excerpt")) is not str):
@@ -80,19 +138,27 @@ def _assemble(raw, queries, attempts):
                 or original.get("state") in {"pending", "suggestion", "proposed", "approved", "rejected"}):
             excluded += 1
             continue
+        if len(original) > 4000:
+            excluded += 1
+            continue
+        normalized = dict(original)
+        normalized["excerpt"] = original["excerpt"][:1000]
+        if not _fits_structure(normalized, deadline):
+            excluded += 1
+            continue
         # Some adapters expose version separately; the canonical Gateway puts it
         # in the citation. Keep different versions and every original metadata field.
         key = (original["citation"], _serialize(original.get("version")))
         if key in seen:
             continue
         seen.add(key)
-        item = deepcopy(original)
-        item["excerpt"] = original["excerpt"][:1000]
+        item = deepcopy(normalized)
         if len(original["excerpt"]) > 1000:
             item["truncated"] = True
         queues[item["domain"]].append(item)
     ordered = []
     while any(queues.values()):
+        _check_deadline(deadline)
         for queue in queues.values():
             if queue:
                 ordered.append(queue.popleft())
@@ -102,6 +168,7 @@ def _assemble(raw, queries, attempts):
     if len(_serialize(base)) > 8000:
         raise ValueError("Domain metadata exceeds budget")
     for item in ordered:
+        _check_deadline(deadline)
         if len(selected) == 6:
             break
         proposed = selected + [item]
@@ -114,7 +181,9 @@ def _assemble(raw, queries, attempts):
     if omitted and status == "COMPLETE":
         status = "PARTIAL"
     packet = _packet(status, domains, selected, omitted)
+    _check_deadline(deadline)
     injection = _serialize(packet)
+    _check_deadline(deadline)
     if len(injection) > 8000:
         raise ValueError("Serialized packet exceeds budget")
     delivery = "READY" if selected else "FAILED" if status == "UNAVAILABLE" else "EMPTY"
@@ -211,7 +280,9 @@ class RecallCore:
                 except Exception:
                     return _empty("UNAVAILABLE", attempts, "RETRIEVE_FAILED")
                 try:
-                    result = _assemble(raw, queries, attempts)
+                    result = _assemble(raw, queries, attempts, deadline=deadline)
+                except TimeoutError:
+                    return _empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
                 except (ValueError, TypeError, RecursionError):
                     return _empty("UNAVAILABLE", attempts, "INVALID_RESPONSE")
                 if asyncio.get_running_loop().time() >= deadline:
