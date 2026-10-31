@@ -87,3 +87,18 @@
 设计每项要求均映射到三个任务：核心功能与预算在 Task 1，宿主正式连接/现有插件保护在 Task 2，逐端真实证据及不同验收层在 Task 3。规则语义召回局限和原生入口不足必须如实报告，不能以完成核心宣称四端完成。
 
 实施中补充：正式 MCP 冷启动约 3.7 秒，主代理早期 command 探针约 4.45 秒返回 `UNAVAILABLE`。因此 Task 2 增加会话启动时保持只读连接的宿主适配服务；这是延迟证据驱动的必要修正，不改变查询次数/注入预算或真实 Host 验收门槛。普通问题必须先经共用规则判定跳过，再决定是否建立资料连接。
+
+### Task 4: 用户要求自行解开 Hermes 入口阻塞后的原生适配
+
+**授权：** 用户对入口问题回复“你自己来”；自行在独立目录准备官方运行环境及原生插件，不以找不到旧安装结束。既有用户配置、记忆和插件不迁移、不覆盖。
+
+**Files:** 创建 `hosts/hermes-native-recall.py`、`hosts/hermes-plugin.yaml`、`tests/test_hermes_native_recall.py`；更新 `docs/automatic-recall.md` 与实施检查点。保留原未接线 callback scaffold 兼容合同。
+
+**Interfaces:** 已核实官方 `v0.22.5` / commit `bf0203a794a07aac3ff764972ab9087baa4e4f4e` 的 `PluginContext.get_config(key, default)`、`PluginContext.call_mcp(server, tool, arguments=None, timeout=30)`、`register_hook("pre_llm_call", callback)`；回调真实传入 `session_id`、`turn_id`、`task_id`、`user_message`。原生 MCP 调用必须保留 Host 的 `plugins.entries.<id>.mcp_allowlist` 默认拒绝和 trust gate。
+
+- [ ] 用官方 PM 在独立 `HERMES_HOME` / `HERMES_RUNTIME_DIR` 准备锁定的 Python 3.14 和 MCP extra；不把 CogniVault 的 MCP 1.x 依赖装进 Hermes 的 MCP 2.3 环境，不修改 upstream pin 或降级。
+- [ ] 先写失败行为测试，再实现可独立装载的 `register(ctx)`。可信设置为 `python_executable`、`core_source_root`、`gateway_server`、`allowed_domains`、`context_delivery_acknowledged`；前两项必须绝对路径，其余受限校验。固定启动该 Python 的 `-m cognivault.recall.bridge`，仅向本机共用 Core 送真实用户事件，不复制查询规则、不自行连接 MCP。
+- [ ] 读取桥的固定 `retrieve_evidence` 请求，通过 `ctx.call_mcp(gateway_server, "retrieve_evidence", arguments, timeout=...)` 执行。拒绝未知操作、超量请求、越权域、错误或截断 envelope。Core 与整个回调仍默认三秒，最多三次联合请求。
+- [ ] 使用 daemon worker 承接同步 Host MCP；只取消自己 worker 的原生线程中断位（已核实 `tools.interrupt.set_interrupt(active, thread_id)`），finally 清理该位；不设置原 Agent/其他会话线程的中断，不关闭共享 MCP。检查原回调的 `is_interrupted()`，实际 Host 未能传达取消的部分保留真实限制，不伪造取消通过。保持 contextvars 的 profile scope，不扩权/绕过 allowlist。
+- [ ] 测试普通问题零资料调用、真实身份缺失、正常命中、三次无命中、截断/拒绝、重复和新轮、并发取消隔离、原生 API 参数及预算；实际执行 Python bridge 子进程。软件测试不当作真实 Hermes 会话 PASS。
+- [ ] 在新隔离 home 通过官方插件装载和正式只读 MCP 验证生命周期，再尝试原生 CLI 正常提问。真实模型认证、登录或信任阻塞保留回执；不读取私人凭据或临时直连替代。独立审查本任务后再更新四端矩阵；没有真实答案使用则不标 `AUTO`。
