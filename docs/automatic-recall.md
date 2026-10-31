@@ -93,7 +93,7 @@ Codex 使用 stdin `session_id`、`turn_id`、`prompt`。WorkBuddy 5.7.3 使用 
 
 同步 `UserPromptSubmit` 接收 `hookSpecificOutput.additionalContext`。Codex command handler 同样应设置 `additionalContextLimit=0`，只因 Core 有 8000 字符硬上限；不能改成 async 冒充首次作答前回忆。command 的 3 秒包含 MCP 启动和查询；已知冷启动可能超限，保留 UNAVAILABLE，不放大阈值凑通过。独立算式与明确的纯翻译经共用规划器判定后不启动 MCP。
 
-## DSH native 与 Hermes 未接线边界
+## DSH native 与 Hermes 兼容脚手架
 
 `hosts/dsh-automatic-recall.mjs` 是 Cordis 插件，导出 `name`、`inject`、`apply`。可信插件配置示意：
 
@@ -105,7 +105,41 @@ Codex 使用 stdin `session_id`、`turn_id`、`prompt`。WorkBuddy 5.7.3 使用 
 
 等待 `next()` 后，只取最终 `decision.messages` 仍获准保留、`source.kind==='user'` 且原生 ID 也存在于原用户事件中的消息；下游删除的消息或插件新伪造的 user 消息不触发召回。同批最新真实用户消息作为当前问题，最多前两条作为上下文，按获准批次 ID 确定性组合去重；同 turn 的新 steer 消息会重查。使用 Host 的 `createUserMessage` 工厂注入。Python bridge 只发送固定 retrieve 请求，由 Host 原生工具执行后回传 DTO；没有独立 MCP 连接。abort/deadline 向当前工具和子进程传播，绝不停止共用 Gateway。去重在 agent 生命周期内保留 1024 个批次标记；DSH 重启恢复尚未原生验收。
 
-`hosts/hermes_automatic_recall.py` 仅注册 `pre_llm_call`，默认明确未支持。经审计的 Host loader 才能显式传入已配置的 async `retrieve`、允许域与披露确认；该脚手架不是已验证的 Hermes native MCP 接线。没有 memory provider、post-response、session-end、sync/extraction/mirror 注册。实际 Hermes 插件清单/加载与取消信号仍需有效安装后核对，不能猜 API 或自动安装升级。接口证据见 [宿主合同调查](research/2026-10-31-automatic-recall-host-contracts.md)。
+`hosts/hermes_automatic_recall.py` 保留原显式 callback 兼容合同，默认明确未支持；它不代表下节的新原生插件。没有 memory provider、post-response、session-end、sync/extraction/mirror 注册。接口调查见 [宿主合同调查](research/2026-10-31-automatic-recall-host-contracts.md)。
+
+## Hermes v0.22.5 原生只读入口
+
+`hosts/hermes-native-recall.py` 是独立、仅依赖 Python 标准库的目录插件入口。已按官方 `v0.22.5` / `bf0203a794a07aac3ff764972ab9087baa4e4f4e` 源码核对同步 `pre_llm_call`、`PluginContext.get_config`、`PluginContext.call_mcp` 与线程中断合同。它不导入 CogniVault 包到 Hermes 环境：Hermes 使用其官方 Python 3.14 / MCP 2.3 环境，另一个明确指定的 CogniVault Python 运行既有 `cognivault.recall.bridge`，共享 Core 的查询、裁剪和证据规则。适配器没有第二条 MCP 连接。
+
+在**新建的隔离** `HERMES_HOME` 内准备目录 `plugins/cognivault-automatic-recall/`，将 `hosts/hermes-native-recall.py` 复制为 `__init__.py`，将 `hosts/hermes-plugin.yaml` 复制为 `plugin.yaml`。通过官方插件启用/信任入口审阅代码，再配置下面的示例；不要覆盖现有用户 home、配置或记忆插件：
+
+```yaml
+plugins:
+  enabled: [cognivault-automatic-recall]
+  entries:
+    cognivault-automatic-recall:
+      mcp_allowlist: [cognivault_synthetic]
+      settings:
+        python_executable: 'C:\example\cognivault-venv\Scripts\python.exe'
+        core_source_root: 'C:\example\cognivault\src'
+        gateway_server: cognivault_synthetic
+        allowed_domains: [memory, history]
+        context_delivery_acknowledged: true
+```
+
+前两项必须为绝对路径，`core_source_root` 指向包含 `cognivault` 包的目录；子进程固定使用该 Python 的 `-X utf8 -m cognivault.recall.bridge`，通过 `PYTHONPATH` 加载 Core。`gateway_server` 只接受受限短标识，域只能从 `memory/history/study` 选择。正式 MCP server 必须已在该 Hermes profile 连接并使用精确只读 Gateway 配置；上例不构成 server 注册，也不自行发现/复制私有配置。`context_delivery_acknowledged` 明确确认本页的外部模型及 Host 日志披露。所有值来自可信插件设置，问题、历史和来源不能更换解释器、连接或工具。
+
+插件只注册 `pre_llm_call`。当前真实 `user_message` 的文字部分交给共用 Core，不把 `conversation_history` 中混有 hook、tool 或来源的文本当作真实用户授权。真实 `session_id/turn_id` 必须存在，`task_id` 纳入身份范围；缺失时返回 `MISSING_HOST_IDENTITY`。本实现不跨轮保存用户正文，因此不使用近期历史窗口。身份去重仅保留 1024 个配置/会话/任务/轮次摘要，不保存问题或证据；同轮重复不注入，新轮重新查询，重启或超出 last-N 窗口后不承诺永久去重。
+
+每次回调的三秒总截止包含 Core 子进程、管道读写与原生工具等待。桥只能申请固定 `retrieve_evidence`、配置允许的域、每后端 `limit=3`、最多三次联合检索；未知操作、序号错误、越权域、错误或截断的原生 envelope 均拒绝。请求经 `ctx.call_mcp(server, "retrieve_evidence", arguments, timeout=remaining)` 发送，保留 Hermes `plugins.entries.<id>.mcp_allowlist` 默认拒绝、profile scope、原生信任与工具策略；没有绕过权限的私有 client API。Hermes 会将 timeout 至少钳制到一秒，因此插件自身另外按同一总截止停止等待并中断当前 RPC。
+
+同步原生 MCP 在 daemon worker 中执行，`contextvars.copy_context()` 保留 profile。原回调在原线程轮询官方 `is_interrupted()`；取消或截止只设置自己仍活动 worker 的线程中断位，worker 在 `finally` 清理，绝不设置/清除原 Agent 或其他会话的位，也不 dispose 共用 MCP client。只终止本次 Core 子进程。若具体 Host 在此入口前没有传达 `/stop`，或原生下游等待阶段不检查中断位，适配器不能保证远端 RPC 已停止；必须保留真实 Host 验收限制。
+
+`NOT_NEEDED/ALREADY_HANDLED` 返回空 context。命中、部分结果、无证据和不可用均交回相应受限状态；权限拒绝为 `NATIVE_MCP_DENIED`，deadline 为 `DEADLINE_EXCEEDED`，不把后端原始异常、路径或凭据放进上下文。单元测试实际运行 Python JSON bridge 子进程并控制原生 context，验证固定调用、未知请求拒绝、截断、去重、并发隔离和取消。它们属于软件合同验证，不能替代官方 PluginManager 生命周期、正式 MCP、真实 CLI 模型答案或生产验收；这些层级由当前实施检查点单独报告，未证明模型使用前不能标记 `AUTO`。
+
+```text
+uv run --extra dev pytest tests/test_hermes_native_recall.py -q
+```
 
 ## 验证与尚需完成的验收
 

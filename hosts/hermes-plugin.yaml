@@ -1,0 +1,30 @@
+name: cognivault-automatic-recall
+version: 0.1.0
+description: "Read-only evidence before answers, through Hermes native MCP and a separate Core Python."
+kind: standalone
+requires_hermes: ">=0.22.5,<0.23"
+provides_hooks:
+  - pre_llm_call
+config_schema:
+  type: object
+  additionalProperties: false
+  required: [python_executable, core_source_root, gateway_server, allowed_domains, context_delivery_acknowledged]
+  properties:
+    python_executable:
+      type: string
+      description: "Absolute path to the separate CogniVault Python; do not install CogniVault into Hermes."
+    core_source_root:
+      type: string
+      description: "Absolute path to the directory containing cognivault (usually repository src)."
+    gateway_server:
+      type: string
+      pattern: "^[a-z][a-z0-9_]{0,63}$"
+    allowed_domains:
+      type: array
+      minItems: 1
+      uniqueItems: true
+      items:
+        enum: [memory, history, study]
+    context_delivery_acknowledged:
+      const: true
+      description: "Evidence enters the configured model and Host logs; external model services may receive it."
