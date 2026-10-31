@@ -49,6 +49,8 @@ runtime 必须在 Git 外。Windows 限制在用户 `LOCALAPPDATA` 下并继承�
 
 该 companion 是宿主侧适配器，不是 Gateway 新增的领域检索工具。它启动时建立一次正式只读 Gateway 连接，只暴露 `recall_for_prompt(session_id, request_id, prompt)`，内部复用 Core。MCP 启动耗时与每轮 3 秒检索预算分开；无法启动就保持不可用，没有 command fallback。
 
+标准 MCP 工具本身不能认证调用来自 hook 还是模型；它授予显式选择域的只读能力，调用参数不是已经认证的真实用户事件证据。只有原生 hook trace 才能支持 AUTO 验收。这里没有用静态 secret、隐藏工具猜测或提示语冒充来源认证；检索到的 source 仍只作为不可信证据，不回传成真实用户陈述或操作授权。
+
 标准 MCP 不能认证这次调用来自 hook 还是模型主动调用；传入的 session/request 身份不是认证凭据。工具描述和参数 schema 也不是权限边界。连接的实际权限由精确只读 Gateway profile、允许域和固定 `retrieve_evidence` 操作限制，不提供写入、配置变更或任意文件读取能力。只有宿主的真实提问事件与作答前 hook trace 能证明自动触发，模型直接调用此工具不能作为 `AUTO` 证据；本实现不使用静态 secret 或软提示规则伪装宿主身份认证。
 
 下面是**待审阅**的宿主 MCP 注册示意，Python 与配置路径应换成实际绝对路径；本次没有写入它：
