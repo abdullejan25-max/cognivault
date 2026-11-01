@@ -168,3 +168,17 @@ exec --ignore-user-config --strict-config的独立探针虽模型退出0，但�
 学习packet的Study状态实为ok/returned0/errors空，保留覆盖不足；不改成UNAVAILABLE，也不称三域全命中。最大8000交付边界、原生取消并发/精确重复/版本失效/候选冲突、当前Desktop与生产仍未完成。普通用例各自有完整合成Host日志提取，发生在首模型reasoning前，不能用原PTY截断估大小或由这些小包推出无spill保证。
 
 最新派生表active-native-assessment-20261101.json，新增用例位于run6-native-tui-matrix-20261101；旧mode failures、原blocked表、原native-results占位均保留。Task8执行报告顶部已给最新PARTIAL索引，防止历史状态误导。源码本轮未变，137/1聚焦回归仍对应0707e2c；仅更新原生证据与状态文档，未启用生产或推送发布。
+
+## 2026-11-01 正式发布收尾：制品与显式英文主题
+
+用户明确要求满足原要求后发布GitHub正式版，不接受以预览版代替。拟新增功能版本为0.10.0，门槛未关闭前仍保持0.9.1，不提前打tag、发布或替换用户安装。主目录main另有工作，继续在原隔离分支收尾。
+
+实际构建发现原wheel没有交付DSH/Hermes三个原生插件资源，sdist则有源码。`fc22fe0` 从同一`hosts/`源码force-include到wheel的`cognivault/recall/host_plugins/`，并使归档审核拒绝缺少任一插件的wheel/sdist。六项独立缺资源负例先RED，17项聚焦测试及53项相关测试通过；实际归档内容与隐私审核通过，clean-venv中以`-I`从site-packages导入Core/bridge/server并读取全部三项资源，源码、wheel、sdist、安装资源逐字节一致。独立审查spec PASS/code APPROVED；未新增第二套维护源码或自动安装插件。该历史构建先于后续规划器修复，最终发行仍须从最终候选重新构建。
+
+`a19708a` 修复显式英文学习主题丢失：原“review physics for my exam”等问题规划Study为“复习”，Memory/History已有命中使整体无结果改写不能执行。三项实际只读MCP/Gateway教材正例先RED，随后仅补有限学校科目的大小写不敏感词边界提取；Core与联合证据79项通过，独立复审通过。`astrophysics`不被误拆成`physics`，独立字面翻译仍跳过。不改变三秒、三次联合请求、每backend3、六条/八千码点及仅整体无结果改写规则；无主题泛问仍有原字面检索局限，不能宣称任意英文主题或全语义召回。
+
+该提交的完整软件回归为 **1692 passed, 18 skipped，637.02秒**，显式提供官方Hermes runtime/source执行manifest检查。跳过项含Windows符号链接/POSIX能力、未装可选pymupdf和显式未开启的真实Host/QMD smoke；不把这些skip说成原生PASS。完整结果保留在本计划ignored回执，未重复整套凑结果。
+
+DSH使用现有独立profile在新真实CLI进程复测显式英文问题。两次运行均自动retrieve一次、limit3、首模型前COMPLETE5；后续模型主动调用分别15次与6次，独立计数。第二次仅给合成observer增加无正文metadata，确认完整packet为3950码点，Memory1/History2/Study2，包含教材页与错题。该次模型却将引用ID缩写，未满足固定合同的精确引源，因此答案引源FAIL、整体仍PARTIAL。首次运行observer未按域记录，不由后一次补造第一次的元数据。两份原始输出/assessment、旧observer及变更hash都保留；官方catalog超时后使用bundled catalog的stderr也保留。没有改模型输出或降低验收标准。
+
+WorkBuddy当前安装5.7.3的command/HTTP执行器尚未找到从session取消到请求的完整传播，单改常驻连接不能关闭此门槛。官方5.9.3安装包已只读下载并核验Tencent有效签名和产品版本，正在静态核对新版合同；未执行安装器、升级现有客户端或据更新日志声称修复。当前Desktop、高级原生矩阵与生产仍各自未完成，不发布正式版。

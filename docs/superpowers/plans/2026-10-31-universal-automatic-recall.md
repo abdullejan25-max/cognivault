@@ -130,16 +130,16 @@
 
 - [ ] 核实WorkBuddy桌面与完整CodeBuddy CLI的区别、隔离认证、真实提问事件及持久正式连接；新CLI不能冒充桌面PASS，保持3秒，不以默认HOME搬运凭据。
 - [ ] 使用已有Codex精确隔离项目完成当前Desktop原生验收；不以CLI同步到侧栏的聊天冒充Desktop生成。不工具发送其他聊天消息、不绕过trust或工作树owner。
-- [ ] Study缺口先复现并区分无主题泛化的字面检索局限、显式中英文主题提取错误和后端故障。泛问有Memory/History相关证据不等于Study全命中；不得硬编码物理、改写仅整体无结果的预算规则或降低验收标准。
+- [x] Study缺口已复现并区分无主题泛化的字面检索局限、显式中英文主题提取错误和后端故障。`a19708a` 修复显式英文主题，79项Core/联合证据回归与独立复审通过；泛问有Memory/History相关证据不等于Study全命中，仍保留原生覆盖缺口。未硬编码默认物理或改写仅整体无结果的预算规则。
 - [ ] 从明确客户端合同得出必要修复，先行为RED后最小修复，独立review；若新合同与批准设计冲突，具体说明冲突，不静默修改。
 
 ### Task 10: 可安装制品的宿主适配器交付
 
 **Files:** `pyproject.toml`、`scripts/verify_package_contents.py`、`tests/test_release_version.py`、`docs/automatic-recall.md`，仅在证明漏包后修改。
 
-- [ ] 实际构建wheel/sdist核实Core、bridge/server与原生适配器资源；源码目录存在不等于安装包可用。
-- [ ] 以人工指定的发布合同先验证缺适配器归档被拒，再配置单一源码force-include和归档审核；不复制两套维护源码。
-- [ ] 干净环境从实际wheel导入Core/bridge/server并读取三项原生资源；原生插件按Host正式目录安装，不自动覆盖已有插件或启用生产。
+- [x] 实际构建wheel/sdist核实Core、bridge/server与原生适配器资源；原wheel漏包已复现并由`fc22fe0`修复。
+- [x] 六项缺适配器归档负例先RED，再配置单一源码force-include和归档审核；17项聚焦测试与独立复审通过，不复制两套维护源码。
+- [x] 干净环境从实际wheel导入Core/bridge/server并读取三项原生资源，源码/两种归档/安装资源字节一致；未自动覆盖已有插件或启用生产。最终发行仍需从最终候选重建。
 
 ### Task 11: 原验收矩阵与回归闭环
 

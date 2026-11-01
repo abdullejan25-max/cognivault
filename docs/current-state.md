@@ -8,6 +8,8 @@
 
 整体仍为 **PARTIAL**，四端均未判完整 `AUTO`。Hermes 已完成独立登录、Windows 长路径修复、真实 CLI/模型首请求自动交付、引源/时序及实际进程重启；DSH 已在独立 profile 通过正式装载、原生 registry 与账号模型自动取证/引源，PTC 实测不支持。WorkBuddy 的真实提问 hook 已触发，但个人召回未完成连接且隔离认证受阻；Codex 用户完成精确 hook 信任后，已通过正式 CLI 开启原本关闭的已信任钩子（Installed 1 / Active 1）；真实 TUI 首次问题与实际退出重启均自动交付完整两条证据并正确引源，另已核实算式/翻译零召回、无资料披露及来源攻击；学习建议引源正确但Study覆盖不足。未代写 trust。f026eb7 根据真实模型反例补齐引用/时序/信任合同，修复时聚焦回归 **136 passed, 1 skipped**、独立审查通过；此前全套 **1678 passed, 18 skipped** 不包含此轮新增用例。2026-11-01 续验修复测试时序不稳定和 DSH Unicode 计数不一致，`0707e2c` 后独立聚焦回归 **137 passed, 1 skipped**，最终分支审查 APPROVED。Hermes 额外主动调用成本、DSH 学习用例的传输/引用 ID 问题与剩余原生矩阵均如实保留。首批四端不是支持白名单。详见[接入说明](automatic-recall.md)、[统一验收](automatic-recall-acceptance.md)及[实施检查点](checkpoints/2026-10-31-universal-automatic-recall-implementation.md)。未启用生产、未推送或发布。
 
+正式发布收尾已修复两项可复现问题：`fc22fe0` 将 DSH/Hermes 原生插件按单一源码打入 wheel，实际 wheel/sdist 内容与隐私审计、干净安装及资源字节核对通过；`a19708a` 修复显式英文学习主题丢失，Core 与联合证据回归 **79 passed**，独立复审通过。该提交完整回归 **1692 passed, 18 skipped，637.02秒**，显式使用官方 Hermes runtime 执行 manifest 检查。版本仍为 `0.9.1`，这些开发分支结果不是新的正式 Release。DSH 英文原生用例确认首次模型请求前交付5条证据（含2条Study），但带完整metadata的新运行答案缩短引用ID，引源FAIL保留；无主题泛问的Study字面检索局限、当前Desktop、高级原生矩阵和WorkBuddy首轮连接/取消传播门槛尚未关闭。
+
 ## v0.9.1 Memory 并发修复（2026-10-31）
 
 当前源码修复 Memory 对 SQLite 临时日志文件多次读取元数据产生的竞态，保留硬链接、符号链接、Windows reparse、父路径和访问错误保护。不涉及 schema、真实数据迁移或权限扩展。首次失败记录见[项目测试](checkpoints/2026-10-31-project-test.md)，修复与发行边界见 [v0.9.1](releases/v0.9.1.md)。本次代码与隔离测试不代表当前 Desktop 原生或生产验收通过。
