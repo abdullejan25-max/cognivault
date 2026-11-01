@@ -44,6 +44,33 @@ def test_mcp_three_domains_with_citations_and_missing_evidence(tmp_path):
     anyio.run(check)
 
 
+@pytest.mark.parametrize("prompt, subject", [
+    ("review physics for my exam", "physics"),
+    ("What should I review in PHYSICS?", "physics"),
+    ("Please review chemistry for my exam", "chemistry"),
+])
+def test_automatic_recall_preserves_explicit_english_subject_in_study_retrieval(tmp_path, prompt, subject):
+    from cognivault.recall import RecallCore, RecallRequest
+    g, _, physics, *_ = scenario(tmp_path)
+    chemistry = g.ingest_documents([dict(
+        title="Chemistry notes", media_type="text/plain",
+        content_base64=base64.b64encode(b"chemistry: atomic structure, ions and chemical bonds.").decode(),
+    )])["documents"][0]
+    expected = physics if subject == "physics" else chemistry
+    g.capabilities = frozenset({"read"})
+
+    async def check():
+        async with create_connected_server_and_client_session(create_mcp_server(g)) as client:
+            async def retrieve(queries, limit):
+                return (await client.call_tool("retrieve_evidence", {"queries": queries, "limit": limit})).structuredContent
+            result = await RecallCore(retrieve).recall(RecallRequest("english-subject", "first", prompt))
+            entries = result.packet["untrusted_data"]["evidence"]
+            assert any(item["domain"] == "study" and item.get("document_uri") == expected["document_uri"]
+                       for item in entries)
+            assert result.status == "COMPLETE" and result.attempts == 1
+    anyio.run(check)
+
+
 def test_selected_domains_only_and_graceful_degradation(tmp_path, monkeypatch):
     g, *_ = scenario(tmp_path)
     def forbidden(*args, **kwargs):

@@ -49,6 +49,15 @@ def test_generic_arithmetic_never_calls_gateway():
     assert (result.status, result.delivery_status, result.attempts) == ("NOT_NEEDED", "NOT_NEEDED", 0)
 
 
+def test_subject_matching_does_not_turn_astrophysics_into_physics():
+    calls = []
+    async def retrieve(queries, limit):
+        calls.append(queries)
+        return gateway_result()
+    run(RecallCore(retrieve).recall(RecallRequest("subjects", "first", "review astrophysics for my exam")))
+    assert calls and all(query != "physics" for queries in calls for query in queries.values())
+
+
 def test_empty_rewrites_stop_at_three_and_are_successful_empty_delivery():
     calls = []
     async def retrieve(queries, limit):

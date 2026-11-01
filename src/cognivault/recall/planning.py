@@ -105,6 +105,10 @@ def local_plan(request: RecallRequest, policy: RecallPolicy) -> RecallPlan:
     domains = tuple(d for d in domains if d in policy.allowed_domains)
     quoted = re.findall(r'[“"「]([^”"」]{1,80})[”"」]', context)[:3]
     subjects = [term for term in ("物理", "化学", "数学", "英语", "语文", "错题", "考试", "成绩") if term in context]
+    # Keep an explicitly named English subject as a literal query. Word
+    # boundaries avoid inventing "physics" when the user names astrophysics.
+    subjects.extend(term for term in ("physics", "chemistry", "math", "mathematics", "english", "chinese")
+                    if re.search(rf"\b{term}\b", context, re.I))
     predicates = [term for term in ("偏好", "目标", "选择", "决定") if term in context]
     if quoted:
         choices = {d: quoted + predicates + subjects for d in domains}
