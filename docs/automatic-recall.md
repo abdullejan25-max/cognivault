@@ -6,7 +6,7 @@
 
 | 接入 | 可运行代码与验证 | 当前原生状态 |
 | --- | --- | --- |
-| Codex 持久 Host companion + `mcp_tool` hook | 标准 MCP SDK、只读合同与隔离包通过；用户授信后项目 companion 已进入 enabled 列表 | 2026-11-01 真实 CLI `/hooks` 仍为 Installed 1 / Active 0 / Review 1，当前精确定义尚待审阅；自动验收 BLOCKED，Desktop 另验 |
+| Codex 持久 Host companion + `mcp_tool` hook | 精确 hook 已 Trusted/Active 1；真实 TUI 正常问题与退出重启后的自动取证/引源已通过 | 正常/重启、算式/翻译零召回、无资料及来源攻击均有真实回执；学习建议的Study覆盖不足，整体仍 PARTIAL；Desktop 与 exec 模式另列 |
 | Codex / WorkBuddy command hook | 软件合同通过；WorkBuddy 真实 UserPromptSubmit、原生 env 身份及算式跳过已验证 | WorkBuddy 个人召回 3531 ms 返回 CONNECTION_UNAVAILABLE、attempts=0；隔离认证受阻，模型使用未通过；冷启动限制仍存在 |
 | DSH native | 独立 profile 通过官方装载、原生 registry 取证与 deepseek-account 模型引源；首 stream 前已交付 | 具体用例通过，整体 PARTIAL；学习用例有传输失败及引用 ID 拼写错误；PTC 原生实测 UNSUPPORTED |
 | Hermes 原生 `pre_llm_call` | 独立 v0.22.5、真实 CLI/原生 Gateway/在线模型首请求自动交付，正常问题引源与实际进程重启已验证 | 整体 PARTIAL；取消/原生重复/版本更新/大包完整交付等未完成，不能标 AUTO；额外模型主动检索另计 |
@@ -155,4 +155,4 @@ uv run --extra dev pytest tests/test_automatic_recall.py tests/test_recall_hosts
 
 自动测试只使用合成数据；DSH 程序协议特征测试执行已安装版本中确切函数，依赖为窄 shim，不等于完整原生包/应用已启动。Windows 没有创建符号链接权限时，对应文件系统用例明确 skip。
 
-Hermes 和 DSH 已有部分新独立真实 Host/模型会话，覆盖正式隔离配置、首次答案前交付、引用、无结果与重启重查；失败和缺口见顶部矩阵与实施检查点。各端仍须补齐其未完成的精确重复/新轮次/steer、并发取消、版本/候选/冲突、大包交付边界等，Codex/WorkBuddy 的实际门槛单列，不能拼接其他端回执。生产仍 NOT RUN。部分域非空时 Core 不盲目改写其他空域；字面检索仍可能因中英文或措辞差异漏命中，应在答案披露缺口。
+Hermes、DSH 和 Codex CLI 已有部分新独立真实 Host/模型会话，覆盖正式隔离配置、首次答案前交付、引用、无结果与重启重查；失败和缺口见顶部矩阵与实施检查点。各端仍须补齐其未完成的精确重复/新轮次/steer、并发取消、版本/候选/冲突、大包交付边界等，WorkBuddy 的实际门槛、Codex exec 模式与当前 Desktop 状态单列，不能拼接其他端回执。生产仍 NOT RUN。部分域非空时 Core 不盲目改写其他空域；字面检索仍可能因中英文或措辞差异漏命中，应在答案披露缺口。

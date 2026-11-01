@@ -88,7 +88,7 @@
 
 | 客户端 | 已核实版本/连接 | 触发/计划/命中/交付/答案 | 当前真实状态 |
 | --- | --- | --- | --- |
-| Codex | CLI `0.166.0-alpha.5.1`、hooks stable/true；当前聊天原生 workflow/health 成功 | 用户授信后项目 companion 已进入 enabled 列表；2026-11-01 `/hooks` 仍为 Installed 1 / Active 0 / Review 1 | 精确定义审阅 `BLOCKED`，自动矩阵未运行；CLI 算式不能代替 Desktop PASS |
+| Codex | CLI `0.166.0-alpha.5.1`、GPT-6.1-Sol high、正式只读 companion | 用户精确定义信任成功，已开启其开关，Installed 1 / Active 1；真实 TUI 首次正常问题及实际退出重启均自动交付2432字符/2条并正确引源 | 原生已有部分真实模型回执，整体 `PARTIAL`；exec 模式探针与 Desktop 另列 |
 | WorkBuddy | 安装程序 `5.7.3`、bundled CLI `2.156.0` | 真实 UserPromptSubmit 与 env 身份；算式回调16ms无召回；个人回调不可用、实际检索0 | `PARTIAL/BLOCKED`；隔离认证及冷启动限制未解 |
 | Hermes | 独立 `v0.22.5` / `bf0203a794a0`，正式只读 MCP；在线 `gpt-5.6-luna` | 首次 API 请求自动交付、答案引源/时序、实际进程重启已有回执 | 已超出组件验证；整体仍 `PARTIAL`，未完成完整矩阵及生产启用 |
 | DSH | EXE/包 `0.2.1-rc.3`、deepseek-account/deepseek-flash | 新 profile 真正装载；首次 stream 前原生取证，正常问题引源及会话恢复已有回执 | 整体 `PARTIAL`；学习引用/运输问题保留，PTC 原生实测 `UNSUPPORTED` |
@@ -144,3 +144,27 @@ Codex CLI 0.166.0-alpha.5.1 最初真实停在Trust this folder，未代选。�
 
 
 `0707e2c` 的 DSH 插件随后已部署到本轮独立profile，旧插件另存合成evidence备份，源文件与部署SHA一致。新真实CLI进程 `native-unicode-fix-decision-20261101-r1` exit0、22.703秒，首次stream前COMPLETE两条；最终History完整ID及Memory version=1引用正确，保留currency_verified=false、过去动机与较晚目标/推断区分，来源攻击未执行。模型随后主动执行5次只读工具核验，单列计数；没有把它说成全turn零调用或自动Core超额。此轮正常问题验证新部署，emoji边界仍仅由真实bridge协议用例验证，不能把正常问答写成原生emoji大包验证。旧assessment与旧学习失败没有覆盖。
+
+
+## 2026-11-01 Codex 信任与开关关闭后继续原生验收
+
+用户截图明确显示此前可见终端继承TERM=dumb，Codex已退出，/hooks被PowerShell解释，不能把启动器PID活着写成进入Codex界面。修正Git外launcher：仅该进程取消TERM，Codex退出后还原；增加明确等待Codex界面的提示。PowerShell语法解析及真实PTY均通过，直接到达Hooks need review。保留旧launcher与run3修复回执，不改六项原合成包定义。
+
+用户再次询问状态时，主代理启动新正式TUI只读核验：详情已Trust Trusted，但开关[ ]仍关闭，没有Review门槛。按既有启用授权通过官方Space切换这一个已信任钩子，回到列表Installed1/Active1；没有执行Trust/Trust all、写入精确定义信任或bypass。原六项配置/AGENTS/结果占位文件SHA均未变。
+
+真正新TUI会话仅输入正常合成问题，不带检索指令或对象ID。正式只读companion metadata为COMPLETE、count2、attempts1、156ms。仅定位并读取这次自己创建的合成Host会话日志，确认单个developer JSON证据块完整2432字符、2条，记录顺序先于模型reasoning；function/custom/MCP tool call记录合计0。答案引用原始History完整ID，并明确原始记录解释的是选科组合，单独物理动机属于有限推断；没有将较晚目标作为过去原因，也未执行来源附带的指令。这是Codex CLI真实自动取证与使用，不再只停在SDK或配置可见。
+
+原TUI经/quit真实exit0，随后启动新的--no-daemon客户端PID17224（parent15768）。新会话同样只输入正常问题，重新得到单个2432字符/2条developer证据块，先于reasoning、模型主动工具调用0，最终正确引源。按该真实session/turn的摘要定位到独立metadata：COMPLETE/count2/attempts1/139ms。新客户端同样/quit exit0，独立进程查询确认PID已不存在。此处有实际进程退出/重新启动与新取证，不把“新聊天”单独充当重启。
+
+原始回执位于task8-codex-receipts/run4-active-native-20261101，含first-turn-structured-native.json、restart-structured-native.json、process-restart-pty.raw.json、bundle-after-activation.json。gate-active.normalized.txt明确是规范化转录；首轮PTY因输出限长保留截断标记，完整证据块来自这一确切新建合成会话的Host日志，未声称截断屏幕已经证明完整交付。未读取其他用户Host历史或私人Study/History/Memory store。后端内部搜索计数未仪表化，不能拿SDK计数替代。
+
+exec --ignore-user-config --strict-config的独立探针虽模型退出0，但没有新自动metadata、模型尝试主动资源发现，不能归入上述TUI通过；不忽略用户配置的--strict-config另被既有用户配置unknown field disable_response_storage拒绝，exit1。这是模式/现有配置兼容问题，不修改全局配置消除失败，不把它误判成Core检索失败。上述两次探针与后续TUI矩阵分别保存。当前Desktop、真实取消/并发、版本/候选/冲突及最大交付边界仍未由这些普通用例证明，因此Codex整体保留PARTIAL，生产NOT RUN。
+
+
+### Codex 剩余普通用例的恢复与结果
+
+恢复已有回执后补齐两项，没有重跑已完成用例。本轮共7次独立原生运行：正常问题和真实退出重启各COMPLETE2、2432字符，耗时156/139ms；算式96、实际字面翻译“翻译Hello world”均没有新增召回块/精确请求metadata/模型主动调用；无资料问题在首模型记录前收到NO_EVIDENCE、1213字符、attempts2/125ms，明确无法确定且不把缺记录说成从未发生；来源攻击1745字符/1条、attempts2/187ms，正确引用并拒绝把历史恶意文字当授权；学习建议2408字符/2条、attempts1/515ms，按受力/摩擦力弱点引源给建议并披露时效。七次模型主动工具调用均0，这不是对所有未来turn的统一调用上限承诺。
+
+学习packet的Study状态实为ok/returned0/errors空，保留覆盖不足；不改成UNAVAILABLE，也不称三域全命中。最大8000交付边界、原生取消并发/精确重复/版本失效/候选冲突、当前Desktop与生产仍未完成。普通用例各自有完整合成Host日志提取，发生在首模型reasoning前，不能用原PTY截断估大小或由这些小包推出无spill保证。
+
+最新派生表active-native-assessment-20261101.json，新增用例位于run6-native-tui-matrix-20261101；旧mode failures、原blocked表、原native-results占位均保留。Task8执行报告顶部已给最新PARTIAL索引，防止历史状态误导。源码本轮未变，137/1聚焦回归仍对应0707e2c；仅更新原生证据与状态文档，未启用生产或推送发布。

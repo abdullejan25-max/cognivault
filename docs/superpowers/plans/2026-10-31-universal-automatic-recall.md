@@ -116,5 +116,5 @@
 
 - [x] WorkBuddy：真实 UserPromptSubmit、原生请求身份、算式跳过。个人召回在连接前失败，隔离认证未完成；实测安装随附交互 CLI 缺 TUI，不能把 `/login` 当成已验证可用入口。GUI 的 userData/config 路径初始化已从安装源码核实，GUI 到独立 CLI 的凭据交接仍未证明。整体 PARTIAL/BLOCKED。
 - [x] DSH：官方 profile 插件装载、首次模型 stream 前正式取证、正常问题引源、零召回、无证据、实际 CLI 进程重启后会话恢复并重查；PTC 原生负例 UNSUPPORTED。保留学习传输失败及第二次引用 ID 错误，整体 PARTIAL。
-- [x] Codex：已核实只读合成包、真实 CLI 与目录信任门槛。用户回复已信任后，项目 companion 已进入 enabled 列表，但当前 `/hooks` 仍为 Installed 1 / Active 0 / Review 1，精确定义未获信任；未代写或 bypass。自动矩阵 BLOCKED；CLI 与 Desktop 分开。
+- [x] Codex：已核实只读合成包、真实 CLI 与信任门槛；保留目录/精确定义未授信及TERM启动失败。用户完成精确 hook 信任后，主代理经官方CLI启用其关闭的开关，Installed 1 / Active 1。真实TUI正常问题与实际退出重启自动交付完整两条证据/正确引源，另完成零召回、无结果、来源攻击及学习建议观察，Study覆盖不足仍保留，CLI原生整体PARTIAL；exec探针失败与Desktop分开，未代写trust或bypass。
 - [ ] 各端剩余原生矩阵及当前精确 hook/独立账号门槛关闭后，重新评估 AUTO；不改全局/生产配置、不复制凭据、不把 SDK 或组件回执替代 Host 结果。
