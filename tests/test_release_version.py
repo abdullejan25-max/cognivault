@@ -12,10 +12,15 @@ import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+# Release contract: independent of the auditor's implementation.
+NATIVE_ADAPTERS = (
+    "dsh-automatic-recall.mjs", "hermes-native-recall.py", "hermes-plugin.yaml",
+)
 
 
 def prepare_archives(root: Path, version: str, *, private: str | None = None,
-                     include_runtime: bool = True) -> None:
+                     include_runtime: bool = True,
+                     missing_adapter: tuple[str, str] | None = None) -> None:
     (root / "pyproject.toml").write_text(
         f'[project]\nname="cognivault"\nversion="{version}"\n', encoding="utf-8"
     )
@@ -29,6 +34,9 @@ def prepare_archives(root: Path, version: str, *, private: str | None = None,
             archive.writestr(private, "invented private marker")
         if include_runtime:
             archive.writestr('cognivault/orchestration/harness_runtime.mjs', '// synthetic runtime')
+        for filename in NATIVE_ADAPTERS:
+            if missing_adapter != ("wheel", filename):
+                archive.writestr(f"cognivault/recall/host_plugins/{filename}", "synthetic adapter")
     with tarfile.open(dist / f"cognivault-{version}.tar.gz", "w:gz") as archive:
         info = tarfile.TarInfo(f"cognivault-{version}/src/cognivault/__init__.py")
         info.size = 1
@@ -37,6 +45,11 @@ def prepare_archives(root: Path, version: str, *, private: str | None = None,
             info = tarfile.TarInfo(f'cognivault-{version}/src/cognivault/orchestration/harness_runtime.mjs')
             info.size = 1
             archive.addfile(info, io.BytesIO(b'#'))
+        for filename in NATIVE_ADAPTERS:
+            if missing_adapter != ("sdist", filename):
+                info = tarfile.TarInfo(f"cognivault-{version}/hosts/{filename}")
+                info.size = 1
+                archive.addfile(info, io.BytesIO(b"#"))
 
 
 def audit(root: Path) -> subprocess.CompletedProcess[str]:
@@ -58,6 +71,18 @@ def test_package_audit_requires_harness_runtime(tmp_path):
     prepare_archives(tmp_path, '0.9.0', include_runtime=False)
     result = audit(tmp_path)
     assert result.returncode != 0
+
+
+@pytest.mark.parametrize("archive_type", ["wheel", "sdist"])
+@pytest.mark.parametrize("filename", NATIVE_ADAPTERS)
+def test_package_audit_rejects_each_missing_native_adapter(
+    tmp_path: Path, archive_type: str, filename: str,
+) -> None:
+    prepare_archives(tmp_path, "0.9.1", missing_adapter=(archive_type, filename))
+    result = audit(tmp_path)
+    assert result.returncode != 0
+    assert "native adapter" in result.stderr
+    assert filename in result.stderr
 
 
 @pytest.mark.parametrize("missing", ["*.whl", "*.tar.gz"])

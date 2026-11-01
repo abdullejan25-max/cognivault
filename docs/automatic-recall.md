@@ -95,6 +95,22 @@ Codex 使用 stdin `session_id`、`turn_id`、`prompt`。WorkBuddy 5.7.3 使用 
 
 ## DSH native 与 Hermes 兼容脚手架
 
+### 从已安装包定位原生资源
+
+wheel 将三项原生资源随包交付，唯一维护源码仍为仓库的 `hosts/dsh-automatic-recall.mjs`、`hosts/hermes-native-recall.py`、`hosts/hermes-plugin.yaml`；sdist 保留这些原路径。用安装 CogniVault 的 Python 读取安装资源：
+
+```python
+from importlib.resources import files
+
+assets = files("cognivault.recall").joinpath("host_plugins")
+for filename in ("dsh-automatic-recall.mjs", "hermes-native-recall.py", "hermes-plugin.yaml"):
+    resource = assets.joinpath(filename)
+    print(filename, resource)
+    # resource.read_bytes() 可读取供人工安装的原始内容。
+```
+
+安装 Python 包不会自动启用 Host 插件。操作者须按下文的官方目录与信任流程手动安装：DSH 放入目标隔离 profile 的 `plugins/` 并准备其运行时依赖；Hermes 将两项资源分别放为目标隔离 home 的 `plugins/cognivault-automatic-recall/__init__.py` 和 `plugin.yaml`。先检查目标是否已存在，存在则停止并审阅差异，不覆盖既有插件或配置。Hermes 的 `core_source_root` 在 wheel 环境可指向 `Path(cognivault.__file__).resolve().parent.parent` 所在的安装包根目录，仍需显式使用对应的 CogniVault Python。资源可读取与人工安装均不证明原生自动回忆通过，也不会启用生产。
+
 `hosts/dsh-automatic-recall.mjs` 是 Cordis 插件，导出 `name`、`inject`、`apply`。可信插件配置示意：
 
 ```json

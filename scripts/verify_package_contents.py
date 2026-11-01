@@ -50,6 +50,13 @@ def main() -> None:
             raise SystemExit("source archive is missing the canonical package")
         elif not any(name.endswith('/src/cognivault/orchestration/harness_runtime.mjs') for name in names):
             raise SystemExit('source archive is missing the Harness runtime')
+        for filename in ("dsh-automatic-recall.mjs", "hermes-native-recall.py", "hermes-plugin.yaml"):
+            required_adapter = (
+                f"cognivault/recall/host_plugins/{filename}" if path.suffix == ".whl"
+                else f"cognivault-{version}/hosts/{filename}"
+            )
+            if required_adapter not in names:
+                raise SystemExit(f"{path.name} is missing native adapter: {filename}")
         print(f"{path.name}: {len(names)} entries, privacy audit passed")
 
 
