@@ -118,3 +118,42 @@
 - [x] DSH：官方 profile 插件装载、首次模型 stream 前正式取证、正常问题引源、零召回、无证据、实际 CLI 进程重启后会话恢复并重查；PTC 原生负例 UNSUPPORTED。保留学习传输失败及第二次引用 ID 错误，整体 PARTIAL。
 - [x] Codex：已核实只读合成包、真实 CLI 与信任门槛；保留目录/精确定义未授信及TERM启动失败。用户完成精确 hook 信任后，主代理经官方CLI启用其关闭的开关，Installed 1 / Active 1。真实TUI正常问题与实际退出重启自动交付完整两条证据/正确引源，另完成零召回、无结果、来源攻击及学习建议观察，Study覆盖不足仍保留，CLI原生整体PARTIAL；exec探针失败与Desktop分开，未代写trust或bypass。
 - [ ] 各端剩余原生矩阵及当前精确 hook/独立账号门槛关闭后，重新评估 AUTO；不改全局/生产配置、不复制凭据、不把 SDK 或组件回执替代 Host 结果。
+
+
+## 2026-11-01 正式发布收尾授权
+
+用户明确选择“github正式版，没达到要求就继续完成”。此前“不推送/发布”的边界由本次授权更新为：原批准验收和发布门槛全部满足后，允许正常push、PR合并、正式tag及GitHub Release；未达标不发布，不改作预览版。现稳定版v0.9.1，拟新增功能版本v0.10.0；未通过门槛前不提前改版本/宣称正式可用。当前GitHub main核实为98d71a341b15a2197d0b10b1eb4e36b626cdf54f，本地主目录main存在其他工作，不切换/覆盖它。
+
+### Task 9: 关闭真实宿主入口阻塞并定位质量缺口
+
+**Files:** 只读现有Host实现、官方合同和本计划隔离报告；必要的新配置仅在Git外合成验收profile，现有生产配置不动。
+
+- [ ] 核实WorkBuddy桌面与完整CodeBuddy CLI的区别、隔离认证、真实提问事件及持久正式连接；新CLI不能冒充桌面PASS，保持3秒，不以默认HOME搬运凭据。
+- [ ] 使用已有Codex精确隔离项目完成当前Desktop原生验收；不以CLI同步到侧栏的聊天冒充Desktop生成。不工具发送其他聊天消息、不绕过trust或工作树owner。
+- [ ] Study缺口先复现并区分无主题泛化的字面检索局限、显式中英文主题提取错误和后端故障。泛问有Memory/History相关证据不等于Study全命中；不得硬编码物理、改写仅整体无结果的预算规则或降低验收标准。
+- [ ] 从明确客户端合同得出必要修复，先行为RED后最小修复，独立review；若新合同与批准设计冲突，具体说明冲突，不静默修改。
+
+### Task 10: 可安装制品的宿主适配器交付
+
+**Files:** `pyproject.toml`、`scripts/verify_package_contents.py`、`tests/test_release_version.py`、`docs/automatic-recall.md`，仅在证明漏包后修改。
+
+- [ ] 实际构建wheel/sdist核实Core、bridge/server与原生适配器资源；源码目录存在不等于安装包可用。
+- [ ] 以人工指定的发布合同先验证缺适配器归档被拒，再配置单一源码force-include和归档审核；不复制两套维护源码。
+- [ ] 干净环境从实际wheel导入Core/bridge/server并读取三项原生资源；原生插件按Host正式目录安装，不自动覆盖已有插件或启用生产。
+
+### Task 11: 原验收矩阵与回归闭环
+
+**Files:** 原实施检查点/当前状态/逐端报告，原始合成回执留Git外。
+
+- [ ] 按原spec完成各端缺失的偏好/延续、时效/候选冲突、缺失/权限/超时、取消并发/重复/新轮、其他客户端更新/失效、新版本与实际重启；保留每个实际失败，不拼接成PASS。
+- [ ] 验证默认每backend3、联合最多3、总deadline3秒、6证据/8000字符及宿主完整交付；内部backend量必须实测，不伪造计数。模型主Agent追加调用与自动Core分栏。
+- [ ] 在最终候选运行完整synthetic suite、stdio、归档隐私/内容、wheel干净安装；完成最终独立代码与验收证据审查。
+
+### Task 12: GitHub正式发布
+
+**Files:** `pyproject.toml`、`uv.lock`、`tests/test_release_version.py`、`docs/releases/v0.10.0.md`、`README.md`、当前状态/检查点。
+
+- [ ] 仅所有前置门槛满足后提升0.10.0，保留依赖pin及原数据结构；安装默认不接个人资料、不自动开hook、不变更生产。
+- [ ] 检查所有将公开的Git对象/归档无私有配置、资料、认证或原始Host traces；更新自然中文发行说明，不以工程测试宣传全语义召回。
+- [ ] 正常推送候选并建PR，等待精确SHA的Ubuntu/Windows CI；安全合并远端main，不触及主目录其他未发布工作。
+- [ ] 合并SHA的CI完成后，从该精确源码重建wheel/sdist/SHA256SUMS，核对annotated tag目标和GitHub正式Release资产digest；不发PyPI、不替换用户安装，除非另有请求。
