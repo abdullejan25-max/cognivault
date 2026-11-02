@@ -175,3 +175,23 @@ Task11取消补充：官方DSH ACP已核实支持多session与定向`session/can
 - [x] 先以来源不能覆写“非穷尽检索”可信标记/指导、COMPLETE不等于全库唯一的RED回归固定合同，再作最小外框修正。`0aefced`已独立审查。
 - [x] 保持原数据、状态、元数据和预算，不扫描全库、不增加补查或LLM、不改写答案，不用新增免责声明掩盖本次实际缺口。
 - [ ] 聚焦回归及独立审查后，以固定官方模型路由的新原生批次复验范围/来源/当前性/引用和Unicode边界。模型不服从的结果仍保留，不能由软件测试替代质量证据。
+
+### Task 15: 可信作答指导的正式宿主通道（设计中）
+
+固定 DSH SDK 支持 scoped `systemPrompt.section`，但 assemble 先于 pre-step，最终 complete/shadow 和多步历史副本必须尊重。仅保留将同源固定 Core guidance 注册为冗余 system section、完整 user packet 继续作为 fallback 的候选；所有重复 guidance 和实际外框都计入原8000码点。来源永不提升为 system。当前未实现，不能预设角色改变会修复语义。
+
+- [x] 有限核对固定公开 SDK 与原设计；保留 split 未闭合与 B2 有条件可行的证据。
+- [ ] 先验证同源导出、版本漂移、Agent 隔离、complete/shadow、历史副本和只读发送前预算守卫，再决定最小实现；没有完整预算证明不启用生产或宣称 AUTO。
+
+### Task 16: Codex MCP hook 的 Unicode 完整交付
+
+真实 Desktop R3 的 Core 完整包为7444码点、16260 UTF-8字节，Host却只交付带文件指针的截断预览，丢失两个 citation。R3 原失败永久保留。官方及本机正式 schema 没有 `mcp_tool.additionalContextLimit`；不能套用 command 设置、改 trust 或以模型后文件读取充当首模型前交付。
+
+**Files:** `src/cognivault/recall/core.py`、`src/cognivault/recall/server.py`、相关 Core/companion 测试、接入说明及本检查点。
+
+**Design:** Core 增加 keyword-only 可选 `max_packet_utf8_bytes=None`，默认逐字保持原8000码点合同。Codex companion 固定选择9600字节，同时仍受8000码点/最多6条限制；prompt和来源不能覆盖预算。官方公开源码按 `ceil(UTF8_bytes/4)` 对原 additionalContext 判定、超过2500则spill；9600留400字节余量。本机 alpha 与公开 HEAD 的构建映射未知，软件修复不能代替本机原生复验。预算对最终转义序列化计量，按原顺序整条省略，保留已选字段、PARTIAL/omitted_entries，不加检索填充、不修改 uncertainty。
+
+- [ ] 先 RED：多字节 Unicode 当前通过8000码点却超过字节上限；包括转义/长metadata、exact B/B+1、大条跳过后小条保留、默认字节兼容和非法/过小预算。
+- [ ] 最小实现双界组包、初始化校验及 Codex 固定选择；base/candidate/final、空/错误结果与最终 additionalContext 均有界。保持3秒/三次联合/per-backend3/去重/取消，无额外调用/状态升级/来源缓存。
+- [ ] 聚焦回归后独立 Spec 与代码审查；未通过不启动模型验收。
+- [ ] 同版本正式 Desktop 新标签、有效空上下文，复验同一 Unicode 问题，首次输入完整 packet/hash/字节/码点与来源字段一致，无预览替代。原R2/R3不重用、不拼批PASS；English及其他矩阵仍分别验收。

@@ -226,3 +226,21 @@ r3在同一`0aefced`纯代码快照上实际选择`deepseek-account/deepseek-v4-
 七案均首次模型前自动retrieve一次、limit3。Unicode首包PARTIAL4、7444码点、omitted2；英文首包COMPLETE5、5094码点、包含Memory1/History2/Study2。全部首包均保留非穷尽标记，最多5条/7444码点。模型后search/fetch独立计数，不纳入自动检索次数，也不拿模型后取得的完整Memory值冒充首包全文。原生pre-step到stream为399–563ms的生命周期边界观察，不能当作Core精确计时或替代取消/deadline矩阵。
 
 独立答案结论：pending、retired、Unicode **PASS**；temporal **PARTIAL**（资料日期异常未澄清）；approved-uncommitted、conflict、English **FAIL**。批准未提交题首句直接断言用户偏好，随后才说明合成/未提交；冲突题把合成未验证的“未决”直接归给真人；英文题末句“your one recorded error”缺查询范围限定，且没有说明本次主动Study查询实际`STUDY_UNAVAILABLE`。引用与失效序列有所改善，仍不能把整批运行成功、后置免责声明或更强模型当作原质量要求通过。原Flash与先导的失败均保留，整体仍PARTIAL。
+
+### 11月3日 Desktop 独立质量批与 Unicode 交付反例
+
+精确产品仍为 `0aefced`。R2 使用正式 queue 生产用户消息、Desktop App 消费，每题独立 fork/revert 并重新加载验证有效历史为空。前三案首次模型前分别 COMPLETE1/1/3、attempt1、109/78/108ms；没有模型主动工具。父级独立核对192项 SHA、首次输入及原 canonical 答案：pending/approved PASS，temporal PARTIAL。第四案在 hook 完成后发生真实模型额度失败、没有答案，后三案未开始；批次终态无待消费消息，失败原件保留。
+
+正式容量读取允许执行后，R3 另立新批，仅补 retired、conflict、Unicode、English，不恢复 R2 失败线程，也不重复前三成功题。前三题均实际消费且模型完成；retired/conflict 各 COMPLETE3/attempt1/108ms，首句保留当前不可确认/合成来源，完整引用、修订失效或未决范围正确。父级独立核对28项文件 SHA，正常两案从 canonical 重建答案逐字相同，判完整交付与答案 PASS。
+
+Unicode 原 Core 结果 PARTIAL4/attempt1/141ms，完整包7444 Unicode码点、10294 UTF-16 units、16260 UTF-8字节、omitted_entries=2。Host 在首次模型前将其换成5286码点的 head/tail 预览及本案文件指针，报 `original token count: 4065`，缺失两个原 citation。生成完整 spill 文件不等于完整交付；本案交付 FAIL。答案只就预览回答、披露合成/截断/省略，不扩大总数，答案仅预览范围 PARTIAL。原 JSON 解析失败、观察器初始假设错误、原预览/完整 spill/答案均分开保留。技术失败后 English NOT RUN，没有重发、切模型或手动重试；不能将 R2/R3 拼为同一七案通过。
+
+官方及本机公开 schema 的 command handler 有 `additionalContextLimit`，`mcp_tool` 没有。官方公开源码的原 context 按 `ceil(UTF8_bytes/4)` 比较2500门槛；本机 alpha 的构建映射未知，后续修复仍需真实 Desktop 新批验证。计划 Task16 保留8000码点上限，在共用 Core 增加可选 UTF-8字节预算，Codex companion 采用9600字节、按整条省略及 PARTIAL/omission 交付。当前尚未将软件方案或完整文件存在当作原生修复通过。实际原生 query/backend 次数仍 NOT_OBSERVED，取消/并发/更新/重启矩阵分别保留。
+
+### Hermes ACP owner 控制层续验
+
+仅在既有人工合成 Hermes home，通过官方 PM 安装 ACP extra，保留旧运行环境和原 pointer。新环境官方 check 成功；初次 native initialize/new/`/tools` 控制握手完成，未发送自然语言模型问题，三个 proxy 工具不能证明完整底层可达集合。
+
+进一步 stage2 首次因没有既有 READY owner，在 ACP 启动前明确拒绝。另一次正式隔离 cold ensure 成功，随后唯一新 stage2 原生 initialize/new 成功，SDK 只读本 session metadata 显示 source=acp、profile 匹配、lazy=true、合成 MCP connected。官方将配置工具集 `mcp-<server>` 规范化为 server 名称，旧检查器断言未适配而停止，`/tools` 未执行、模型问题为0。owner 留存 READY，viewer 正常退出；配置与旧/新 pointer hash 未变。该控制层结果为 PARTIAL，不证明主模型触发、完整白名单、共享 MCP connection 或原生定向取消；原失败不改判。
+
+其后仅将检查器断言另存新版本，按固定官方源码识别唯一规范化 server 名；12项纯合成离线正反例包含额外工具、错误 server、重复值及错误类型，均按预期拒绝或接受。新独立 r3 控制批运行6.688秒、exit0，完成原生 initialize/new/一次 `/tools`，viewer 正常退出；前中后均为同一 READY owner endpoint。父级仅读原件核对14项工件，严格确认唯一 `/tools` 控制、模型问题0、source=acp、精确工具集与 MCP connected。仍为控制层与 SDK metadata 证据，lazy=true、完整 proxy target 白名单 UNKNOWN、共享 MCP connection identity NOT_OBSERVED；没有据此把整个 Hermes 判为 AUTO。

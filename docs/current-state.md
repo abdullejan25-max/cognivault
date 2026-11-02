@@ -1,8 +1,12 @@
 # Current State
 
-最近核对：2026-11-02（自动回忆续验）。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+最近核对：2026-11-03（自动回忆续验）。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
 
 ## 通用自动回忆（开发分支，2026-10-31）
+
+11月3日 Desktop 新质量回执仍针对 `0aefced`，两批独立保存：R2 完成前三案，父级独立审查 pending/approved 为 PASS、temporal 为 PARTIAL；第四案因真实模型额度失败停止。容量恢复后的 R3 仅完成 retired/conflict/Unicode 三案，前两案完整交付及答案通过，Unicode 则发现新的真实 Host 截断：Core 原包7444码点、16260 UTF-8字节，首次模型仅收到5286码点预览和文件指针，缺两个完整引用。答案虽正确披露截断及合成来源，完整交付仍为 FAIL；English 尚未开始，不将两批拼成七案 PASS。正在按官方容量合同准备共用 Core 字节预算修复，原失败保留，修复后的原生验收尚未运行。
+
+Hermes 官方 ACP 已安装在既有独立合成环境。隔离 owner 检查器曾因官方规范化工具集名称的断言不符而停止；原失败保留。修正检查器的一处名称断言并完成12项离线反例后，新控制批在同一 owner 完成原生 initialize/new/`/tools`，metadata 可见 MCP connected，14项工件经父级核验。没有发送模型问题，尚不证明完整底层工具白名单、共享 MCP 连接或取消隔离。DSH 可信指导角色分离仍只完成正式 SDK 合同与条件设计，没有把来源升为 system，也没有据此改判既有答案失败。
 
 11月2日最新产品源 `0aefced` 完整隔离自动测试为 **1702 passed, 18 skipped，522.89秒**，显式使用官方Hermes runtime执行manifest检查。`900b7fc`澄清来源作者、未核实当前断言和版本演变；`0aefced`增加可信非穷尽检索标记，明确`COMPLETE`不是全库覆盖、截断结果不是全文读取。两轮修正均独立审查通过，新增外框仍占原8000码点预算；指导文字不保证模型服从。新Flash原生七案自动层通过，但答案仍有PARTIAL/FAIL，旧失败均保留。
 
