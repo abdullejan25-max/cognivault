@@ -15,16 +15,18 @@ from mcp.server.lowlevel import Server
 from mcp.server.stdio import stdio_server
 
 from . import RecallCore, RecallPolicy, RecallRequest
+from .core import _serialize, _within_budget
 from .hosts import _claim, _finish, connect_readonly, hook_output, load_connection, unavailable
 from .planning import local_plan
 
 TURN_DEADLINE_SECONDS = 3.0
+MAX_PACKET_UTF8_BYTES = 9600
 
 
 def create_host_server(retrieve, connection):
     server = Server("cognivault-recall-host", version="1")
     policy = RecallPolicy(allowed_domains=connection.allowed_domains)
-    core = RecallCore(retrieve, policy)
+    core = RecallCore(retrieve, policy, max_packet_utf8_bytes=MAX_PACKET_UTF8_BYTES)
 
     @server.list_tools()
     async def tools():
@@ -61,12 +63,16 @@ def create_host_server(retrieve, connection):
                     if result.error_code:
                         packet = json.loads(context)
                         packet["error_code"] = result.error_code
-                        context = json.dumps(packet, ensure_ascii=True, separators=(",", ":"))
+                        context = _serialize(packet)
                     if result.status in {"NOT_NEEDED", "ALREADY_HANDLED"}:
                         context = ""
+                    if not _within_budget(context, MAX_PACKET_UTF8_BYTES):
+                        raise ValueError("Final additionalContext exceeds budget")
                     if not _finish(tombstone, result.status, len(result.packet["untrusted_data"]["evidence"]),
                                    result.attempts, int((monotonic() - started) * 1000), result.error_code):
                         context = unavailable("RUNTIME_UNAVAILABLE")
+                    if not _within_budget(context, MAX_PACKET_UTF8_BYTES):
+                        raise ValueError("Final additionalContext exceeds budget")
                     output = hook_output(context)
         except asyncio.CancelledError:
             if tombstone:

@@ -81,7 +81,11 @@ startup_timeout_sec = 20
 }
 ```
 
-`mcp_tool` 使用已连接 server；模板只展开事件字段，实际规划在共用 Core 执行。项目受信任后仍需在 `/hooks` 审阅并信任当前精确 hook 定义；改动需再次审阅。本实现不写信任状态、不绕过审查。2026-10-31 核实的官方配置 schema 在 command handler 定义了 `additionalContextLimit`，在 `mcp_tool` handler 未定义该字段，因此不把它加进上述示例。MCP handler 的完整交付/spill 行为保留真实 Host 验收，不能仅凭 SDK 的 8000 字符上限宣称宿主无截断。来源：[官方 Hooks](https://learn.chatgpt.com/docs/hooks)、[官方配置 schema](https://learn.chatgpt.com/docs/config-schema.json)。
+`mcp_tool` 使用已连接 server；模板只展开事件字段，实际规划在共用 Core 执行。项目受信任后仍需在 `/hooks` 审阅并信任当前精确 hook 定义；改动需再次审阅。本实现不写信任状态、不绕过审查。2026-11-03 核实的官方配置 schema 在 command handler 定义了 `additionalContextLimit`，在 `mcp_tool` handler 未定义该字段，因此不把它加进上述示例。来源：[官方 Hooks](https://learn.chatgpt.com/docs/hooks)、[官方配置 schema](https://learn.chatgpt.com/docs/config-schema.json)。
+
+Codex 持久 companion 路径固定同时限制最终 `additionalContext` 为 **8000 个 Unicode 码点、9600 个 UTF-8 字节**，包括 JSON 转义和错误码追加。正文中的汉字、emoji 与转义会更早用完字节预算；放不下的条目整条省略，并继续尝试后续较小条目。保留已选条目的全部来源、版本、uncertainty 等元数据，以 `PARTIAL` 和准确的 `omitted_entries` 披露省略；即使全部条目被省略也不触发额外检索。域元数据外框或最终错误包超界时返回有限的 `UNAVAILABLE`，不裁剪 JSON 后继续交付资料。每条正文既有 1000 码点、最多六条、三次联合和总 3 秒限制保持。预算由可信适配器固定选择，工具参数、问题和来源内容均不能覆盖；其他 Host 默认只保留原 8000 码点合同。
+
+9600B 是针对已核查的[官方公开源码 `62bf900` 的 spill 判定](https://github.com/openai/codex/blob/62bf900680d00382073c1878cf57bb62bdde63ff/codex-rs/hooks/src/output_spill.rs)选择的保守软件预算。本机 `0.166.0-alpha.5.1` 的精确构建映射仍未知，修改后的 CLI/Desktop 原生复验均 **NOT RUN**。原 Unicode 首轮因 Host spill（超限后改为文件预览）丢失两条完整 citation 的失败保留；软件双界回归不能将它改判，也不能证明未来 Host 均无截断。
 
 ## command 入口与 WorkBuddy 身份
 

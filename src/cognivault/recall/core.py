@@ -61,11 +61,19 @@ def _packet(status, domains=None, evidence=None, omitted=0):
                                "domains": domains or {}, "evidence": evidence or []}}
 
 
-def _empty(status, attempts=0, error_code=None):
+def _within_budget(serialized, max_packet_utf8_bytes=None):
+    return (len(serialized) <= 8000 and (max_packet_utf8_bytes is None
+            or len(serialized.encode("utf-8")) <= max_packet_utf8_bytes))
+
+
+def _empty(status, attempts=0, error_code=None, *, max_packet_utf8_bytes=None):
     packet = _packet(status)
+    injection = _serialize(packet)
+    if not _within_budget(injection, max_packet_utf8_bytes):
+        raise ValueError("Empty packet exceeds budget")
     delivery = ("NOT_NEEDED" if status == "NOT_NEEDED" else "EMPTY"
                 if status in ("NO_EVIDENCE", "ALREADY_HANDLED") else "FAILED")
-    return RecallResult(status, delivery, packet, _serialize(packet), attempts, error_code)
+    return RecallResult(status, delivery, packet, injection, attempts, error_code)
 
 
 def _check_deadline(deadline):
@@ -119,7 +127,7 @@ def _fits_structure(value, deadline):
     return True
 
 
-def _assemble(raw, queries, attempts, *, deadline=None):
+def _assemble(raw, queries, attempts, *, deadline=None, max_packet_utf8_bytes=None):
     _check_deadline(deadline)
     if not isinstance(raw, dict) or ("ok" in raw and raw["ok"] is not True) or raw.get("status") not in {
             "COMPLETE", "PARTIAL", "NO_EVIDENCE", "UNAVAILABLE", "NOT_NEEDED"}:
@@ -174,7 +182,7 @@ def _assemble(raw, queries, attempts, *, deadline=None):
     selected = []
     status = raw["status"]
     base = _packet(status, domains)
-    if len(_serialize(base)) > 8000:
+    if not _within_budget(_serialize(base), max_packet_utf8_bytes):
         raise ValueError("Domain metadata exceeds budget")
     for item in ordered:
         _check_deadline(deadline)
@@ -184,7 +192,7 @@ def _assemble(raw, queries, attempts, *, deadline=None):
         omitted = excluded + len(ordered) - len(proposed)
         candidate_status = "PARTIAL" if omitted and status == "COMPLETE" else status
         candidate = _packet(candidate_status, domains, proposed, omitted)
-        if len(_serialize(candidate)) <= 8000:
+        if _within_budget(_serialize(candidate), max_packet_utf8_bytes):
             selected = proposed
     omitted = excluded + len(ordered) - len(selected)
     if omitted and status == "COMPLETE":
@@ -193,7 +201,7 @@ def _assemble(raw, queries, attempts, *, deadline=None):
     _check_deadline(deadline)
     injection = _serialize(packet)
     _check_deadline(deadline)
-    if len(injection) > 8000:
+    if not _within_budget(injection, max_packet_utf8_bytes):
         raise ValueError("Serialized packet exceeds budget")
     delivery = "READY" if selected else "FAILED" if status == "UNAVAILABLE" else "EMPTY"
     return RecallResult(status, delivery, packet, injection, attempts)
@@ -219,11 +227,27 @@ class RecallCore:
     callback that suppresses cancellation cannot hold up the recall deadline.
     """
 
-    def __init__(self, retrieve: Retrieve, policy: RecallPolicy = RecallPolicy()):
+    def __init__(self, retrieve: Retrieve, policy: RecallPolicy = RecallPolicy(), *,
+                 max_packet_utf8_bytes: int | None = None):
+        if max_packet_utf8_bytes is not None:
+            if type(max_packet_utf8_bytes) is not int or not 0 < max_packet_utf8_bytes <= 32000:
+                raise ValueError("UTF-8 packet budget must be an integer at most 32000")
+            # Validate the actual canonical fixed envelopes, without a planning
+            # import cycle or an arbitrary lower limit. No retrieval runs here.
+            minimum = max(len(_serialize(_packet(status)).encode("utf-8")) for status in (
+                "COMPLETE", "PARTIAL", "NO_EVIDENCE", "UNAVAILABLE", "NOT_NEEDED",
+                "INVALID_PLAN", "ALREADY_HANDLED"))
+            if max_packet_utf8_bytes < minimum:
+                raise ValueError("UTF-8 packet budget cannot contain fixed empty states")
         self.retrieve = retrieve
         self.policy = policy
+        self.max_packet_utf8_bytes = max_packet_utf8_bytes
         self._inflight = {}
         self._handled = OrderedDict()
+
+    def _empty(self, status, attempts=0, error_code=None):
+        return _empty(status, attempts, error_code,
+                      max_packet_utf8_bytes=self.max_packet_utf8_bytes)
 
     async def recall(self, request: RecallRequest, *, plan: RecallPlan | None = None) -> RecallResult:
         if (not isinstance(request, RecallRequest) or type(request.session_id) is not str
@@ -231,23 +255,23 @@ class RecallCore:
                 or len(request.session_id) > 256 or len(request.request_id) > 256
                 or type(request.message) is not str or type(request.recent_user_messages) is not tuple
                 or any(type(m) is not str for m in request.recent_user_messages)):
-            return _empty("INVALID_PLAN", error_code="INVALID_REQUEST")
+            return self._empty("INVALID_PLAN", error_code="INVALID_REQUEST")
         key = (request.session_id, request.request_id)
         if key in self._handled:
-            return _empty("ALREADY_HANDLED")
+            return self._empty("ALREADY_HANDLED")
         flight = self._inflight.get(key)
         if flight is None:
             try:
                 selected = local_plan(request, self.policy) if plan is None else validate_plan(plan, self.policy)
             except (ValueError, TypeError, AttributeError):
-                return _empty("INVALID_PLAN", error_code="INVALID_PLAN")
+                return self._empty("INVALID_PLAN", error_code="INVALID_PLAN")
             flight = _Flight(asyncio.create_task(self._execute(selected)))
             self._inflight[key] = flight
         flight.waiters += 1
         try:
             result = await asyncio.shield(flight.task)
             if flight.delivered:
-                return _empty("ALREADY_HANDLED")
+                return self._empty("ALREADY_HANDLED")
             flight.delivered = True
             return deepcopy(result)
         finally:
@@ -263,39 +287,40 @@ class RecallCore:
 
     async def _execute(self, plan):
         if not plan.queries:
-            return _empty("NOT_NEEDED")
+            return self._empty("NOT_NEEDED")
         attempts = 0
         deadline = asyncio.get_running_loop().time() + self.policy.deadline_seconds
         for queries in (plan.queries, *plan.rewrites):
             remaining = deadline - asyncio.get_running_loop().time()
             if remaining <= 0:
-                return _empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
+                return self._empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
             attempts += 1
             try:
                 callback = asyncio.create_task(self.retrieve(dict(queries), plan.per_backend_limit))
             except Exception:
-                return _empty("UNAVAILABLE", attempts, "RETRIEVE_FAILED")
+                return self._empty("UNAVAILABLE", attempts, "RETRIEVE_FAILED")
             try:
                 remaining = max(0, deadline - asyncio.get_running_loop().time())
                 done, _ = await asyncio.wait((callback,), timeout=remaining)
                 if not done:
                     callback.cancel()
                     callback.add_done_callback(_consume)
-                    return _empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
+                    return self._empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
                 try:
                     raw = callback.result()
                 except asyncio.CancelledError:
-                    return _empty("UNAVAILABLE", attempts, "RETRIEVE_CANCELLED")
+                    return self._empty("UNAVAILABLE", attempts, "RETRIEVE_CANCELLED")
                 except Exception:
-                    return _empty("UNAVAILABLE", attempts, "RETRIEVE_FAILED")
+                    return self._empty("UNAVAILABLE", attempts, "RETRIEVE_FAILED")
                 try:
-                    result = _assemble(raw, queries, attempts, deadline=deadline)
+                    result = _assemble(raw, queries, attempts, deadline=deadline,
+                                       max_packet_utf8_bytes=self.max_packet_utf8_bytes)
                 except TimeoutError:
-                    return _empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
+                    return self._empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
                 except (ValueError, TypeError, RecursionError):
-                    return _empty("UNAVAILABLE", attempts, "INVALID_RESPONSE")
+                    return self._empty("UNAVAILABLE", attempts, "INVALID_RESPONSE")
                 if asyncio.get_running_loop().time() >= deadline:
-                    return _empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
+                    return self._empty("UNAVAILABLE", attempts, "DEADLINE_EXCEEDED")
                 # A failed/partial backend is not evidence absence and must not
                 # trigger blind retries. Only wholly successful empty reads do.
                 if result.status != "NO_EVIDENCE":
