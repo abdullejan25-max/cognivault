@@ -288,14 +288,48 @@ def test_trusted_answer_contract_keeps_full_envelope_by_omitting_whole_large_ent
     assert len(result.injection) <= 8000
 
 
-def test_deadline_is_one_total_budget_instead_of_per_rewrite():
-    async def retrieve(queries, limit):
-        await asyncio.sleep(0.03)
-        return gateway_result()
-    result = run(RecallCore(retrieve, RecallPolicy(deadline_seconds=0.05)).recall(RecallRequest("s", "r", "我的目标")))
-    assert result.status == "UNAVAILABLE"
-    assert result.error_code == "DEADLINE_EXCEEDED"
-    assert result.attempts == 2
+def test_deadline_is_one_total_budget_instead_of_per_rewrite(monkeypatch):
+    from cognivault.recall import core as recall_core
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        logical_time = 0.0
+        remaining_budgets = []
+        calls = 0
+        blocked, cancelled = asyncio.Event(), asyncio.Event()
+        wait = asyncio.wait
+        async def observe_wait(*args, **kwargs):
+            remaining_budgets.append(kwargs["timeout"])
+            assert remaining_budgets == pytest.approx([0.05, 0.02][:len(remaining_budgets)], rel=0, abs=1e-12)
+            return await wait(*args, **kwargs)  # Keep real asyncio timers and cancellation.
+        def reach_deadline():
+            nonlocal logical_time
+            logical_time = 0.05
+        async def retrieve(queries, limit):
+            nonlocal logical_time, calls
+            calls += 1
+            if calls == 1:
+                logical_time = 0.03
+                return gateway_result()
+            loop.call_soon(reach_deadline)
+            try:
+                await blocked.wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+        # Both Core clocks share deterministic time; restore before asyncio.run cleanup.
+        with monkeypatch.context() as patch:
+            patch.setattr(loop, "time", lambda: logical_time)
+            patch.setattr(recall_core, "monotonic", lambda: logical_time)
+            patch.setattr(asyncio, "wait", observe_wait)
+            result = await RecallCore(retrieve, RecallPolicy(deadline_seconds=0.05)).recall(
+                RecallRequest("s", "r", "我的目标"))
+            await asyncio.sleep(0)
+            assert result.status == "UNAVAILABLE"
+            assert result.error_code == "DEADLINE_EXCEEDED"
+            assert result.attempts == calls == 2
+            assert remaining_budgets == pytest.approx([0.05, 0.02], rel=0, abs=1e-12)
+            assert cancelled.is_set() and not blocked.is_set()
+    run(scenario())
 
 
 def test_local_deadline_can_be_adjusted_with_explicit_finite_upper_bound():
