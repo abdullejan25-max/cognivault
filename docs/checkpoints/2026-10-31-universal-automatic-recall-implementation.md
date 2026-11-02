@@ -218,3 +218,11 @@ Hermes正式MCP writer→独立真实reader的v1、v2及失效序列已观测，
 r3在同一`0aefced`纯代码快照上实际选择`deepseek-account/deepseek-v4-pro`，保持官方默认reasoning high，仅提交一次普通项目阶段问题，退出0。首模型前自动retrieve一次、limit3，packet为COMPLETE3、3783码点、Memory0/History3，包含非穷尽检索标记；单个Gateway前后PID相同，部署hash未变。工具start/end为同Host单调时钟，88.9087ms只表示工具span，不能冒充完整Core耗时；整轮55.812秒也不是Core时间。
 
 答案准确保留二维草图→三维样机→失效的历史顺序、三条完整引用及合成作者边界，明确当前不可确认。模型后另有search_memory、search_history各一次，与自动调用分列。原文末尾提出“作为已确认的事实记录下来”，与本profile只有read能力不一致；没有写调用或扩权，仍保留这一语义缺口。仅单题先导完成，不能代替固定Pro七案及原生完整矩阵，也不覆盖Flash失败。
+
+### 固定Pro七案：真实执行与独立审查
+
+后续独立批固定`deepseek-account/deepseek-v4-pro`及官方默认high，不将先导算入七案。一个官方ACP Host、一个正式只读Gateway，依次创建七个全新session，每案仅一个原定自然问题，结束close后再下一案，无答案转交或重试。七案均实际完成，整批270.891秒、exit0；源/profile/adapter/Gateway配置hash不变，40项原始工件与91项源码hash经独立审查全部相符。
+
+七案均首次模型前自动retrieve一次、limit3。Unicode首包PARTIAL4、7444码点、omitted2；英文首包COMPLETE5、5094码点、包含Memory1/History2/Study2。全部首包均保留非穷尽标记，最多5条/7444码点。模型后search/fetch独立计数，不纳入自动检索次数，也不拿模型后取得的完整Memory值冒充首包全文。原生pre-step到stream为399–563ms的生命周期边界观察，不能当作Core精确计时或替代取消/deadline矩阵。
+
+独立答案结论：pending、retired、Unicode **PASS**；temporal **PARTIAL**（资料日期异常未澄清）；approved-uncommitted、conflict、English **FAIL**。批准未提交题首句直接断言用户偏好，随后才说明合成/未提交；冲突题把合成未验证的“未决”直接归给真人；英文题末句“your one recorded error”缺查询范围限定，且没有说明本次主动Study查询实际`STUDY_UNAVAILABLE`。引用与失效序列有所改善，仍不能把整批运行成功、后置免责声明或更强模型当作原质量要求通过。原Flash与先导的失败均保留，整体仍PARTIAL。
