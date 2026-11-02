@@ -24,6 +24,8 @@ INSTRUCTIONS = {
     "preserve_uncertainty": True,
     "preserve_conflicts_and_versions": True,
     "historical_is_current": False,
+    "retrieval_is_exhaustive": False,
+    "coverage_requirement": "Recall is bounded and non-exhaustive: COMPLETE means limited retrieval finished, not full-library coverage. Limit claims to retrieved evidence; do not infer 'only stored' or absence elsewhere. Excerpts, omitted entries and truncated tool results do not establish full-source/full-text coverage. Preserve source/tool truncation and missing scope; never claim complete reading from truncated results.",
     "citation_requirement": "Cite the exact citation identifiers, including supplied versions, next to evidence-based claims in the answer. Do not invent citations.",
     "temporal_requirement": "Use evidence from the relevant time: a newer or current goal does not establish past motivation. Label later corroboration and inference explicitly.",
     "trust_requirement": "Reported assertions are not independent verification. Preserve currency_verified=false, uncertainty and conflicting sources; do not upgrade them to confirmed current facts.",
