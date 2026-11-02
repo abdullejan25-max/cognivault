@@ -208,3 +208,13 @@ App聊天管理工具最初把新建/发送内容记为`function_call_output`委
 ### 当前边界
 
 Hermes正式MCP writer→独立真实reader的v1、v2及失效序列已观测，reader配置未改；失效后只保留History、不再注入该Memory，答案明确当前未知。写端不是另一原生Agent，同活动会话缓存/取消与大包矩阵仍未闭合。WorkBuddy5.9.3/CLI2.165仅静态核对：Mods有真实prompt和逻辑取消，但稳定logical身份等未闭合；后置`prompt.context`存在注入时机却未暴露当前输入身份，不能从全量会话正文补造。生产仍未启用，无新正式版本发布。
+
+### 11月2日补充：可选运行时与固定Pro先导
+
+在独立`uv --isolated`环境使用锁定的`dev`/`pdf-ocr`依赖、本机官方QMD 2.8.3和Node v24.19.0，针对原整套18个skip中的四项作补充：PDF页面二进制MCP资源、QMD更新与搜索的临时目录边界、拥有者隔离运行时、增量更新与全新重建命中一致性，实际**4 passed，41.10秒，exit0**。QMD仅使用测试新建的人工资料和临时索引，不读个人Study/History/store。回执含独立log/JUnit、运行时版本及入口hash；这不是重新运行整套，仍保留原1702/18，不合并成一次新的全套结果。个人真实QMD smoke未执行。
+
+更强路由探针的前两批均未发送模型问题：r1因Cordis整体替换config丢MCP必填字段；r2实际已有19次READY，但更换observer的`name`被当作匹配校验而跳过，harness等待错误路径产生假阴性。旧失败原件保留；固定公开源码核实语义后，以id禁用旧验收observer并插入唯一新observer，官方无模型`--dump-config`严格核验完整只读MCP及目标路径。
+
+r3在同一`0aefced`纯代码快照上实际选择`deepseek-account/deepseek-v4-pro`，保持官方默认reasoning high，仅提交一次普通项目阶段问题，退出0。首模型前自动retrieve一次、limit3，packet为COMPLETE3、3783码点、Memory0/History3，包含非穷尽检索标记；单个Gateway前后PID相同，部署hash未变。工具start/end为同Host单调时钟，88.9087ms只表示工具span，不能冒充完整Core耗时；整轮55.812秒也不是Core时间。
+
+答案准确保留二维草图→三维样机→失效的历史顺序、三条完整引用及合成作者边界，明确当前不可确认。模型后另有search_memory、search_history各一次，与自动调用分列。原文末尾提出“作为已确认的事实记录下来”，与本profile只有read能力不一致；没有写调用或扩权，仍保留这一语义缺口。仅单题先导完成，不能代替固定Pro七案及原生完整矩阵，也不覆盖Flash失败。
