@@ -182,3 +182,29 @@ exec --ignore-user-config --strict-config的独立探针虽模型退出0，但�
 DSH使用现有独立profile在新真实CLI进程复测显式英文问题。两次运行均自动retrieve一次、limit3、首模型前COMPLETE5；后续模型主动调用分别15次与6次，独立计数。第二次仅给合成observer增加无正文metadata，确认完整packet为3950码点，Memory1/History2/Study2，包含教材页与错题。该次模型却将引用ID缩写，未满足固定合同的精确引源，因此答案引源FAIL、整体仍PARTIAL。首次运行observer未按域记录，不由后一次补造第一次的元数据。两份原始输出/assessment、旧observer及变更hash都保留；官方catalog超时后使用bundled catalog的stderr也保留。没有改模型输出或降低验收标准。
 
 WorkBuddy当前安装5.7.3的command/HTTP执行器尚未找到从session取消到请求的完整传播，单改常驻连接不能关闭此门槛。官方5.9.3安装包已只读下载并核验Tencent有效签名和产品版本，正在静态核对新版合同；未执行安装器、升级现有客户端或据更新日志声称修复。当前Desktop、高级原生矩阵与生产仍各自未完成，不发布正式版。
+
+## 2026-11-02：当前产品回归与真实Desktop入口
+
+`900b7fc`根据新的真实模型反例，仅澄清可信作答合同：未核实当前断言必须在首句/主张处限定，不能先断言再在末尾降格；导入的`role=user`不证明当前真人作者；明确更新、替代、失效不应仅因值不同就称为未解决冲突。三项来源伪装与整块预算回归先RED后GREEN；独立审查通过。其后Flash七个新原生用例技术层全部自动一次、limit3、首模型前有效JSON交付；答案pending/approved/unicode通过，temporal/conflict部分通过，retired/English失败。来源归属与当前性有所改善，但版本演变误述、截断后自称全文已读、有限命中说成唯一等反例没有覆盖或改写。
+
+`9787428`只消除既有50ms测试对操作系统调度的依赖：局部逻辑时钟仍驱动真实`asyncio.wait`、定时器和Event取消，核验两轮预算0.05/0.02。独立mutation将每轮重置为0.05时测试能够拒绝，正常/异常路径均恢复时钟。原先attempts=1的合法时间耗尽及复跑结果保留，未放宽生产预算。
+
+`0aefced`补充固定`retrieval_is_exhaustive=false`和范围指导：`COMPLETE`表示本次受限检索正常完成，不表示全库覆盖；命中数不证明唯一或总数；excerpt、省略及后续截断工具不能证明全文已读。6项新回归先RED，独立Core/bundle89项通过；实际源码只增可信外框，不改原始元数据、来源、不确定性、权限或查询。新外框按原8000码点上限整条省略，不增加另一模型或自动补查。模型质量仍须真实重验。
+
+该精确产品源完整自动测试于11月2日结束：**1702 passed, 18 skipped，522.89秒，exit0**。显式供给官方Hermes runtime/source执行manifest测试，保存持久log、JUnit及启动/结束状态。skip包括平台不支持的符号链接/POSIX、可选pymupdf缺失及未开启的真实Host/QMD smoke；不把skip当PASS，不将旧1692/18追记为新结果。
+
+### Desktop：从委派消息到真正原生事件
+
+App聊天管理工具最初把新建/发送内容记为`function_call_output`委派；模型自行调用`recall_for_prompt`，因此保留AGENT_DIRECTED。随后使用本机正式`codex queue --thread … --message …`，不加`--resume`，由App导航加载同一精确已信任隔离项目。队列被实际Desktop app-server消费，产生`user.text`和原生`hooks.additional_context`；新增companion/Gateway由Desktop进程派生，没有CLI模型续作。已有历史的普通一轮COMPLETE2、一次请求、217ms，模型主动工具0，正确引用并声明合成来源。
+
+为独立验证没有旧答案/工具回执，先保留三个无法物化的空初始化失败，再使用公开`thread/fork`及`thread/revert(beforeTurnId)`，只修改新合成fork，原聊天不变。独立退出/重开后有效turns/items均空；真正active canonical segment的`history_base=null`，同时保留fork谱系。正常首轮实际输入8项，仅常规Host说明、当前唯一用户问题与唯一当前hook；13项旧证据标记在本次hook前常规输入中均0命中。本次精确metadata为COMPLETE/count2/attempts1/125ms，packet完整，无Agent主动工具调用；答案精确引源，区分组合选科原话、单科原因推断与合成来源。50份准备/首轮工件SHA核验通过。仅判该首轮原生路径通过，不声称没有fork谱系，也不把它推广为完整Desktop矩阵。
+
+### DSH：共享连接的真实定向取消
+
+官方ACP使用独立持久profile和正式只读MCP，`session/new`不另开Gateway；两个真实session看到同一工具定义及单个共享Gateway进程。正常批的observer嵌套分类错误原件保留，独立按同session单调时钟与首模型边界恢复为每个session自动一次。
+
+取消批在A真实自动retrieve已dispatched而未结束时发送`session/cancel(A)`；同Host单调时间显示原生tool signal abort及phase cause=user都发生在工具end之前。A首轮cancelled、模型0/答案0；B在共享连接上继续完成，取消后还有成功工具调用；同A新轮重新自动检索并交付COMPLETE2。源码/配置/hash及Gateway PID前后不变，独立审查Host/调用层PASS；不同进程单调时钟不跨域相减，服务端内部物理停止仍未验证。两批Flash答案的明显转写、来源/失效及范围错误保留，因此不判DSH整体AUTO。
+
+### 当前边界
+
+Hermes正式MCP writer→独立真实reader的v1、v2及失效序列已观测，reader配置未改；失效后只保留History、不再注入该Memory，答案明确当前未知。写端不是另一原生Agent，同活动会话缓存/取消与大包矩阵仍未闭合。WorkBuddy5.9.3/CLI2.165仅静态核对：Mods有真实prompt和逻辑取消，但稳定logical身份等未闭合；后置`prompt.context`存在注入时机却未暴露当前输入身份，不能从全量会话正文补造。生产仍未启用，无新正式版本发布。

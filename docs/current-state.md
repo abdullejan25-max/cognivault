@@ -1,8 +1,12 @@
 # Current State
 
-最近核对：2026-11-01（自动回忆续验）。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
+最近核对：2026-11-02（自动回忆续验）。本页记录源码与运行验收范围；当前正式稳定发行版须以[GitHub最新Release](https://github.com/abdullejan25-max/cognivault/releases/latest)及其标签核验，不能从metadata推断。历史[v0.8.0](releases/v0.8.0.md)汇集identity transition、CI与完整性修复；下列acquisition/recovery closure属于v0.7.0 completion范围，不是后续版本新采集结果。
 
 ## 通用自动回忆（开发分支，2026-10-31）
+
+11月2日最新产品源 `0aefced` 完整隔离自动测试为 **1702 passed, 18 skipped，522.89秒**，显式使用官方Hermes runtime执行manifest检查。`900b7fc`澄清来源作者、未核实当前断言和版本演变；`0aefced`增加可信非穷尽检索标记，明确`COMPLETE`不是全库覆盖、截断结果不是全文读取。两轮修正均独立审查通过，新增外框仍占原8000码点预算；指导文字不保证模型服从。新Flash原生七案自动层通过，但答案仍有PARTIAL/FAIL，旧失败均保留。
+
+当前Desktop入口已取得真实证据：正式queue不加CLI resume，经App消费后产生原生用户事件及作答前hook。另以公开fork/revert形成持久有效空上下文，实际Desktop首轮COMPLETE2、一次请求、125ms，无模型主动工具调用，答案正确引源并标明合成来源；保留fork谱系，不冒称没有谱系的新线程。DSH官方ACP也已通过同进程共享Gateway的检索中途定向取消、B继续、同A新轮重新取证，独立审查仅判Host/调用层PASS，服务端内部物理中止未验证。完整质量矩阵与WorkBuddy可部署合同仍未闭合，整体仍PARTIAL；版本仍0.9.1，未发布新正式版。以下历史计数保留各自源码范围，详见实施检查点。
 
 已增加宿主侧共用 Recall Core、显式只读 MCP 连接、Codex 持久宿主适配、WorkBuddy command hook、DSH native JSON 桥及 Hermes 通用接口；没有把规则规划放入 Gateway，也没有增加自动写入。`7e701de` 基线完整隔离回归 **1643 passed, 18 skipped**，Core 与宿主边界的独立审查问题均已修复。合成 SDK 已验证持久连接、新版本/失效、请求去重与适配服务进程重启，不代表客户端重启或真实模型使用。
 

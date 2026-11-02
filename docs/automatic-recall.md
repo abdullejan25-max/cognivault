@@ -7,11 +7,14 @@
 | 接入 | 可运行代码与验证 | 当前原生状态 |
 | --- | --- | --- |
 | Codex 持久 Host companion + `mcp_tool` hook | 精确 hook 已 Trusted/Active 1；真实 TUI 正常问题与退出重启后的自动取证/引源已通过 | 正常/重启、算式/翻译零召回、无资料及来源攻击均有真实回执；学习建议的Study覆盖不足，整体仍 PARTIAL；Desktop 与 exec 模式另列 |
+| Codex Desktop `queue` 原生入口 | 正式队列不加 `--resume`，由实际Desktop进程消费；有效空上下文首轮完整自动包2条、一次请求、125ms，模型主动工具0 | 仅此普通首轮通过；保留fork/revert谱系，完整质量/取消并发/重启矩阵未完成，不能从CLI或旧委派回执补齐 |
 | Codex / WorkBuddy command hook | 软件合同通过；WorkBuddy 真实 UserPromptSubmit、原生 env 身份及算式跳过已验证 | WorkBuddy 个人召回 3531 ms 返回 CONNECTION_UNAVAILABLE、attempts=0；隔离认证受阻，模型使用未通过；冷启动限制仍存在 |
-| DSH native | 独立 profile 通过官方装载、原生 registry 取证与 deepseek-account 模型引源；首 stream 前已交付 | 具体用例通过，整体 PARTIAL；学习用例有传输失败及引用 ID 拼写错误；PTC 原生实测 UNSUPPORTED |
-| Hermes 原生 `pre_llm_call` | 独立 v0.22.5、真实 CLI/原生 Gateway/在线模型首请求自动交付，正常问题引源与实际进程重启已验证 | 整体 PARTIAL；取消/原生重复/版本更新/大包完整交付等未完成，不能标 AUTO；额外模型主动检索另计 |
+| DSH native / 官方ACP | 独立 profile正式装载、原生 registry取证与首次stream前交付；ACP共享Gateway下检索中途取消A、B继续、同A新轮取证已有独立原生证据 | Host/调用层取消隔离通过；Flash多次实际答案仍有来源、版本/失效和范围错误，整体PARTIAL；服务端物理中止未验证，PTC原生实测UNSUPPORTED |
+| Hermes 原生 `pre_llm_call` | 独立v0.22.5真实CLI/模型自动交付、正常引源及进程重启；候选/冲突/时效与分阶段版本/失效已有部分原生证据 | 整体PARTIAL；形式MCP writer不是另一原生Agent写端，同一活动会话新鲜度、取消并发及大包完整交付仍未闭合；额外模型检索另计 |
 
 SDK、程序函数协议、真实模型、每端原生会话与生产验收是独立层级。配置文件存在不代表回调运行，回调运行不代表模型已使用或正确引用证据。其他客户端仍须核实其真实用户身份、正式工具入口、取消和作答前交付，不能凭通用 callback 自称 AUTO。
+
+最新产品源`0aefced`完整自动测试为1702 passed/18 skipped；跳过不算原生PASS，最终发行仍需构建、制品审查及精确CI。可信外框明确检索非穷尽；成功的`COMPLETE`、本次返回数量或截断的后续工具结果，均不能单独证明全库唯一、全库总数或已完整阅读。若主Agent另有明确完整范围的独立证据，应按该证据范围作答。
 
 ## 启用前的明确披露
 
