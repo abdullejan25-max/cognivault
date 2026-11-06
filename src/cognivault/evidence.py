@@ -1,5 +1,6 @@
 """Bounded cross-domain evidence retrieval. Agent selects domains and queries."""
 from .contracts import GatewayError
+from .evidence_cancellation import checkpoint
 from .learning_retrieval import focused
 
 
@@ -15,45 +16,53 @@ def retrieve(gateway, queries, limit=3):
         evidence.append(dict(domain=domain, citation=citation, excerpt=text[:1000], truncated=len(text)>1000, temporal_scope=scope, **metadata))
     for domain, query in queries.items():
         errors, partial_backends, completed, before = [], [], 0, len(evidence)
-        def attempt(backend, function):
+        def attempt(backend, function, result_key):
             nonlocal completed
+
+            def search(text):
+                checkpoint()
+                result = function(text, limit=limit)
+                checkpoint()
+                return result
+
             try:
-                result = function()
+                result = focused(query, search, result_key)
                 completed += 1
                 if result.get("partial") is True:
                     partial_backends.append({"backend": backend,
                                              "unavailable_source_count": result["unavailable_source_count"]})
                 return result
             except GatewayError as error:
+                checkpoint()
                 errors.append({"backend":backend, "code":error.code})
                 return None
         if domain == "memory":
-            result = attempt("memory", lambda: focused(query, lambda q: gateway.search_memory(q, limit=limit), "memories"))
+            result = attempt("memory", gateway.search_memory, "memories")
             if result:
                 for r in result["memories"]:
                     scope = "inference" if r["effective_epistemic_status"] == "inference" else "unverified_assertion" if r["effective_epistemic_status"] == "unverified" else "current"
                     add(domain, r["memory_id"] + "#version=" + str(r["version"]), r["subject"] + ": " + r["predicate"] + " = " + r["value"], scope, epistemic_status=r["effective_epistemic_status"], verification_trust=r["verification_trust"], sources_resolved=r["sources_resolved"], source_refs=r["source_refs"], source_resolution=r["source_resolution"], recorded_at=r["recorded_at"], source_latest_at=r["source_latest_at"], source_time_status=r["source_time_status"], currency_verified=False)
         elif domain == "history":
-            result = attempt("history_items", lambda: focused(query, lambda q: gateway.search_history(q, limit=limit), "results"))
+            result = attempt("history_items", gateway.search_history, "results")
             if result:
                 for r in result["results"]:
                     add(domain, r["item_id"], r["snippet"], "historical", occurred_at=r["created_at"], imported_at=r["imported_at"], source_id=r["source_id"], role=r["role"], content_sha256=r["content_sha256"])
             if getattr(gateway, "history_backend", None) is not None:
-                result = attempt("canonical_messages", lambda: focused(query, lambda q: gateway.search_canonical_messages(q, limit=limit), "results"))
+                result = attempt("canonical_messages", gateway.search_canonical_messages, "results")
                 if result:
                     for r in result["results"]:
                         add(domain, r["message_id"], r["snippet"], "historical", occurred_at=r["occurred_at"], role=r["role"], source_refs=r["source_refs"], content_sha256=r["content_sha256"])
         else:
             if gateway.study_backend is not None:
-                result = attempt("qmd", lambda: focused(query, lambda q: gateway.search_study(q, limit=limit), "results"))
+                result = attempt("qmd", gateway.search_study, "results")
                 if result:
                     for r in result["results"]:
                         add(domain, r["source_id"], r["snippet"], "source_material", title=r["title"], retrieval_backend=r["retrieval_backend"])
-            result = attempt("documents", lambda: focused(query, lambda q: gateway.search_documents(q, limit=limit), "results"))
+            result = attempt("documents", gateway.search_documents, "results")
             if result:
                 for r in result["results"]:
                     add(domain, r["page_uri"], r["snippet"], "source_material", document_uri=r["document_uri"], page_number=r["page_number"], source_refs=[r["source_asset_uri"]], text_origin=r["text_origin"])
-            result = attempt("wrong_answers", lambda: focused(query, lambda q: gateway.search_wrong_answers(q, limit=limit), "results"))
+            result = attempt("wrong_answers", gateway.search_wrong_answers, "results")
             if result:
                 for r in result["results"]:
                     add(domain, r["source_id"], r["question_text"] + "\nStudent answer: " + r["student_answer"], "historical", source_refs=[r["source_uri"]], recorded_at=r["created_at"], text_origin=r["text_origin"])

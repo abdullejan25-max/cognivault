@@ -3,17 +3,22 @@
 import json
 import math
 import os
+import signal
 import stat
 from contextlib import nullcontext
 from pathlib import Path, PureWindowsPath
 import shutil
 import subprocess
 from dataclasses import dataclass
+from time import monotonic
 from typing import Callable, ContextManager
 from urllib.parse import unquote, urlsplit
 
+import anyio
+
 from ..config import AppConfig
 from ..contracts import BackendStudyHit, GatewayError
+from ..evidence_cancellation import checkpoint, request_cancellation
 from ..policy import safe_relative_source_path
 
 
@@ -192,6 +197,7 @@ class QmdStudyBackend:
         root = self.config.study_root
         if root is None or not root.is_dir():
             raise GatewayError("STUDY_UNAVAILABLE", "Study search is unavailable")
+        checkpoint()
         if self.runtime is not None or self.runtime_provider is not None:
             runtime_context = (
                 nullcontext(self.runtime)
@@ -200,22 +206,11 @@ class QmdStudyBackend:
             )
             try:
                 with runtime_context as active_runtime:
+                    checkpoint()
                     executable_argv, environment = active_runtime.command_and_environment(root)
-                    executable = executable_argv[0]
                     cwd = str(active_runtime.cwd)
                     argv = executable_argv + ["search", "--format", "json", "--collection", _COLLECTION, "-n", str(limit), "--", query]
-                    completed = self.runner(
-                        argv,
-                        shell=False,
-                        timeout=self.timeout_seconds,
-                        cwd=cwd,
-                        env=environment,
-                        stdin=subprocess.DEVNULL,
-                        capture_output=True,
-                        text=True,
-                        encoding="utf-8",
-                        errors="strict",
-                    )
+                    completed = self._run_search(argv, cwd, environment)
             except subprocess.TimeoutExpired:
                 raise GatewayError("BACKEND_TIMEOUT", "Study search timed out") from None
             except OSError:
@@ -237,18 +232,7 @@ class QmdStudyBackend:
             argv = [executable, "search", "--format", "json", "--collection", _COLLECTION, "-n", str(limit), "--", query]
             environment = {key: value for key, value in os.environ.items() if key.upper() in _ENV_KEYS}
             try:
-                completed = self.runner(
-                argv,
-                shell=False,
-                timeout=self.timeout_seconds,
-                cwd=cwd,
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="strict",
-                )
+                completed = self._run_search(argv, cwd, environment)
             except subprocess.TimeoutExpired:
                 raise GatewayError("BACKEND_TIMEOUT", "Study search timed out") from None
             except OSError:
@@ -263,6 +247,20 @@ class QmdStudyBackend:
         if not isinstance(records, list) or len(records) > limit:
             raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
         return records
+
+    def _run_search(self, argv, cwd, environment):
+        if request_cancellation.get() is None or self.runner is not subprocess.run:
+            return self.runner(
+                argv, shell=False, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
+                timeout=self.timeout_seconds, capture_output=True,
+                text=True, encoding="utf-8", errors="strict",
+            )
+        try:
+            if os.name == "nt":
+                return anyio.from_thread.run(_run_windows_search, argv, cwd, environment, self.timeout_seconds)
+            return _run_posix_search(argv, cwd, environment, self.timeout_seconds)
+        finally:
+            checkpoint()
 
     @staticmethod
     def _parse_hit(root: Path, record: object) -> BackendStudyHit:
@@ -288,6 +286,63 @@ class QmdStudyBackend:
             raise GatewayError("BACKEND_BAD_OUTPUT", "Study backend returned invalid results")
         source_path = _safe_uri_path(root, uri)
         return BackendStudyHit(title, snippet, f"study:{source_path}", source_path, score)
+
+
+def _run_posix_search(argv, cwd, environment, timeout):
+    checkpoint()
+    with subprocess.Popen(
+        argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL, start_new_session=True,
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding="utf-8",
+    ) as process:
+        deadline = None if timeout is None else monotonic() + timeout
+        try:
+            while True:
+                checkpoint()
+                wait = 0.05 if deadline is None else min(0.05, max(0, deadline - monotonic()))
+                try:
+                    stdout, stderr = process.communicate(timeout=wait)
+                except subprocess.TimeoutExpired:
+                    if deadline is not None and monotonic() >= deadline:
+                        raise subprocess.TimeoutExpired(argv, timeout) from None
+                else:
+                    return subprocess.CompletedProcess(argv, process.returncode, stdout, stderr)
+        finally:
+            # communicate() reaps only on completion. Until then the leader PID
+            # still reserves the group number, even if the leader already exited.
+            if process.returncode is None:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+
+
+async def _run_windows_search(argv, cwd, environment, timeout):
+    from ..orchestration import AdapterError, process_guard
+
+    await anyio.lowlevel.checkpoint_if_cancelled()
+    try:
+        # Establish ownership before cancellation can interrupt process startup.
+        with anyio.CancelScope(shield=True):
+            process = await process_guard.spawn(
+                *argv, cwd=cwd, env=environment, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, allow_descendants=True,
+            )
+    except AdapterError:
+        raise GatewayError("QMD_RUNTIME_UNSAFE", "Study runtime is unsafe") from None
+    try:
+        with anyio.fail_after(timeout):
+            stdout, stderr = await process.communicate()
+    except TimeoutError:
+        raise subprocess.TimeoutExpired(argv, timeout) from None
+    finally:
+        # Stop the job/group before waiting for inherited pipe handles to close.
+        with anyio.CancelScope(shield=True):
+            await process_guard.stop(process)
+    return subprocess.CompletedProcess(
+        argv, process.returncode,
+        stdout.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"),
+        stderr.decode("utf-8").replace("\r\n", "\n").replace("\r", "\n"),
+    )
 
 
 def _reject_nonfinite(_: str) -> None:

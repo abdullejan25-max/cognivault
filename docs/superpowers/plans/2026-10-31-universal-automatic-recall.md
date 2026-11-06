@@ -195,3 +195,12 @@ Task11取消补充：官方DSH ACP已核实支持多session与定向`session/can
 - [ ] 最小实现双界组包、初始化校验及 Codex 固定选择；base/candidate/final、空/错误结果与最终 additionalContext 均有界。保持3秒/三次联合/per-backend3/去重/取消，无额外调用/状态升级/来源缓存。
 - [ ] 聚焦回归后独立 Spec 与代码审查；未通过不启动模型验收。
 - [ ] 同版本正式 Desktop 新标签、有效空上下文，复验同一 Unicode 问题，首次输入完整 packet/hash/字节/码点与来源字段一致，无预览替代。原R2/R3不重用、不拼批PASS；English及其他矩阵仍分别验收。
+
+### Task 17: Gateway 检索的请求级取消
+
+固定 4487922 的 canonical stdio 在事件循环同步执行检索。合成 r4 在收到取消后仍记录 24 次后端活动，且释放后端前未收到 ping。宿主层的取消、协议响应和进程停止分别取证。
+
+- [x] 用 `tests/test_mcp_evidence_cancellation.py` 通过同一条真实 stdio 连接固定 RED。分别观察正在运行时的 ping 和取消后进程退出，并验证 A、并发 B 和新请求 A 的身份及结果。
+- [x] 仅把 `retrieve_evidence` 放到独立的工作线程池，复用 MCP SDK 的请求取消范围。后端调用和别名重查边界检查取消。QMD 输出经内存管道传输，Windows 使用请求独有的 Job Object，POSIX 在仍持有未回收进程组首进程时发送组信号。同步入口保留原执行方式。发布合同仍使用 3 秒、三次联合、每后端 3 条、最多 6 条与 8000 码点。
+- [x] Windows 聚焦回归验证超时、迟到取消、并发和后代持有输出管道。独立静态审查通过。Windows 真实 QMD 使用合成只读 profile 在同一连接实测取消、进程回收、ping 与新请求查询。
+- [ ] 在固定候选 SHA 上运行 Ubuntu 与 Windows 回归。单独验收真实宿主的自动回忆和取消。已经进入的 SQLite 调用只在返回后的边界响应取消。

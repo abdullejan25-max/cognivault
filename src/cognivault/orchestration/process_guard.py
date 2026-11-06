@@ -1,7 +1,7 @@
 """Contain executors before their first instruction, then reap their lifetime.
 
-Windows uses a kill-on-close Job with a single active process. The child starts
-suspended, joins the Job, and only then resumes. No descendant can be created.
+Windows uses a kill-on-close Job, restricted to one process by default. The
+child starts suspended, joins the Job, and only then resumes.
 POSIX uses a fresh session/process group; cleanup also works after leader exit.
 """
 import asyncio
@@ -54,15 +54,17 @@ if os.name == "nt":
         _function.argtypes, _function.restype = _args, _restype
 
     class _Job:
-        def __init__(self):
+        def __init__(self, *, allow_descendants=False):
             self.handle = _kernel.CreateJobObjectW(None, None)
             if not self.handle:
                 raise AdapterError("EXECUTOR_BLOCKED")
             limits = _Extended()
             # KILL_ON_JOB_CLOSE | ACTIVE_PROCESS. One process forbids even a
             # brief descendant that could outlive an exiting parent.
-            limits.BasicLimitInformation.LimitFlags = 0x2000 | 0x8
-            limits.BasicLimitInformation.ActiveProcessLimit = 1
+            limits.BasicLimitInformation.LimitFlags = 0x2000
+            if not allow_descendants:
+                limits.BasicLimitInformation.LimitFlags |= 0x8
+                limits.BasicLimitInformation.ActiveProcessLimit = 1
             if not _kernel.SetInformationJobObject(self.handle, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
                 self.close()
                 raise AdapterError("EXECUTOR_BLOCKED")
@@ -108,12 +110,12 @@ if os.name == "nt":
                 self.handle = None
 
 
-async def spawn(*args, **kwargs):
+async def spawn(*args, allow_descendants=False, **kwargs):
     """Trusted argv only. Containment failure never resumes the application."""
     job, process = None, None
     try:
         if os.name == "nt":
-            job = _Job()
+            job = _Job(allow_descendants=allow_descendants)
             kwargs["creationflags"] = kwargs.get("creationflags", 0) | 0x08000000 | 0x4
         else:
             kwargs["start_new_session"] = True

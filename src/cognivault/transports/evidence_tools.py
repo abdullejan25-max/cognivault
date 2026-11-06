@@ -1,6 +1,8 @@
 """Strict bounded evidence MCP contract."""
+from anyio import from_thread
 from mcp import types
 from ..contracts import GatewayError
+from ..evidence_cancellation import checkpoint, request_cancellation
 
 
 def evidence_tools(read_only):
@@ -15,3 +17,14 @@ def call_evidence_tool(gateway, name, arguments):
     if type(arguments) is not dict or not required <= set(arguments) or set(arguments)-allowed:
         raise GatewayError("INVALID_ARGUMENT", "Invalid evidence tool arguments")
     return getattr(gateway, name)(**arguments)
+
+
+def retrieve_evidence_in_worker(gateway, arguments):
+    token = request_cancellation.set(from_thread.check_cancelled)
+    try:
+        checkpoint()
+        result = call_evidence_tool(gateway, "retrieve_evidence", arguments)
+        checkpoint()
+        return result
+    finally:
+        request_cancellation.reset(token)
