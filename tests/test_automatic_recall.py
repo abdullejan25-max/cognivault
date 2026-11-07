@@ -42,6 +42,57 @@ def test_local_plans_are_focused_and_personal_translation_is_not_skipped(message
     assert message not in calls[0][0].values()
 
 
+@pytest.mark.parametrize("message,topic", [
+    ("我之前有提过星河图谱吗？", "星河图谱"),
+    ("我上次记录过哪一项蓝色航线实验？", "蓝色航线实验"),
+    ("我之前提过哪一种火星园艺课程？", "火星园艺课程"),
+])
+def test_unquoted_chinese_recall_queries_the_whole_literal_topic(message, topic):
+    calls = []
+
+    async def retrieve(queries, limit):
+        calls.append((queries, limit))
+        evidence = entry("history", "message:synthetic", excerpt=topic)
+        return gateway_result([evidence] if queries["history"] in evidence["excerpt"] else [])
+
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", message)))
+    assert calls == [({"memory": topic, "history": topic}, 3)]
+    assert (result.status, result.attempts) == ("COMPLETE", 1)
+
+
+@pytest.mark.parametrize("message,expected", [
+    ("我上次记录过什么？", ["记录过"]),
+    ("我曾经说过什么内容？", ["曾经说过", "内容"]),
+    ("我之前提到过吗？", ["提到过吗"]),
+    ("海底 海底 海底 外星文明", ["海底"]),
+])
+def test_unnamed_questions_preserve_the_old_query_candidates(message, expected):
+    calls = []
+
+    async def retrieve(queries, limit):
+        calls.append((queries, limit))
+        return gateway_result()
+
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", message)))
+    assert calls == [({"memory": query, "history": query}, 3) for query in expected]
+    assert (result.status, result.attempts) == ("NO_EVIDENCE", len(expected))
+
+
+def test_unquoted_literal_miss_keeps_existing_fallback_order():
+    calls = []
+
+    async def retrieve(queries, limit):
+        calls.append((queries, limit))
+        return gateway_result([entry()] if queries["history"] == "有提过星河图" else [])
+
+    result = run(RecallCore(retrieve).recall(RecallRequest("s", "r", "我之前有提过星河图谱吗？")))
+    assert calls == [
+        ({"memory": "星河图谱", "history": "星河图谱"}, 3),
+        ({"memory": "有提过星河图", "history": "有提过星河图"}, 3),
+    ]
+    assert (result.status, result.attempts) == ("COMPLETE", 2)
+
+
 def test_generic_arithmetic_never_calls_gateway():
     async def retrieve(*args):
         pytest.fail("generic arithmetic must not retrieve")

@@ -131,7 +131,18 @@ def local_plan(request: RecallRequest, policy: RecallPolicy) -> RecallPlan:
         # token AND/OR search. Never append filler phrases to a failed query.
         stripped = re.sub(r"我|之前|上次|讨论的|怎么|什么|继续|接下来|推进|请问|那个", " ", current)
         tokens = re.findall(r"[A-Za-z][A-Za-z0-9_-]{1,24}|[\u4e00-\u9fff]{2,6}", stripped)
-        choices = {d: tokens[:3] or ["个人记录", "目标", "偏好"] for d in domains}
+        # Recognize a named topic after an explicit past-mention frame. Fixed
+        # CJK chunks can split the topic and mix both fragments with question words.
+        mention = re.fullmatch(
+            r"(?:请问[，, ]*)?我(?:之前|上次|曾经)有?"
+            r"(?:提到过|提到(?!过)|提过|说过|记录过|保存过|写过)"
+            r"(?:哪(?:一)?[个种项份类门])?"
+            r"(?!哪|什么|怎么|如何|为何|为什么|是否|有没有|多少)"
+            r"([\u4e00-\u9fff]{2,80}?)(?:吗|么)?[?？。]?",
+            current.strip(),
+        )
+        candidates = ([mention.group(1)] if mention else []) + tokens[:3]
+        choices = {d: candidates or ["个人记录", "目标", "偏好"] for d in domains}
     choices = {d: list(dict.fromkeys(re.sub(r"\s+", " ", q).strip() for q in choices[d]))[:3]
                for d in domains}
     attempts = []
