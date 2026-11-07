@@ -220,6 +220,24 @@ def test_protocol_search_preserves_sources_and_default_limit(tmp_path: Path) -> 
     anyio.run(check)
 
 
+def test_retrieve_evidence_text_preserves_unicode_and_matches_structured_content(tmp_path: Path) -> None:
+    gateway, backend = _gateway(tmp_path)
+    excerpt = '\u661f\u6cb3\U0001f30c "quoted" \\ path'
+    hit = BackendStudyHit("Invented lesson", excerpt, "untrusted", "lesson.md", 0.8)
+
+    async def check():
+        with patch.object(backend, "search", return_value=[hit]):
+            async with create_connected_server_and_client_session(create_mcp_server(gateway)) as client:
+                response = await client.call_tool("retrieve_evidence", {"queries": {"study": "invented topic"}})
+        assert response.isError is False
+        assert response.structuredContent["evidence"][0]["excerpt"] == excerpt
+        [content] = response.content
+        assert json.loads(content.text) == response.structuredContent
+        assert "\u661f\u6cb3\U0001f30c" in content.text
+
+    anyio.run(check)
+
+
 def test_protocol_rejects_hidden_arguments_before_gateway_call(tmp_path: Path) -> None:
     gateway, backend = _gateway(tmp_path)
 

@@ -541,7 +541,9 @@ def create_mcp_server(gateway: Gateway) -> Server:
     # The SDK's default input-validation error can echo an injected property name.
     # Validate only the two known shapes here and return a fixed, structured error.
     @server.call_tool(validate_input=False)
-    async def call_tool(name: str, arguments: dict) -> dict | types.CallToolResult:
+    async def call_tool(
+        name: str, arguments: dict,
+    ) -> dict | types.CallToolResult | tuple[list[types.TextContent], dict]:
         try:
             from .recovery_tools import SHAPES, call_recovery_tool
             if name in SHAPES:
@@ -558,7 +560,10 @@ def create_mcp_server(gateway: Gateway) -> Server:
                     )
                 finally:
                     await anyio.lowlevel.checkpoint_if_cancelled()
-                return {"ok": True, **result}
+                payload = {"ok": True, **result}
+                # Keep the equivalent compatibility text compact for hosts that read it first.
+                text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+                return [types.TextContent(type="text", text=text)], payload
             evidence_result = call_evidence_tool(gateway, name, arguments)
             if evidence_result is not None:
                 return {"ok":True, **evidence_result}
